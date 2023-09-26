@@ -792,7 +792,7 @@ validate_type_blob (GITypelib     *typelib,
   if (simple->flags.reserved == 0 &&
       simple->flags.reserved2 == 0)
     {
-      if (!G_TYPE_TAG_IS_BASIC(simple->flags.tag))
+      if (!GI_TYPE_TAG_IS_BASIC(simple->flags.tag))
 	{
 	  g_set_error (error,
 		       G_TYPELIB_ERROR,
@@ -2262,7 +2262,17 @@ load_one_shared_library (const char *shlib)
   GSList *p;
   GModule *m;
 
+#ifdef __APPLE__
+  /* On macOS, @-prefixed shlib paths (@rpath, @executable_path, @loader_path)
+     need to be treated as absolute; trying to combine them with a
+     configured library path produces a mangled path that is unresolvable
+     and may cause unintended side effects (such as loading the library
+     from a fall-back location on macOS 12.0.1).
+  */
+  if (!g_path_is_absolute (shlib) && !g_str_has_prefix (shlib, "@"))
+#else
   if (!g_path_is_absolute (shlib))
+#endif
     {
       /* First try in configured library paths */
       for (p = library_paths; p; p = p->next)

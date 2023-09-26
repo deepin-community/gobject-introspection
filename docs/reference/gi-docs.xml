@@ -10,8 +10,8 @@
     <title>libgirepository API Reference</title>
     <releaseinfo>
       This document is for libgirepository version &version;.
-      The latest version of this documentation can be found on-line at
-      <ulink type="http" url="https://developer-old.gnome.org/gi/unstable/">https://developer-old.gnome.org/gi/unstable/</ulink>.
+      The latest version of this documentation can be found <ulink type="http"
+      url="https://gnome.pages.gitlab.gnome.org/gobject-introspection/girepository/">on-line</ulink>.
       <para>
         For more information on how to build libgirepository, for how to build
         bindings with it and for information on GObject Introspection in
@@ -102,6 +102,22 @@
   <index id="api-index-1-60" role="1.60">
     <title>Index of new symbols in 1.60</title>
     <xi:include href="xml/api-index-1.60.xml"><xi:fallback /></xi:include>
+  </index>
+  <index id="api-index-1-62" role="1.62">
+    <title>Index of new symbols in 1.62</title>
+    <xi:include href="xml/api-index-1.62.xml"><xi:fallback /></xi:include>
+  </index>
+  <index id="api-index-1-66" role="1.66">
+    <title>Index of new symbols in 1.66</title>
+    <xi:include href="xml/api-index-1.66.xml"><xi:fallback /></xi:include>
+  </index>
+  <index id="api-index-1-70" role="1.70">
+    <title>Index of new symbols in 1.70</title>
+    <xi:include href="xml/api-index-1.70.xml"><xi:fallback /></xi:include>
+  </index>
+  <index id="api-index-1-72" role="1.72">
+    <title>Index of new symbols in 1.72</title>
+    <xi:include href="xml/api-index-1.72.xml"><xi:fallback /></xi:include>
   </index>
   <xi:include href="xml/annotation-glossary.xml" />
 </book>

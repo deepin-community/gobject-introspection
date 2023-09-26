@@ -42,6 +42,10 @@ OPTIONS
 --warn-error
     Make warnings be fatal errors.
 
+--strict
+    Display warnings for introspectable API that may present issues when
+    consumed by known language bindings.
+
 --format=FORMAT
     This parameters decides which the resulting format will be used. The
     default value is gir.
@@ -132,6 +136,12 @@ OPTIONS
     List of pkg-config packages that are provided by the generated gir. This
     option can be specified multiple times if the gir provides more packages.
     If not specified, the packages specified with ``--pkg=`` will be used.
+
+--compiler=COMPILER
+    The C compiler to be used internally by g-ir-scanner when introspecting
+    the run time type information, like properties, signals, ancestors, and
+    implemented interfaces. It has the same semantics as the ``CC`` environment
+    variable.
 
 --verbose
     Be verbose, include some debugging information.

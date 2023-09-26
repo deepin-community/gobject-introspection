@@ -349,10 +349,11 @@ g_function_invoker_destroy (GIFunctionInvoker    *invoker)
 typedef struct {
   ffi_closure ffi_closure;
   gpointer writable_self;
+  gpointer native_address;
 } GIClosureWrapper;
 
 /**
- * g_callable_info_prepare_closure:
+ * g_callable_info_create_closure:
  * @callable_info: a callable info from a typelib
  * @cif: a ffi_cif structure
  * @callback: the ffi callback
@@ -361,13 +362,13 @@ typedef struct {
  * Prepares a callback for ffi invocation.
  *
  * Returns: the ffi_closure or NULL on error. The return value
- *     should be freed by calling g_callable_info_free_closure().
+ *   should be freed by calling g_callable_info_destroy_closure().
  */
 ffi_closure *
-g_callable_info_prepare_closure (GICallableInfo       *callable_info,
-                                 ffi_cif              *cif,
-                                 GIFFIClosureCallback  callback,
-                                 gpointer              user_data)
+g_callable_info_create_closure (GICallableInfo       *callable_info,
+                                ffi_cif              *cif,
+                                GIFFIClosureCallback  callback,
+                                gpointer              user_data)
 {
   gpointer exec_ptr;
   int n_args;
@@ -386,6 +387,8 @@ g_callable_info_prepare_closure (GICallableInfo       *callable_info,
       return NULL;
     }
   closure->writable_self = closure;
+  closure->native_address = exec_ptr;
+
 
   atypes = g_callable_info_get_ffi_arg_types (callable_info, &n_args);
   status = ffi_prep_cif (cif, FFI_DEFAULT_ABI, n_args,
@@ -406,10 +409,74 @@ g_callable_info_prepare_closure (GICallableInfo       *callable_info,
       return NULL;
     }
 
-  /* Return exec_ptr, which points to the same underlying memory as
-   * closure, but via an executable-non-writable mapping.
+  return &closure->ffi_closure;
+}
+
+/**
+ * g_callable_info_get_closure_native_address:
+ * @callable_info: a callable info from a typelib
+ * @closure: ffi closure
+ *
+ * Gets callable code from ffi_closure prepared by g_callable_info_create_closure()
+ */
+gpointer *
+g_callable_info_get_closure_native_address (GICallableInfo       *callable_info,
+                                            ffi_closure          *closure)
+{
+  GIClosureWrapper *wrapper = (GIClosureWrapper *)closure;
+  return wrapper->native_address;
+}
+
+/**
+ * g_callable_info_destroy_closure:
+ * @callable_info: a callable info from a typelib
+ * @closure: ffi closure
+ *
+ * Frees a ffi_closure returned from g_callable_info_create_closure()
+ */
+void
+g_callable_info_destroy_closure (GICallableInfo *callable_info,
+                                 ffi_closure    *closure)
+{
+  GIClosureWrapper *wrapper = (GIClosureWrapper *)closure;
+
+  g_free (wrapper->ffi_closure.cif->arg_types);
+  ffi_closure_free (wrapper->writable_self);
+}
+
+/**
+ * g_callable_info_prepare_closure:
+ * @callable_info: a callable info from a typelib
+ * @cif: a ffi_cif structure
+ * @callback: the ffi callback
+ * @user_data: data to be passed into the callback
+ *
+ * Prepares a callback for ffi invocation.
+ *
+ * Deprecated: 1.72: Use g_callable_info_create_closure() instead
+ *
+ * Returns: the native address of the closure or `NULL` on error. The return value
+ *   should be freed by calling g_callable_info_free_closure().
+ */
+ffi_closure *
+g_callable_info_prepare_closure (GICallableInfo       *callable_info,
+                                 ffi_cif              *cif,
+                                 GIFFIClosureCallback  callback,
+                                 gpointer              user_data)
+{
+  ffi_closure * closure;
+
+  closure = g_callable_info_create_closure (callable_info, cif, callback, user_data);
+  if (!closure)
+    {
+      return NULL;
+    }
+
+  /* Return the native pointer which, on some systems and ffi versions without static exec trampolines,
+   * points to the same underlying memory as closure, but via an executable-non-writable mapping.
+   * Deprecated, and kept for backwards compatibility only. Risks segfaults on freeing the closure.
    */
-  return exec_ptr;
+  return (ffi_closure *) g_callable_info_get_closure_native_address(callable_info, closure);
 }
 
 /**
@@ -417,14 +484,19 @@ g_callable_info_prepare_closure (GICallableInfo       *callable_info,
  * @callable_info: a callable info from a typelib
  * @closure: ffi closure
  *
- * Frees a ffi_closure returned from g_callable_info_prepare_closure()
+ * Deprecated: 1.72: Use g_callable_info_destroy_closure() instead, in
+ * conjunction with g_callable_info_create_closure().
+ *
+ * Should free a ffi_closure returned from g_callable_info_prepare_closure(),
+ * which may cause a segfault because the native address is returned instead of
+ * the closure address. May do nothing and leak memory instead of freeing to
+ * avoid segfaults.
  */
 void
 g_callable_info_free_closure (GICallableInfo *callable_info,
                               ffi_closure    *closure)
 {
-  GIClosureWrapper *wrapper = (GIClosureWrapper *)closure;
-
-  g_free (wrapper->ffi_closure.cif->arg_types);
-  ffi_closure_free (wrapper->writable_self);
+#ifdef LEGACY_GIRFFI_FREE
+  g_callable_info_destroy_closure(callable_info, closure);
+#endif
 }

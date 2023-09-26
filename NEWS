@@ -1,3 +1,54 @@
+1.74.0 - 2022-09-17
+-------------------
+
+* Update the GIR data for GLib, GObject, GModule, and GIO
+
+1.73.1 - 2022-09-03
+-------------------
+
+* Update the GIR data for GLib, GObject, GModule, and GIO
+* Disable rpath on Windows [Christoph Reiter]
+* Add llvm/mingw support on Windows [Christoph Reiter]
+* Fix annotations in libgirepository [Philip Chimento]
+* Support C99 designated initializers when parsing C declarations [Jan Tojnar]
+* Add some more types to win32 GIR [Marc-André Lureau]
+* Let doctool prepend emitting objects in GJS signals [Andy Holmes]
+* Require a C99 toolchain like GLib
+
+1.73.0 - 2022-07-13
+-------------------
+
+* Update the GIR data for GLib, GObject, GModule, and GIO
+* scanner: Support pre-processor macros with zero arguments [Philip Withnall]
+* scanner: Support ISO C varargs in macros [Philip Withnall]
+* Fix subproject build [Andoni Morales Alastruey]
+
+1.72.0 - 2022-03-18
+-------------------
+
+* Add new utility API to libgirepository for bindings implementing an argument
+  cache [Philip Chimento]
+* Update the GIR data for GLib, GObject, GModule, and GIO
+
+1.71.0 - 2022-02-14
+-------------------
+
+* Create new API for libffi closures [Sergei Trofimovich, Cimbali]
+* Treat @-prefixed shlib paths as absolute on macOS [Rok Mandeljc]
+* Add new `forever` scope [#49]
+* Build fixes with newer Meson [#414]
+* Improve regression test suite [Marco Trevisan (Treviño)]
+* Avoid a segfault when using an invalid GType [Lukas Oberhuber]
+* Build fixes on Windows when using g-i as a subproject [Andoni Morales Alastruey]
+* Warn about property name collisions [#386]
+* Add "strict" warnings to g-ir-scanner
+* Add the "emitter" annotation for signal emitters
+* Add a command line option to g-ir-scanner to specify the compiler
+* Add new convenience API to libgirepository [Philip Chimento]
+* Build fixes on Windows when using MSVC [Chun-wei Fan]
+* Documentation fixes [#211, #327]
+* Update the GIR data for GLib, GObject, and GIO
+
 1.70.0 - 2021-09-17
 -------------------
 

@@ -344,6 +344,8 @@ type_names['FILE*'] = TYPE_ANY
 # integers it's easy enough to expand them.
 type_names['size_t'] = type_names['gsize']
 type_names['ssize_t'] = type_names['gssize']
+type_names['uintptr_t'] = type_names['guintptr']
+type_names['intptr_t'] = type_names['gintptr']
 type_names['time_t'] = TYPE_LONG
 type_names['off_t'] = type_names['gsize']
 type_names['pid_t'] = TYPE_INT
@@ -363,6 +365,7 @@ PARAM_DIRECTION_INOUT = 'inout'
 PARAM_SCOPE_CALL = 'call'
 PARAM_SCOPE_ASYNC = 'async'
 PARAM_SCOPE_NOTIFIED = 'notified'
+PARAM_SCOPE_FOREVER = 'forever'
 
 PARAM_TRANSFER_NONE = 'none'
 PARAM_TRANSFER_CONTAINER = 'container'
@@ -1181,6 +1184,7 @@ class Signal(Callable):
         self.detailed = detailed
         self.action = action
         self.no_hooks = no_hooks
+        self.emitter = None
 
 
 class Class(Node, Registered):

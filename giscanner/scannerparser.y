@@ -36,6 +36,10 @@
 #include "sourcescanner.h"
 #include "scannerparser.h"
 
+#ifdef G_OS_WIN32
+#include <io.h>
+#endif
+
 extern FILE *yyin;
 extern int lineno;
 extern char linebuf[2000];
@@ -303,6 +307,7 @@ set_or_merge_base_type (GISourceType *type,
 %type <symbol> parameter_declaration
 %type <symbol> struct_declarator
 %type <list> enumerator_list
+%type <list> function_macro_argument_list
 %type <list> identifier_list
 %type <list> init_declarator_list
 %type <list> parameter_list
@@ -1401,8 +1406,23 @@ initializer
 	;
 
 initializer_list
-	: initializer
-	| initializer_list ',' initializer
+	: initializer_list_item
+	| initializer_list ',' initializer_list_item
+	;
+
+initializer_list_item
+	: designator_list '=' initializer
+	| initializer
+	;
+
+designator_list
+	: designator
+	| designator_list designator
+	;
+
+designator
+	: '[' constant_expression ']'
+	| '.' identifier
 	;
 
 /* A.2.3 Statements. */
@@ -1509,13 +1529,43 @@ object_macro
 	  }
 	;
 
+function_macro_argument_list
+	: identifier
+	  {
+		GISourceSymbol *sym = gi_source_symbol_new (CSYMBOL_TYPE_INVALID, scanner->current_file, lineno);
+		sym->ident = $1;
+		$$ = g_list_append (NULL, sym);
+	  }
+	| ELLIPSIS
+	  {
+		GISourceSymbol *sym = gi_source_symbol_new (CSYMBOL_TYPE_ELLIPSIS, scanner->current_file, lineno);
+		$$ = g_list_append (NULL, sym);
+	  }
+	| identifier ',' function_macro_argument_list
+	  {
+		GISourceSymbol *sym = gi_source_symbol_new (CSYMBOL_TYPE_INVALID, scanner->current_file, lineno);
+		sym->ident = $1;
+		$$ = g_list_prepend ($3, sym);
+	  }
+	;
+
 function_macro_define
-	: function_macro '(' identifier_list ')'
+	: function_macro '(' function_macro_argument_list ')'
 	   {
 		GISourceSymbol *sym = gi_source_symbol_new (CSYMBOL_TYPE_FUNCTION_MACRO, scanner->current_file, lineno);
 		GISourceType *func = gi_source_function_new ();
 		sym->ident = g_strdup ($1);
 		func->child_list = $3;
+		gi_source_symbol_merge_type (sym, func);
+		gi_source_scanner_add_symbol (scanner, sym);
+		gi_source_symbol_unref (sym);
+	   }
+	| function_macro '(' ')'
+	   {
+		GISourceSymbol *sym = gi_source_symbol_new (CSYMBOL_TYPE_FUNCTION_MACRO, scanner->current_file, lineno);
+		GISourceType *func = gi_source_function_new ();
+		sym->ident = g_strdup ($1);
+		func->child_list = NULL;
 		gi_source_symbol_merge_type (sym, func);
 		gi_source_scanner_add_symbol (scanner, sym);
 		gi_source_symbol_unref (sym);

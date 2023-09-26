@@ -37,6 +37,7 @@ G_BEGIN_DECLS
  *
  * The "typelib" is a binary, readonly, memory-mappable database
  * containing reflective information about a GObject library.
+ *
  * What the typelib describes and the types used are the same for every
  * platform so, apart the endianness of its scalar values, the typelib
  * database must be considered architecture-independent.
@@ -45,6 +46,7 @@ G_BEGIN_DECLS
  * format.
  *
  * Some of the differences to XPCOM include:
+ *
  * - Type information is stored not quite as compactly (XPCOM stores it inline
  *   in function descriptions in variable-sized blobs of 1 to n bytes. We store
  *   16 bits of type information for each parameter, which is enough to encode
@@ -57,6 +59,7 @@ G_BEGIN_DECLS
  *
  * The typelib has the following general format:
  *
+ * |[<!-- language="C" -->
  *   typelib ::= header, section-index, directory, blobs, attributes, attributedata
  *
  *   directory ::= list of entries
@@ -65,6 +68,7 @@ G_BEGIN_DECLS
  *   blob ::= function|callback|struct|boxed|enum|flags|object|interface|constant|union
  *   attribute ::= offset, key, value
  *   attributedata ::= string data for attributes
+ * ]|
  *
  * Details
  *
@@ -378,9 +382,9 @@ union _SimpleTypeBlob
  * references to types.
  *
  * SimpleTypeBlob is divided into two cases; first, if "reserved" and
- * "reserved2", the type tag for a basic type is embedded in the "tag" bits.
- * This allows e.g. GI_TYPE_TAG_UTF8, GI_TYPE_TAG_INT and the like to be
- * embedded directly without taking up extra space.
+ * "reserved2" are both zero, the type tag for a basic type is embedded in the
+ * "tag" bits. This allows e.g. GI_TYPE_TAG_UTF8, GI_TYPE_TAG_INT and the like
+ * to be embedded directly without taking up extra space.
  *
  * References to "interfaces" (objects, interfaces) are more complicated;
  * In this case, the integer is actually an offset into the directory (see
@@ -1046,7 +1050,7 @@ typedef struct {
  * @abstract: whether the type can be instantiated
  * @fundamental: this object is not a GObject derived type, instead it's
  *   an additional fundamental type.
- * @final: whether the type can be derived
+ * @final_: whether the type can be derived
  * @reserved: Reserved for future use.
  * @name: TODO
  * @gtype_name: String name of the associated #GType
@@ -1210,7 +1214,7 @@ typedef struct {
 } AttributeBlob;
 
 struct _GITypelib {
-  /* <private> */
+  /*< private >*/
   guchar *data;
   gsize len;
   gboolean owns_memory;

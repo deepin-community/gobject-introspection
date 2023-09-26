@@ -239,11 +239,44 @@
  * @context: the object emitting the signal
  * @startup_notify_id: the startup notification id for the failed launch
  *
- * The ::launch-failed signal is emitted when a #GAppInfo launch
+ * The #GAppLaunchContext::launch-failed signal is emitted when a #GAppInfo launch
  * fails. The startup notification id is provided, so that the launcher
  * can cancel the startup notification.
  *
+ * Because a launch operation may involve spawning multiple instances of the
+ * target application, you should expect this signal to be emitted multiple
+ * times, one for each spawned instance.
+ *
  * Since: 2.36
+ */
+
+
+/**
+ * GAppLaunchContext::launch-started:
+ * @context: the object emitting the signal
+ * @info: the #GAppInfo that is about to be launched
+ * @platform_data: (nullable): additional platform-specific data for this launch
+ *
+ * The #GAppLaunchContext::launch-started signal is emitted when a #GAppInfo is
+ * about to be launched. If non-null the @platform_data is an
+ * GVariant dictionary mapping strings to variants (ie `a{sv}`), which
+ * contains additional, platform-specific data about this launch. On
+ * UNIX, at least the `startup-notification-id` keys will be
+ * present.
+ *
+ * The value of the `startup-notification-id` key (type `s`) is a startup
+ * notification ID corresponding to the format from the [startup-notification
+ * specification](https://specifications.freedesktop.org/startup-notification-spec/startup-notification-0.1.txt).
+ * It allows tracking the progress of the launchee through startup.
+ *
+ * It is guaranteed that this signal is followed by either a #GAppLaunchContext::launched or
+ * #GAppLaunchContext::launch-failed signal.
+ *
+ * Because a launch operation may involve spawning multiple instances of the
+ * target application, you should expect this signal to be emitted multiple
+ * times, one for each spawned instance.
+ *
+ * Since: 2.72
  */
 
 
@@ -253,11 +286,26 @@
  * @info: the #GAppInfo that was just launched
  * @platform_data: additional platform-specific data for this launch
  *
- * The ::launched signal is emitted when a #GAppInfo is successfully
- * launched. The @platform_data is an GVariant dictionary mapping
- * strings to variants (ie a{sv}), which contains additional,
+ * The #GAppLaunchContext::launched signal is emitted when a #GAppInfo is successfully
+ * launched.
+ *
+ * Because a launch operation may involve spawning multiple instances of the
+ * target application, you should expect this signal to be emitted multiple
+ * times, one time for each spawned instance.
+ *
+ * The @platform_data is an GVariant dictionary mapping
+ * strings to variants (ie `a{sv}`), which contains additional,
  * platform-specific data about this launch. On UNIX, at least the
- * "pid" and "startup-notification-id" keys will be present.
+ * `pid` and `startup-notification-id` keys will be present.
+ *
+ * Since 2.72 the `pid` may be 0 if the process id wasn't known (for
+ * example if the process was launched via D-Bus). The `pid` may not be
+ * set at all in subsequent releases.
+ *
+ * On Windows, `pid` is guaranteed to be valid only for the duration of the
+ * #GAppLaunchContext::launched signal emission; after the signal is emitted,
+ * GLib will call g_spawn_close_pid(). If you need to keep the #GPid after the
+ * signal has been emitted, then you can duplicate `pid` using `DuplicateHandle()`.
  *
  * Since: 2.36
  */
@@ -1224,6 +1272,10 @@
  *
  * Emitted when a signal from the remote object and interface that @proxy is for, has been received.
  *
+ * Since 2.72 this signal supports detailed connections. You can connect to
+ * the detailed signal `g-signal::x` in order to receive callbacks only when
+ * signal `x` is received from the remote object.
+ *
  * Since: 2.26
  */
 
@@ -1479,6 +1531,57 @@
 
 
 /**
+ * GDebugController:debug-enabled:
+ *
+ * %TRUE if debug output should be exposed (for example by forwarding it to
+ * the journal), %FALSE otherwise.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * GDebugControllerDBus::authorize:
+ * @controller: The #GDebugControllerDBus emitting the signal.
+ * @invocation: A #GDBusMethodInvocation.
+ *
+ * Emitted when a D-Bus peer is trying to change the debug settings and used
+ * to determine if that is authorized.
+ *
+ * This signal is emitted in a dedicated worker thread, so handlers are
+ * allowed to perform blocking I/O. This means that, for example, it is
+ * appropriate to call `polkit_authority_check_authorization_sync()` to check
+ * authorization using polkit.
+ *
+ * If %FALSE is returned then no further handlers are run and the request to
+ * change the debug settings is rejected.
+ *
+ * Otherwise, if %TRUE is returned, signal emission continues. If no handlers
+ * return %FALSE, then the debug settings are allowed to be changed.
+ *
+ * Signal handlers must not modify @invocation, or cause it to return a value.
+ *
+ * The default class handler just returns %TRUE.
+ *
+ * Returns: %TRUE if the call is authorized, %FALSE otherwise.
+ * Since: 2.72
+ */
+
+
+/**
+ * GDebugControllerDBus:connection:
+ *
+ * The D-Bus connection to expose the debugging interface on.
+ *
+ * Typically this will be the same connection (to the system or session bus)
+ * which the rest of the application or service’s D-Bus objects are registered
+ * on.
+ *
+ * Since: 2.72
+ */
+
+
+/**
  * GDesktopAppInfo:
  *
  * Information about an installed application from a desktop file.
@@ -1597,7 +1700,20 @@
  * ways indicated here will be rejected unless the application
  * overrides the default via #GDtlsConnection::accept-certificate.
  *
+ * GLib guarantees that if certificate verification fails, at least one
+ * flag will be set, but it does not guarantee that all possible flags
+ * will be set. Accordingly, you may not safely decide to ignore any
+ * particular type of error. For example, it would be incorrect to mask
+ * %G_TLS_CERTIFICATE_EXPIRED if you want to allow expired certificates,
+ * because this could potentially be the only error flag set even if
+ * other problems exist with the certificate. Therefore, there is no
+ * safe way to use this property. This is not a horrible problem,
+ * though, because you should not be attempting to ignore validation
+ * errors anyway. If you really must ignore TLS certificate errors,
+ * connect to #GDtlsConnection::accept-certificate.
+ *
  * Since: 2.48
+ * Deprecated: 2.74: Do not attempt to ignore validation errors.
  */
 
 
@@ -1628,6 +1744,15 @@
  * certificate to be accepted despite @errors, return %TRUE from the
  * signal handler. Otherwise, if no handler accepts the certificate,
  * the handshake will fail with %G_TLS_ERROR_BAD_CERTIFICATE.
+ *
+ * GLib guarantees that if certificate verification fails, this signal
+ * will be emitted with at least one error will be set in @errors, but
+ * it does not guarantee that all possible errors will be set.
+ * Accordingly, you may not safely decide to ignore any particular
+ * type of error. For example, it would be incorrect to ignore
+ * %G_TLS_CERTIFICATE_EXPIRED if you want to allow expired
+ * certificates, because this could potentially be the only error flag
+ * set even if other problems exist with the certificate.
  *
  * For a server-side connection, @peer_cert is the certificate
  * presented by the client, if this was requested via the server's
@@ -1706,6 +1831,19 @@
  * If no certificate database is set, then the default database will be
  * used. See g_tls_backend_get_default_database().
  *
+ * When using a non-default database, #GDtlsConnection must fall back to using
+ * the #GTlsDatabase to perform certificate verification using
+ * g_tls_database_verify_chain(), which means certificate verification will
+ * not be able to make use of TLS session context. This may be less secure.
+ * For example, if you create your own #GTlsDatabase that just wraps the
+ * default #GTlsDatabase, you might expect that you have not changed anything,
+ * but this is not true because you may have altered the behavior of
+ * #GDtlsConnection by causing it to use g_tls_database_verify_chain(). See the
+ * documentation of g_tls_database_verify_chain() for more details on specific
+ * security checks that may not be performed. Accordingly, setting a
+ * non-default database is discouraged except for specialty applications with
+ * unusual security requirements.
+ *
  * Since: 2.48
  */
 
@@ -1754,6 +1892,14 @@
  * %G_TLS_CERTIFICATE_VALIDATE_ALL, or if
  * #GDtlsConnection::accept-certificate overrode the default
  * behavior.
+ *
+ * GLib guarantees that if certificate verification fails, at least
+ * one error will be set, but it does not guarantee that all possible
+ * errors will be set. Accordingly, you may not safely decide to
+ * ignore any particular type of error. For example, it would be
+ * incorrect to mask %G_TLS_CERTIFICATE_EXPIRED if you want to allow
+ * expired certificates, because this could potentially be the only
+ * error flag set even if other problems exist with the certificate.
  *
  * Since: 2.48
  */
@@ -1838,7 +1984,7 @@
  * that the %G_FILE_MONITOR_WATCH_MOVES flag is not in use.
  *
  * If using the deprecated flag %G_FILE_MONITOR_SEND_MOVED flag and @event_type is
- * #G_FILE_MONITOR_EVENT_MOVED, @file will be set to a #GFile containing the
+ * %G_FILE_MONITOR_EVENT_MOVED, @file will be set to a #GFile containing the
  * old path, and @other_file will be set to a #GFile containing the new path.
  *
  * In all the other cases, @other_file will be set to #NULL.
@@ -2082,7 +2228,7 @@
  * from @list. At @position, @removed items were removed and @added
  * items were added in their place.
  *
- * Note: If @removed != @added, the positions of all later items
+ * Note: If `removed != added`, the positions of all later items
  * in the model change.
  *
  * Since: 2.44
@@ -2133,6 +2279,15 @@
  * subclasses of #GObject.
  *
  * Since: 2.44
+ */
+
+
+/**
+ * GListStore:n-items:
+ *
+ * The number of items contained in this list store.
+ *
+ * Since: 2.74
  */
 
 
@@ -3267,7 +3422,7 @@
 
 
 /**
- * GSimpleProxyResolver:default-proxy:
+ * GSimpleProxyResolver:default-proxy: (nullable)
  *
  * The default proxy URI that will be used for any URI that doesn't
  * match #GSimpleProxyResolver:ignore-hosts, and doesn't match any
@@ -3439,6 +3594,30 @@
  * The proxy resolver to use
  *
  * Since: 2.36
+ */
+
+
+/**
+ * GSocketClient:tls-validation-flags:
+ *
+ * The TLS validation flags used when creating TLS connections. The
+ * default value is %G_TLS_CERTIFICATE_VALIDATE_ALL.
+ *
+ * GLib guarantees that if certificate verification fails, at least one
+ * flag will be set, but it does not guarantee that all possible flags
+ * will be set. Accordingly, you may not safely decide to ignore any
+ * particular type of error. For example, it would be incorrect to mask
+ * %G_TLS_CERTIFICATE_EXPIRED if you want to allow expired certificates,
+ * because this could potentially be the only error flag set even if
+ * other problems exist with the certificate. Therefore, there is no
+ * safe way to use this property. This is not a horrible problem,
+ * though, because you should not be attempting to ignore validation
+ * errors anyway. If you really must ignore TLS certificate errors,
+ * connect to the #GSocketClient::event signal, wait for it to be
+ * emitted with %G_SOCKET_CLIENT_TLS_HANDSHAKING, and use that to
+ * connect to #GTlsConnection::accept-certificate.
+ *
+ * Deprecated: 2.72: Do not attempt to ignore validation errors.
  */
 
 
@@ -3747,6 +3926,15 @@
 
 
 /**
+ * GTlsCertificate:password: (nullable)
+ *
+ * An optional password used when constructed with GTlsCertificate:pkcs12-data.
+ *
+ * Since: 2.72
+ */
+
+
+/**
  * GTlsCertificate:pkcs11-uri: (nullable)
  *
  * A URI referencing the [PKCS \#11](https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/os/pkcs11-base-v3.0-os.html)
@@ -3756,6 +3944,17 @@
  * #GTlsBackend does not support PKCS \#11.
  *
  * Since: 2.68
+ */
+
+
+/**
+ * GTlsCertificate:pkcs12-data: (nullable)
+ *
+ * The PKCS #12 formatted data used to construct the object.
+ *
+ * See also: g_tls_certificate_new_from_pkcs12()
+ *
+ * Since: 2.72
  */
 
 
@@ -3896,7 +4095,20 @@
  * ways indicated here will be rejected unless the application
  * overrides the default via #GTlsConnection::accept-certificate.
  *
+ * GLib guarantees that if certificate verification fails, at least one
+ * flag will be set, but it does not guarantee that all possible flags
+ * will be set. Accordingly, you may not safely decide to ignore any
+ * particular type of error. For example, it would be incorrect to mask
+ * %G_TLS_CERTIFICATE_EXPIRED if you want to allow expired certificates,
+ * because this could potentially be the only error flag set even if
+ * other problems exist with the certificate. Therefore, there is no
+ * safe way to use this property. This is not a horrible problem,
+ * though, because you should not be attempting to ignore validation
+ * errors anyway. If you really must ignore TLS certificate errors,
+ * connect to #GTlsConnection::accept-certificate.
+ *
  * Since: 2.28
+ * Deprecated: 2.72: Do not attempt to ignore validation errors.
  */
 
 
@@ -3927,6 +4139,15 @@
  * certificate to be accepted despite @errors, return %TRUE from the
  * signal handler. Otherwise, if no handler accepts the certificate,
  * the handshake will fail with %G_TLS_ERROR_BAD_CERTIFICATE.
+ *
+ * GLib guarantees that if certificate verification fails, this signal
+ * will be emitted with at least one error will be set in @errors, but
+ * it does not guarantee that all possible errors will be set.
+ * Accordingly, you may not safely decide to ignore any particular
+ * type of error. For example, it would be incorrect to ignore
+ * %G_TLS_CERTIFICATE_EXPIRED if you want to allow expired
+ * certificates, because this could potentially be the only error flag
+ * set even if other problems exist with the certificate.
  *
  * For a server-side connection, @peer_cert is the certificate
  * presented by the client, if this was requested via the server's
@@ -4008,6 +4229,19 @@
  * If no certificate database is set, then the default database will be
  * used. See g_tls_backend_get_default_database().
  *
+ * When using a non-default database, #GTlsConnection must fall back to using
+ * the #GTlsDatabase to perform certificate verification using
+ * g_tls_database_verify_chain(), which means certificate verification will
+ * not be able to make use of TLS session context. This may be less secure.
+ * For example, if you create your own #GTlsDatabase that just wraps the
+ * default #GTlsDatabase, you might expect that you have not changed anything,
+ * but this is not true because you may have altered the behavior of
+ * #GTlsConnection by causing it to use g_tls_database_verify_chain(). See the
+ * documentation of g_tls_database_verify_chain() for more details on specific
+ * security checks that may not be performed. Accordingly, setting a
+ * non-default database is discouraged except for specialty applications with
+ * unusual security requirements.
+ *
  * Since: 2.30
  */
 
@@ -4056,6 +4290,14 @@
  * %G_TLS_CERTIFICATE_VALIDATE_ALL, or if
  * #GTlsConnection::accept-certificate overrode the default
  * behavior.
+ *
+ * GLib guarantees that if certificate verification fails, at least
+ * one error will be set, but it does not guarantee that all possible
+ * errors will be set. Accordingly, you may not safely decide to
+ * ignore any particular type of error. For example, it would be
+ * incorrect to mask %G_TLS_CERTIFICATE_EXPIRED if you want to allow
+ * expired certificates, because this could potentially be the only
+ * error flag set even if other problems exist with the certificate.
  *
  * Since: 2.28
  */
@@ -5085,7 +5327,7 @@
  * The complete example can be found here:
  * [gapplication-example-cmdline.c](https://gitlab.gnome.org/GNOME/glib/-/blob/HEAD/gio/tests/gapplication-example-cmdline.c)
  *
- * In more complicated cases, the handling of the comandline can be
+ * In more complicated cases, the handling of the commandline can be
  * split between the launcher and the primary instance.
  * |[<!-- language="C" -->
  * static gboolean
@@ -5097,6 +5339,12 @@
  *   gchar **argv;
  *
  *   argv = *arguments;
+ *
+ *   if (argv[0] == NULL)
+ *     {
+ *       *exit_status = 0;
+ *       return FALSE;
+ *     }
  *
  *   i = 1;
  *   while (argv[i])
@@ -5563,6 +5811,9 @@
  * On Solaris (including OpenSolaris and its derivatives), the native
  * credential type is a `ucred_t`. This corresponds to
  * %G_CREDENTIALS_TYPE_SOLARIS_UCRED.
+ *
+ * Since GLib 2.72, on Windows, the native credentials may contain the PID of a
+ * process. This corresponds to %G_CREDENTIALS_TYPE_WIN32_PID.
  */
 
 
@@ -5672,6 +5923,9 @@
  *
  * TCP D-Bus connections are supported, but accessing them via a proxy is
  * currently not supported.
+ *
+ * Since GLib 2.72, `unix:` addresses are supported on Windows with `AF_UNIX`
+ * support (Windows 10).
  */
 
 
@@ -6234,6 +6488,149 @@
 
 
 /**
+ * SECTION:gdebugcontroller
+ * @title: GDebugController
+ * @short_description: Debugging controller
+ * @include: gio/gio.h
+ *
+ * #GDebugController is an interface to expose control of debugging features and
+ * debug output.
+ *
+ * It is implemented on Linux using #GDebugControllerDBus, which exposes a D-Bus
+ * interface to allow authenticated peers to control debug features in this
+ * process.
+ *
+ * Whether debug output is enabled is exposed as
+ * #GDebugController:debug-enabled. This controls g_log_set_debug_enabled() by
+ * default. Application code may connect to the #GObject::notify signal for it
+ * to control other parts of its debug infrastructure as necessary.
+ *
+ * If your application or service is using the default GLib log writer function,
+ * creating one of the built-in implementations of #GDebugController should be
+ * all that’s needed to dynamically enable or disable debug output.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * SECTION:gdebugcontrollerdbus
+ * @title: GDebugControllerDBus
+ * @short_description: Debugging controller D-Bus implementation
+ * @include: gio/gio.h
+ *
+ * #GDebugControllerDBus is an implementation of #GDebugController which exposes
+ * debug settings as a D-Bus object.
+ *
+ * It is a #GInitable object, and will register an object at
+ * `/org/gtk/Debugging` on the bus given as
+ * #GDebugControllerDBus:connection once it’s initialized. The object will be
+ * unregistered when the last reference to the #GDebugControllerDBus is dropped.
+ *
+ * This D-Bus object can be used by remote processes to enable or disable debug
+ * output in this process. Remote processes calling
+ * `org.gtk.Debugging.SetDebugEnabled()` will affect the value of
+ * #GDebugController:debug-enabled and, by default, g_log_get_debug_enabled().
+ * default.
+ *
+ * By default, all processes will be able to call `SetDebugEnabled()`. If this
+ * process is privileged, or might expose sensitive information in its debug
+ * output, you may want to restrict the ability to enable debug output to
+ * privileged users or processes.
+ *
+ * One option is to install a D-Bus security policy which restricts access to
+ * `SetDebugEnabled()`, installing something like the following in
+ * `$datadir/dbus-1/system.d/`:
+ * |[<!-- language="XML" -->
+ * <?xml version="1.0"?> <!--*-nxml-*-->
+ * <!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN"
+ *      "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+ * <busconfig>
+ *   <policy user="root">
+ *     <allow send_destination="com.example.MyService" send_interface="org.gtk.Debugging"/>
+ *   </policy>
+ *   <policy context="default">
+ *     <deny send_destination="com.example.MyService" send_interface="org.gtk.Debugging"/>
+ *   </policy>
+ * </busconfig>
+ * ]|
+ *
+ * This will prevent the `SetDebugEnabled()` method from being called by all
+ * except root. It will not prevent the `DebugEnabled` property from being read,
+ * as it’s accessed through the `org.freedesktop.DBus.Properties` interface.
+ *
+ * Another option is to use polkit to allow or deny requests on a case-by-case
+ * basis, allowing for the possibility of dynamic authorisation. To do this,
+ * connect to the #GDebugControllerDBus::authorize signal and query polkit in
+ * it:
+ * |[<!-- language="C" -->
+ *   g_autoptr(GError) child_error = NULL;
+ *   g_autoptr(GDBusConnection) connection = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
+ *   gulong debug_controller_authorize_id = 0;
+ *
+ *   // Set up the debug controller.
+ *   debug_controller = G_DEBUG_CONTROLLER (g_debug_controller_dbus_new (priv->connection, NULL, &child_error));
+ *   if (debug_controller == NULL)
+ *     {
+ *       g_error ("Could not register debug controller on bus: %s"),
+ *                child_error->message);
+ *     }
+ *
+ *   debug_controller_authorize_id = g_signal_connect (debug_controller,
+ *                                                     "authorize",
+ *                                                     G_CALLBACK (debug_controller_authorize_cb),
+ *                                                     self);
+ *
+ *   static gboolean
+ *   debug_controller_authorize_cb (GDebugControllerDBus  *debug_controller,
+ *                                  GDBusMethodInvocation *invocation,
+ *                                  gpointer               user_data)
+ *   {
+ *     g_autoptr(PolkitAuthority) authority = NULL;
+ *     g_autoptr(PolkitSubject) subject = NULL;
+ *     g_autoptr(PolkitAuthorizationResult) auth_result = NULL;
+ *     g_autoptr(GError) local_error = NULL;
+ *     GDBusMessage *message;
+ *     GDBusMessageFlags message_flags;
+ *     PolkitCheckAuthorizationFlags flags = POLKIT_CHECK_AUTHORIZATION_FLAGS_NONE;
+ *
+ *     message = g_dbus_method_invocation_get_message (invocation);
+ *     message_flags = g_dbus_message_get_flags (message);
+ *
+ *     authority = polkit_authority_get_sync (NULL, &local_error);
+ *     if (authority == NULL)
+ *       {
+ *         g_warning ("Failed to get polkit authority: %s", local_error->message);
+ *         return FALSE;
+ *       }
+ *
+ *     if (message_flags & G_DBUS_MESSAGE_FLAGS_ALLOW_INTERACTIVE_AUTHORIZATION)
+ *       flags |= POLKIT_CHECK_AUTHORIZATION_FLAGS_ALLOW_USER_INTERACTION;
+ *
+ *     subject = polkit_system_bus_name_new (g_dbus_method_invocation_get_sender (invocation));
+ *
+ *     auth_result = polkit_authority_check_authorization_sync (authority,
+ *                                                              subject,
+ *                                                              "com.example.MyService.set-debug-enabled",
+ *                                                              NULL,
+ *                                                              flags,
+ *                                                              NULL,
+ *                                                              &local_error);
+ *     if (auth_result == NULL)
+ *       {
+ *         g_warning ("Failed to get check polkit authorization: %s", local_error->message);
+ *         return FALSE;
+ *       }
+ *
+ *     return polkit_authorization_result_get_is_authorized (auth_result);
+ *   }
+ * ]|
+ *
+ * Since: 2.72
+ */
+
+
+/**
  * SECTION:gdesktopappinfo
  * @title: GDesktopAppInfo
  * @short_description: Application information from desktop files
@@ -6383,6 +6780,8 @@
  * - g_file_new_for_uri() if you have a URI.
  * - g_file_new_for_commandline_arg() for a command line argument.
  * - g_file_new_tmp() to create a temporary file from a template.
+ * - g_file_new_tmp_async() to asynchronously create a temporary file.
+ * - g_file_new_tmp_dir_async() to asynchronously create a temporary directory.
  * - g_file_parse_name() from a UTF-8 string gotten from g_file_get_parse_name().
  * - g_file_new_build_filename() to create a file from path elements.
  *
@@ -7064,6 +7463,21 @@
  * implementation, but typically it will be from the thread that owns
  * the [thread-default main context][g-main-context-push-thread-default]
  * in effect at the time that the model was created.
+ *
+ * Over time, it has established itself as good practice for listmodel
+ * implementations to provide properties `item-type` and `n-items` to
+ * ease working with them. While it is not required, it is recommended
+ * that implementations provide these two properties. They should return
+ * the values of g_list_model_get_item_type() and g_list_model_get_n_items()
+ * respectively and be defined as such:
+ * |[<!-- language="C" -->
+ * properties[PROP_ITEM_TYPE] =
+ *   g_param_spec_gtype ("item-type", "", "", G_TYPE_OBJECT,
+ *                       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+ * properties[PROP_N_ITEMS] =
+ *   g_param_spec_uint ("n-items", "", "", 0, G_MAXUINT, 0,
+ *                      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+ * ]|
  */
 
 
@@ -7625,10 +8039,10 @@
  * some systems).
  *
  * When in “Low Power” mode, it is recommended that applications:
- * - disabling automatic downloads
+ * - disable automatic downloads;
  * - reduce the rate of refresh from online sources such as calendar or
- *   email synchronisation
- * - if the application has expensive visual effects, reduce them
+ *   email synchronisation;
+ * - reduce the use of expensive visual effects.
  *
  * It is also likely that OS components providing services to applications will
  * lower their own background activity, for the sake of the system.
@@ -8196,7 +8610,7 @@
  * looks for a boolean property with the name "sensitivity" and
  * automatically binds it to the writability of the bound setting.
  * If this 'magic' gets in the way, it can be suppressed with the
- * #G_SETTINGS_BIND_NO_SENSITIVITY flag.
+ * %G_SETTINGS_BIND_NO_SENSITIVITY flag.
  *
  * ## Relocatable schemas # {#gsettings-relocatable}
  *
@@ -8288,7 +8702,7 @@
  * non-strictly-typed data that is stored in a hierarchy. To implement
  * an alternative storage backend for #GSettings, you need to implement
  * the #GSettingsBackend interface and then make it implement the
- * extension point #G_SETTINGS_BACKEND_EXTENSION_POINT_NAME.
+ * extension point %G_SETTINGS_BACKEND_EXTENSION_POINT_NAME.
  *
  * The interface defines methods for reading and writing values, a
  * method for determining if writing of certain values will fail
@@ -9040,7 +9454,10 @@
  * As a matter of principle, #GSubprocess has no API that accepts
  * shell-style space-separated strings.  It will, however, match the
  * typical shell behaviour of searching the PATH for executables that do
- * not contain a directory separator in their name.
+ * not contain a directory separator in their name. By default, the `PATH`
+ * of the current process is used.  You can specify
+ * %G_SUBPROCESS_FLAGS_SEARCH_PATH_FROM_ENVP to use the `PATH` of the
+ * launcher environment instead.
  *
  * #GSubprocess attempts to have a very simple API for most uses (ie:
  * spawning a subprocess with arguments and support for most typical
@@ -9105,6 +9522,10 @@
  * the operation's finish function (as a #GAsyncResult), and you can
  * use g_task_propagate_pointer() or the like to extract the
  * return value.
+ *
+ * Using #GTask requires the thread-default #GMainContext from when the
+ * #GTask was constructed to be running at least until the task has completed
+ * and its data has been freed.
  *
  * Here is an example for using GTask as a GAsyncResult:
  * |[<!-- language="C" -->
@@ -9923,9 +10344,12 @@
  * It contains functions to do some of the UNIX socket specific
  * functionality like passing file descriptors.
  *
- * Note that `<gio/gunixconnection.h>` belongs to the UNIX-specific
- * GIO interfaces, thus you have to use the `gio-unix-2.0.pc`
- * pkg-config file when using it.
+ * Since GLib 2.72, #GUnixConnection is available on all platforms. It requires
+ * underlying system support (such as Windows 10 with `AF_UNIX`) at run time.
+ *
+ * Before GLib 2.72, `<gio/gunixconnection.h>` belonged to the UNIX-specific GIO
+ * interfaces, thus you had to use the `gio-unix-2.0.pc` pkg-config file when
+ * using it. This is no longer necessary since GLib 2.72.
  *
  * Since: 2.22
  */
@@ -9949,6 +10373,14 @@
  * g_unix_connection_receive_credentials(). To receive credentials of
  * a foreign process connected to a socket, use
  * g_socket_get_credentials().
+ *
+ * Since GLib 2.72, #GUnixCredentialMessage is available on all platforms. It
+ * requires underlying system support (such as Windows 10 with `AF_UNIX`) at run
+ * time.
+ *
+ * Before GLib 2.72, `<gio/gunixcredentialsmessage.h>` belonged to the UNIX-specific
+ * GIO interfaces, thus you had to use the `gio-unix-2.0.pc` pkg-config file
+ * when using it. This is no longer necessary since GLib 2.72.
  */
 
 
@@ -9966,9 +10398,11 @@
  * the %G_SOCKET_FAMILY_UNIX family by using g_socket_send_message()
  * and received using g_socket_receive_message().
  *
- * Note that `<gio/gunixfdlist.h>` belongs to the UNIX-specific GIO
- * interfaces, thus you have to use the `gio-unix-2.0.pc` pkg-config
- * file when using it.
+ * Before 2.74, `<gio/gunixfdlist.h>` belonged to the UNIX-specific GIO
+ * interfaces, thus you had to use the `gio-unix-2.0.pc` pkg-config file when
+ * using it.
+ *
+ * Since 2.74, the API is available for Windows.
  */
 
 
@@ -10060,9 +10494,13 @@
  * errors. You can use g_unix_socket_address_abstract_names_supported()
  * to see if abstract names are supported.
  *
- * Note that `<gio/gunixsocketaddress.h>` belongs to the UNIX-specific GIO
- * interfaces, thus you have to use the `gio-unix-2.0.pc` pkg-config file
- * when using it.
+ * Since GLib 2.72, #GUnixSocketAddress is available on all platforms. It
+ * requires underlying system support (such as Windows 10 with `AF_UNIX`) at
+ * run time.
+ *
+ * Before GLib 2.72, `<gio/gunixsocketaddress.h>` belonged to the UNIX-specific
+ * GIO interfaces, thus you had to use the `gio-unix-2.0.pc` pkg-config file
+ * when using it. This is no longer necessary since GLib 2.72.
  */
 
 
@@ -10112,13 +10550,13 @@
  * different kinds of identifiers, such as Hal UDIs, filesystem labels,
  * traditional Unix devices (e.g. `/dev/sda2`), UUIDs. GIO uses predefined
  * strings as names for the different kinds of identifiers:
- * #G_VOLUME_IDENTIFIER_KIND_UUID, #G_VOLUME_IDENTIFIER_KIND_LABEL, etc.
+ * %G_VOLUME_IDENTIFIER_KIND_UUID, %G_VOLUME_IDENTIFIER_KIND_LABEL, etc.
  * Use g_volume_get_identifier() to obtain an identifier for a volume.
  *
  *
- * Note that #G_VOLUME_IDENTIFIER_KIND_HAL_UDI will only be available
+ * Note that %G_VOLUME_IDENTIFIER_KIND_HAL_UDI will only be available
  * when the gvfs hal volume monitor is in use. Other volume monitors
- * will generally be able to provide the #G_VOLUME_IDENTIFIER_KIND_UNIX_DEVICE
+ * will generally be able to provide the %G_VOLUME_IDENTIFIER_KIND_UNIX_DEVICE
  * identifier, which can be used to obtain a hal device by means of
  * libhal_manager_find_device_string_match().
  */
@@ -10522,6 +10960,68 @@
  * Polls @file for changes.
  *
  * Returns: a new #GFileMonitor for the given #GFile.
+ */
+
+
+/**
+ * _g_win32_current_process_sid_string: (skip)
+ * @error: return location for a #GError, or %NULL
+ *
+ * Get the current process SID, as a string.
+ *
+ * Returns: A newly-allocated string, or NULL in case of an error.
+ */
+
+
+/**
+ * _g_win32_process_get_access_token_sid: (skip)
+ * @process_id: Identifier of a process to get an access token of
+ *              (use 0 to get a token of the current process)
+ * @error: return location for a #GError, or %NULL
+ *
+ * Opens the process identified by @process_id and opens its token,
+ * then retrieves SID of the token user and returns a copy of that SID.
+ *
+ * Returns: A newly-allocated SID, or NULL in case of an error.
+ *          Free the returned SID with g_free().
+ */
+
+
+/**
+ * _g_win32_sid_replace: (skip)
+ * @dest: A pointer to a SID storage
+ * @src: Existing SID
+ * @error: return location for a #GError, or %NULL
+ *
+ * Creates a copy of the @src SID and puts that into @dest, after freeing
+ * existing SID in @dest (if any).
+ *
+ * The @src SID must be valid (use IsValidSid() to ensure that).
+ *
+ * Returns: TRUE on success, FALSE otherwise
+ */
+
+
+/**
+ * _g_win32_sid_to_string: (skip)
+ * @sid: a SID.
+ * @error: return location for a #GError, or %NULL
+ *
+ * Convert a SID to its string form.
+ *
+ * Returns: A newly-allocated string, or NULL in case of an error.
+ */
+
+
+/**
+ * _g_win32_token_get_sid: (skip)
+ * @token: A handle of an access token
+ * @error: return location for a #GError, or %NULL
+ *
+ * Gets user SID of the @token and returns a copy of that SID.
+ *
+ * Returns: A newly-allocated SID, or NULL in case of an error.
+ *          Free the returned SID with g_free().
  */
 
 
@@ -10939,8 +11439,8 @@
  * @action_group: a #GActionGroup
  * @action_name: the name of an action in the group
  * @enabled: (out): if the action is presently enabled
- * @parameter_type: (out) (optional): the parameter type, or %NULL if none needed
- * @state_type: (out) (optional): the state type, or %NULL if stateless
+ * @parameter_type: (out) (transfer none) (optional): the parameter type, or %NULL if none needed
+ * @state_type: (out) (transfer none) (optional): the state type, or %NULL if stateless
  * @state_hint: (out) (optional): the state hint, or %NULL if none
  * @state: (out) (optional): the current state, or %NULL if stateless
  *
@@ -11297,6 +11797,37 @@
 
 
 /**
+ * g_app_info_get_default_for_type_async:
+ * @content_type: the content type to find a #GAppInfo for
+ * @must_support_uris: if %TRUE, the #GAppInfo is expected to
+ *     support URIs
+ * @cancellable: optional #GCancellable object, %NULL to ignore
+ * @callback: (nullable): a #GAsyncReadyCallback to call when the request is done
+ * @user_data: (nullable): data to pass to @callback
+ *
+ * Asynchronously gets the default #GAppInfo for a given content type.
+ *
+ * Since: 2.74
+ */
+
+
+/**
+ * g_app_info_get_default_for_type_finish:
+ * @result: a #GAsyncResult
+ * @error: (nullable): a #GError
+ *
+ * Finishes a default #GAppInfo lookup started by
+ * g_app_info_get_default_for_type_async().
+ *
+ * If no #GAppInfo is found, then @error will be set to %G_IO_ERROR_NOT_FOUND.
+ *
+ * Returns: (transfer full): #GAppInfo for given @content_type or
+ *     %NULL on error.
+ * Since: 2.74
+ */
+
+
+/**
  * g_app_info_get_default_for_uri_scheme:
  * @uri_scheme: a string containing a URI scheme.
  *
@@ -11307,6 +11838,38 @@
  *
  * Returns: (transfer full) (nullable): #GAppInfo for given @uri_scheme or
  *     %NULL on error.
+ */
+
+
+/**
+ * g_app_info_get_default_for_uri_scheme_async:
+ * @uri_scheme: a string containing a URI scheme.
+ * @cancellable: optional #GCancellable object, %NULL to ignore
+ * @callback: (nullable): a #GAsyncReadyCallback to call when the request is done
+ * @user_data: (nullable): data to pass to @callback
+ *
+ * Asynchronously gets the default application for handling URIs with
+ * the given URI scheme. A URI scheme is the initial part
+ * of the URI, up to but not including the ':', e.g. "http",
+ * "ftp" or "sip".
+ *
+ * Since: 2.74
+ */
+
+
+/**
+ * g_app_info_get_default_for_uri_scheme_finish:
+ * @result: a #GAsyncResult
+ * @error: (nullable): a #GError
+ *
+ * Finishes a default #GAppInfo lookup started by
+ * g_app_info_get_default_for_uri_scheme_async().
+ *
+ * If no #GAppInfo is found, then @error will be set to %G_IO_ERROR_NOT_FOUND.
+ *
+ * Returns: (transfer full): #GAppInfo for given @uri_scheme or
+ *     %NULL on error.
+ * Since: 2.74
  */
 
 
@@ -11533,7 +12096,9 @@
  * Launches the application. This passes the @uris to the launched application
  * as arguments, using the optional @context to get information
  * about the details of the launcher (like what screen it is on).
- * On error, @error will be set accordingly.
+ * On error, @error will be set accordingly. If the application only supports
+ * one URI per invocation as part of their command-line, multiple instances
+ * of the application will be spawned.
  *
  * To launch the application without arguments pass a %NULL @uris list.
  *
@@ -13391,7 +13956,9 @@
  * callers of g_bus_get() and g_bus_get_sync() for @bus_type. In the
  * event that you need a private message bus connection, use
  * g_dbus_address_get_for_bus_sync() and
- * g_dbus_connection_new_for_address().
+ * g_dbus_connection_new_for_address() with
+ * G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT and
+ * G_DBUS_CONNECTION_FLAGS_MESSAGE_BUS_CONNECTION flags.
  *
  * Note that the returned #GDBusConnection object will (usually) have
  * the #GDBusConnection:exit-on-close property set to %TRUE.
@@ -13420,7 +13987,9 @@
  * callers of g_bus_get() and g_bus_get_sync() for @bus_type. In the
  * event that you need a private message bus connection, use
  * g_dbus_address_get_for_bus_sync() and
- * g_dbus_connection_new_for_address().
+ * g_dbus_connection_new_for_address() with
+ * G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT and
+ * G_DBUS_CONNECTION_FLAGS_MESSAGE_BUS_CONNECTION flags.
  *
  * Note that the returned #GDBusConnection object will (usually) have
  * the #GDBusConnection:exit-on-close property set to %TRUE.
@@ -14138,7 +14707,7 @@
 
 /**
  * g_content_type_guess:
- * @filename: (nullable): a string, or %NULL
+ * @filename: (nullable) (type filename): a path, or %NULL
  * @data: (nullable) (array length=data_size): a stream of data, or %NULL
  * @data_size: the size of @data
  * @result_uncertain: (out) (optional): return location for the certainty
@@ -14450,8 +15019,7 @@
  *
  * This operation can fail if #GCredentials is not supported on the
  * OS or if the native credentials type does not contain information
- * about the UNIX process ID (for example this is the case for
- * %G_CREDENTIALS_TYPE_APPLE_XUCRED).
+ * about the UNIX process ID.
  *
  * Returns: The UNIX process ID, or `-1` if @error is set.
  * Since: 2.36
@@ -16402,7 +16970,7 @@
  * #GVariant of incorrect type.
  *
  * If an existing callback is already registered at @object_path and
- * @interface_name, then @error is set to #G_IO_ERROR_EXISTS.
+ * @interface_name, then @error is set to %G_IO_ERROR_EXISTS.
  *
  * GDBus automatically implements the standard D-Bus interfaces
  * org.freedesktop.DBus.Properties, org.freedesktop.DBus.Introspectable
@@ -16461,7 +17029,7 @@
  *
  * When handling remote calls into any node in the subtree, first the
  * @enumerate function is used to check if the node exists. If the node exists
- * or the #G_DBUS_SUBTREE_FLAGS_DISPATCH_TO_UNENUMERATED_NODES flag is set
+ * or the %G_DBUS_SUBTREE_FLAGS_DISPATCH_TO_UNENUMERATED_NODES flag is set
  * the @introspection function is used to check if the node supports the
  * requested method. If so, the @dispatch function is used to determine
  * where to dispatch the call. The collected #GDBusInterfaceVTable and
@@ -16473,7 +17041,7 @@
  * of the thread you are calling this method from.
  *
  * If an existing subtree is already registered at @object_path or
- * then @error is set to #G_IO_ERROR_EXISTS.
+ * then @error is set to %G_IO_ERROR_EXISTS.
  *
  * Note that it is valid to register regular objects (using
  * g_dbus_connection_register_object()) in a subtree registered with
@@ -16931,7 +17499,7 @@
  * such that it can be recovered with g_dbus_error_get_remote_error().
  *
  * Otherwise, a #GError with the error code %G_IO_ERROR_DBUS_ERROR
- * in the #G_IO_ERROR error domain is returned. Also, @dbus_error_name is
+ * in the %G_IO_ERROR error domain is returned. Also, @dbus_error_name is
  * added to the error message such that it can be recovered with
  * g_dbus_error_get_remote_error().
  *
@@ -17108,23 +17676,23 @@
  *
  * The conversion is using the following rules:
  *
- * - #G_TYPE_STRING: 's', 'o', 'g' or 'ay'
- * - #G_TYPE_STRV: 'as', 'ao' or 'aay'
- * - #G_TYPE_BOOLEAN: 'b'
- * - #G_TYPE_UCHAR: 'y'
- * - #G_TYPE_INT: 'i', 'n'
- * - #G_TYPE_UINT: 'u', 'q'
- * - #G_TYPE_INT64 'x'
- * - #G_TYPE_UINT64: 't'
- * - #G_TYPE_DOUBLE: 'd'
- * - #G_TYPE_VARIANT: Any #GVariantType
+ * - `G_TYPE_STRING`: 's', 'o', 'g' or 'ay'
+ * - `G_TYPE_STRV`: 'as', 'ao' or 'aay'
+ * - `G_TYPE_BOOLEAN`: 'b'
+ * - `G_TYPE_UCHAR`: 'y'
+ * - `G_TYPE_INT`: 'i', 'n'
+ * - `G_TYPE_UINT`: 'u', 'q'
+ * - `G_TYPE_INT64`: 'x'
+ * - `G_TYPE_UINT64`: 't'
+ * - `G_TYPE_DOUBLE`: 'd'
+ * - `G_TYPE_VARIANT`: Any #GVariantType
  *
- * This can fail if e.g. @gvalue is of type #G_TYPE_STRING and @type
- * is ['i'][G-VARIANT-TYPE-INT32:CAPS]. It will also fail for any #GType
- * (including e.g. #G_TYPE_OBJECT and #G_TYPE_BOXED derived-types) not
+ * This can fail if e.g. @gvalue is of type %G_TYPE_STRING and @type
+ * is 'i', i.e. %G_VARIANT_TYPE_INT32. It will also fail for any #GType
+ * (including e.g. %G_TYPE_OBJECT and %G_TYPE_BOXED derived-types) not
  * in the table above.
  *
- * Note that if @gvalue is of type #G_TYPE_VARIANT and its value is
+ * Note that if @gvalue is of type %G_TYPE_VARIANT and its value is
  * %NULL, the empty #GVariant instance (never %NULL) for @type is
  * returned (e.g. 0 for scalar types, the empty string for string types,
  * '/' for object path types, the empty array for any array type and so on).
@@ -18944,7 +19512,7 @@
  * @manager: A #GDBusObjectManager.
  * @object_path: Object path to look up.
  *
- * Gets the #GDBusObjectProxy at @object_path, if any.
+ * Gets the #GDBusObject at @object_path, if any.
  *
  * Returns: (transfer full) (nullable): A #GDBusObject or %NULL. Free with
  *   g_object_unref().
@@ -19903,6 +20471,73 @@
 
 
 /**
+ * g_debug_controller_dbus_new:
+ * @connection: a #GDBusConnection to register the debug object on
+ * @cancellable: (nullable): a #GCancellable, or %NULL
+ * @error: return location for a #GError, or %NULL
+ *
+ * Create a new #GDebugControllerDBus and synchronously initialize it.
+ *
+ * Initializing the object will export the debug object on @connection. The
+ * object will remain registered until the last reference to the
+ * #GDebugControllerDBus is dropped.
+ *
+ * Initialization may fail if registering the object on @connection fails.
+ *
+ * Returns: (nullable) (transfer full): a new #GDebugControllerDBus, or %NULL
+ *   on failure
+ * Since: 2.72
+ */
+
+
+/**
+ * g_debug_controller_dbus_stop:
+ * @self: a #GDebugControllerDBus
+ *
+ * Stop the debug controller, unregistering its object from the bus.
+ *
+ * Any pending method calls to the object will complete successfully, but new
+ * ones will return an error. This method will block until all pending
+ * #GDebugControllerDBus::authorize signals have been handled. This is expected
+ * to not take long, as it will just be waiting for threads to join. If any
+ * #GDebugControllerDBus::authorize signal handlers are still executing in other
+ * threads, this will block until after they have returned.
+ *
+ * This method will be called automatically when the final reference to the
+ * #GDebugControllerDBus is dropped. You may want to call it explicitly to know
+ * when the controller has been fully removed from the bus, or to break
+ * reference count cycles.
+ *
+ * Calling this method from within a #GDebugControllerDBus::authorize signal
+ * handler will cause a deadlock and must not be done.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * g_debug_controller_get_debug_enabled:
+ * @self: a #GDebugController
+ *
+ * Get the value of #GDebugController:debug-enabled.
+ *
+ * Returns: %TRUE if debug output should be exposed, %FALSE otherwise
+ * Since: 2.72
+ */
+
+
+/**
+ * g_debug_controller_set_debug_enabled:
+ * @self: a #GDebugController
+ * @debug_enabled: %TRUE if debug output should be exposed, %FALSE otherwise
+ *
+ * Set the value of #GDebugController:debug-enabled.
+ *
+ * Since: 2.72
+ */
+
+
+/**
  * g_desktop_app_info_get_action_name:
  * @info: a #GDesktopAppInfo
  * @action_name: the name of the action as from
@@ -20028,7 +20663,7 @@
  *
  * Gets the value of the NoDisplay key, which helps determine if the
  * application info should be shown in menus. See
- * #G_KEY_FILE_DESKTOP_KEY_NO_DISPLAY and g_app_info_should_show().
+ * %G_KEY_FILE_DESKTOP_KEY_NO_DISPLAY and g_app_info_should_show().
  *
  * Returns: The value of the NoDisplay key
  * Since: 2.30
@@ -20479,7 +21114,7 @@
  *
  * Gets the identifier of the given kind for @drive. The only
  * identifier currently available is
- * #G_DRIVE_IDENTIFIER_KIND_UNIX_DEVICE.
+ * %G_DRIVE_IDENTIFIER_KIND_UNIX_DEVICE.
  *
  * Returns: (nullable) (transfer full): a newly allocated string containing the
  *     requested identifier, or %NULL if the #GDrive
@@ -20734,8 +21369,13 @@
  *
  * Gets @conn's validation flags
  *
+ * This function does not work as originally designed and is impossible
+ * to use correctly. See #GDtlsClientConnection:validation-flags for more
+ * information.
+ *
  * Returns: the validation flags
  * Since: 2.48
+ * Deprecated: 2.74: Do not attempt to ignore validation errors.
  */
 
 
@@ -20777,7 +21417,12 @@
  * checks performed when validating a server certificate. By default,
  * %G_TLS_CERTIFICATE_VALIDATE_ALL is used.
  *
+ * This function does not work as originally designed and is impossible
+ * to use correctly. See #GDtlsClientConnection:validation-flags for more
+ * information.
+ *
  * Since: 2.48
+ * Deprecated: 2.74: Do not attempt to ignore validation errors.
  */
 
 
@@ -21155,6 +21800,9 @@
  * client-side connections, unless that bit is not set in
  * #GDtlsClientConnection:validation-flags).
  *
+ * There are nonintuitive security implications when using a non-default
+ * database. See #GDtlsConnection:database for details.
+ *
  * Since: 2.48
  */
 
@@ -21410,14 +22058,14 @@
  * @file: input #GFile
  * @flags: a set of #GFileCreateFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Gets an output stream for appending data to the file.
  * If the file doesn't already exist it is created.
  *
  * By default files created are generally readable by everyone,
- * but if you pass #G_FILE_CREATE_PRIVATE in @flags the file
+ * but if you pass %G_FILE_CREATE_PRIVATE in @flags the file
  * will be made readable only to the current user, to the level that
  * is supported on the target filesystem.
  *
@@ -21432,7 +22080,7 @@
  * possible too, and depend on what kind of filesystem the file is on.
  *
  * Returns: (transfer full): a #GFileOutputStream, or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -21442,9 +22090,9 @@
  * @flags: a set of #GFileCreateFlags
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async): a #GAsyncReadyCallback to call
- *     when the request is satisfied
+ *   when the request is satisfied
  * @user_data: (closure): the data to pass to callback function
  *
  * Asynchronously opens @file for appending.
@@ -21468,8 +22116,8 @@
  * g_file_append_to_async().
  *
  * Returns: (transfer full): a valid #GFileOutputStream
- *     or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   or %NULL on error.
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -21693,7 +22341,7 @@
  * @file: a #GFile to copy attributes to
  * @flags: a set of #GFileCopyFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, %NULL to ignore
  *
  * Prepares the file attribute query string for copying to @file.
@@ -21707,7 +22355,7 @@
  * stages (e.g., for recursive move of a directory).
  *
  * Returns: an attribute query string for g_file_query_info(),
- *     or %NULL if an error occurs.
+ *   or %NULL if an error occurs.
  * Since: 2.68
  */
 
@@ -21718,23 +22366,23 @@
  * @destination: destination #GFile
  * @flags: set of #GFileCopyFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @progress_callback: (nullable) (scope call): function to callback with
- *     progress information, or %NULL if progress information is not needed
+ *   progress information, or %NULL if progress information is not needed
  * @progress_callback_data: (closure): user data to pass to @progress_callback
  * @error: #GError to set on error, or %NULL
  *
  * Copies the file @source to the location specified by @destination.
  * Can not handle recursive copies of directories.
  *
- * If the flag #G_FILE_COPY_OVERWRITE is specified an already
+ * If the flag %G_FILE_COPY_OVERWRITE is specified an already
  * existing @destination file is overwritten.
  *
- * If the flag #G_FILE_COPY_NOFOLLOW_SYMLINKS is specified then symlinks
+ * If the flag %G_FILE_COPY_NOFOLLOW_SYMLINKS is specified then symlinks
  * will be copied as symlinks, otherwise the target of the
  * @source symlink will be copied.
  *
- * If the flag #G_FILE_COPY_ALL_METADATA is specified then all the metadata
+ * If the flag %G_FILE_COPY_ALL_METADATA is specified then all the metadata
  * that is possible to copy is copied, not just the default subset (which,
  * for instance, does not include the owner, see #GFileInfo).
  *
@@ -21751,7 +22399,7 @@
  * If the @source file does not exist, then the %G_IO_ERROR_NOT_FOUND error
  * is returned, independent on the status of the @destination.
  *
- * If #G_FILE_COPY_OVERWRITE is not specified and the target exists, then
+ * If %G_FILE_COPY_OVERWRITE is not specified and the target exists, then
  * the error %G_IO_ERROR_EXISTS is returned.
  *
  * If trying to overwrite a file over a directory, the %G_IO_ERROR_IS_DIRECTORY
@@ -21759,7 +22407,7 @@
  * %G_IO_ERROR_WOULD_MERGE error is returned.
  *
  * If the source is a directory and the target does not exist, or
- * #G_FILE_COPY_OVERWRITE is specified and the target is a file, then the
+ * %G_FILE_COPY_OVERWRITE is specified and the target is a file, then the
  * %G_IO_ERROR_WOULD_RECURSE error is returned.
  *
  * If you are interested in copying the #GFile object itself (not the on-disk
@@ -21776,9 +22424,9 @@
  * @flags: set of #GFileCopyFlags
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @progress_callback: (nullable) (scope notified): function to callback with progress
- *     information, or %NULL if progress information is not needed
+ *   information, or %NULL if progress information is not needed
  * @progress_callback_data: (closure progress_callback) (nullable): user data to pass to @progress_callback
  * @callback: (scope async): a #GAsyncReadyCallback to call when the request is satisfied
  * @user_data: (closure callback): the data to pass to callback function
@@ -21802,7 +22450,7 @@
  * @destination: a #GFile to copy attributes to
  * @flags: a set of #GFileCopyFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, %NULL to ignore
  *
  * Copies the file attributes from @source to @destination.
@@ -21810,12 +22458,12 @@
  * Normally only a subset of the file attributes are copied,
  * those that are copies in a normal file copy operation
  * (which for instance does not include e.g. owner). However
- * if #G_FILE_COPY_ALL_METADATA is specified in @flags, then
+ * if %G_FILE_COPY_ALL_METADATA is specified in @flags, then
  * all the metadata that is possible to copy is copied. This
  * is useful when implementing move by copy + delete source.
  *
  * Returns: %TRUE if the attributes were copied successfully,
- *     %FALSE otherwise.
+ *   %FALSE otherwise.
  */
 
 
@@ -21836,14 +22484,14 @@
  * @file: input #GFile
  * @flags: a set of #GFileCreateFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Creates a new file and returns an output stream for writing to it.
  * The file must not already exist.
  *
  * By default files created are generally readable by everyone,
- * but if you pass #G_FILE_CREATE_PRIVATE in @flags the file
+ * but if you pass %G_FILE_CREATE_PRIVATE in @flags the file
  * will be made readable only to the current user, to the level
  * that is supported on the target filesystem.
  *
@@ -21860,8 +22508,8 @@
  * of filesystem the file is on.
  *
  * Returns: (transfer full): a #GFileOutputStream for the newly created
- *     file, or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   file, or %NULL on error.
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -21871,9 +22519,9 @@
  * @flags: a set of #GFileCreateFlags
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async): a #GAsyncReadyCallback to call
- *     when the request is satisfied
+ *   when the request is satisfied
  * @user_data: (closure): the data to pass to callback function
  *
  * Asynchronously creates a new file and returns an output stream
@@ -21898,7 +22546,7 @@
  * g_file_create_async().
  *
  * Returns: (transfer full): a #GFileOutputStream or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -21907,14 +22555,14 @@
  * @file: a #GFile
  * @flags: a set of #GFileCreateFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: return location for a #GError, or %NULL
  *
  * Creates a new file and returns a stream for reading and
  * writing to it. The file must not already exist.
  *
  * By default files created are generally readable by everyone,
- * but if you pass #G_FILE_CREATE_PRIVATE in @flags the file
+ * but if you pass %G_FILE_CREATE_PRIVATE in @flags the file
  * will be made readable only to the current user, to the level
  * that is supported on the target filesystem.
  *
@@ -21935,8 +22583,8 @@
  * streaming, rather than just opening for reading or writing.
  *
  * Returns: (transfer full): a #GFileIOStream for the newly created
- *     file, or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   file, or %NULL on error.
+ *   Free the returned object with g_object_unref().
  * Since: 2.22
  */
 
@@ -21947,9 +22595,9 @@
  * @flags: a set of #GFileCreateFlags
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async): a #GAsyncReadyCallback to call
- *     when the request is satisfied
+ *   when the request is satisfied
  * @user_data: (closure): the data to pass to callback function
  *
  * Asynchronously creates a new file and returns a stream
@@ -21976,7 +22624,7 @@
  * g_file_create_readwrite_async().
  *
  * Returns: (transfer full): a #GFileIOStream or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  * Since: 2.22
  */
 
@@ -21985,7 +22633,7 @@
  * g_file_delete: (virtual delete_file)
  * @file: input #GFile
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Deletes a file. If the @file is a directory, it will only be
@@ -22019,9 +22667,9 @@
  * @file: input #GFile
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: a #GAsyncReadyCallback to call
- *     when the request is satisfied
+ *   when the request is satisfied
  * @user_data: the data to pass to callback function
  *
  * Asynchronously delete a file. If the @file is a directory, it will
@@ -22072,7 +22720,7 @@
  * This call does no blocking I/O.
  *
  * Returns: (transfer full): a new #GFile that is a duplicate
- *     of the given #GFile.
+ *   of the given #GFile.
  */
 
 
@@ -22081,9 +22729,9 @@
  * @file: input #GFile
  * @flags: flags affecting the operation
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async) (nullable): a #GAsyncReadyCallback to call
- *     when the request is satisfied, or %NULL
+ *   when the request is satisfied, or %NULL
  * @user_data: (closure): the data to pass to callback function
  *
  * Starts an asynchronous eject on a mountable.
@@ -22109,9 +22757,9 @@
  * g_file_eject_mountable().
  *
  * Returns: %TRUE if the @file was ejected successfully.
- *     %FALSE otherwise.
+ *   %FALSE otherwise.
  * Deprecated: 2.22: Use g_file_eject_mountable_with_operation_finish()
- *     instead.
+ *   instead.
  */
 
 
@@ -22120,11 +22768,11 @@
  * @file: input #GFile
  * @flags: flags affecting the operation
  * @mount_operation: (nullable): a #GMountOperation,
- *     or %NULL to avoid user interaction
+ *   or %NULL to avoid user interaction
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async) (nullable): a #GAsyncReadyCallback to call
- *     when the request is satisfied, or %NULL
+ *   when the request is satisfied, or %NULL
  * @user_data: (closure): the data to pass to callback function
  *
  * Starts an asynchronous eject on a mountable.
@@ -22150,7 +22798,7 @@
  * g_file_eject_mountable_with_operation().
  *
  * Returns: %TRUE if the @file was ejected successfully.
- *     %FALSE otherwise.
+ *   %FALSE otherwise.
  * Since: 2.22
  */
 
@@ -22161,7 +22809,7 @@
  * @attributes: an attribute query string
  * @flags: a set of #GFileQueryInfoFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: #GError for error reporting
  *
  * Gets the requested information about the files in a directory.
@@ -22177,7 +22825,9 @@
  * "standard::*" means all attributes in the standard namespace.
  * An example attribute query be "standard::*,owner::user".
  * The standard attributes are available as defines, like
- * #G_FILE_ATTRIBUTE_STANDARD_NAME.
+ * %G_FILE_ATTRIBUTE_STANDARD_NAME. %G_FILE_ATTRIBUTE_STANDARD_NAME should
+ * always be specified if you plan to call g_file_enumerator_get_child() or
+ * g_file_enumerator_iterate() on the returned enumerator.
  *
  * If @cancellable is not %NULL, then the operation can be cancelled
  * by triggering the cancellable object from another thread. If the
@@ -22189,7 +22839,7 @@
  * error will be returned. Other errors are possible too.
  *
  * Returns: (transfer full): A #GFileEnumerator if successful,
- *     %NULL on error. Free the returned object with g_object_unref().
+ *   %NULL on error. Free the returned object with g_object_unref().
  */
 
 
@@ -22200,9 +22850,9 @@
  * @flags: a set of #GFileQueryInfoFlags
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async): a #GAsyncReadyCallback to call when the
- *     request is satisfied
+ *   request is satisfied
  * @user_data: (closure): the data to pass to callback function
  *
  * Asynchronously gets the requested information about the files
@@ -22228,8 +22878,8 @@
  * See g_file_enumerate_children_async().
  *
  * Returns: (transfer full): a #GFileEnumerator or %NULL
- *     if an error occurred.
- *     Free the returned object with g_object_unref().
+ *   if an error occurred.
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -22298,6 +22948,9 @@
  * Return a new #GFile which refers to the file named by @info in the source
  * directory of @enumerator.  This function is primarily intended to be used
  * inside loops with g_file_enumerator_next_file().
+ *
+ * To use this, %G_FILE_ATTRIBUTE_STANDARD_NAME must have been listed in the
+ * attributes list used when creating the #GFileEnumerator.
  *
  * This is a convenience method that's equivalent to:
  * |[<!-- language="C" -->
@@ -22493,7 +23146,7 @@
  * g_file_find_enclosing_mount:
  * @file: input #GFile
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError
  *
  * Gets a #GMount for the #GFile.
@@ -22507,8 +23160,8 @@
  * was cancelled, the error %G_IO_ERROR_CANCELLED will be returned.
  *
  * Returns: (transfer full): a #GMount where the @file is located
- *     or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   or %NULL on error.
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -22517,9 +23170,9 @@
  * @file: a #GFile
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async): a #GAsyncReadyCallback to call
- *     when the request is satisfied
+ *   when the request is satisfied
  * @user_data: (closure): the data to pass to callback function
  *
  * Asynchronously gets the mount for the file.
@@ -22543,7 +23196,7 @@
  * See g_file_find_enclosing_mount_async().
  *
  * Returns: (transfer full): #GMount for given @file or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -22566,8 +23219,8 @@
  * This call does no blocking I/O.
  *
  * Returns: (type filename) (nullable): string containing the #GFile's
- *     base name, or %NULL if given #GFile is invalid. The returned string
- *     should be freed with g_free() when no longer needed.
+ *   base name, or %NULL if given #GFile is invalid. The returned string
+ *   should be freed with g_free() when no longer needed.
  */
 
 
@@ -22585,7 +23238,7 @@
  * This call does no blocking I/O.
  *
  * Returns: (transfer full): a #GFile to a child specified by @name.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -22605,8 +23258,8 @@
  * This call does no blocking I/O.
  *
  * Returns: (transfer full): a #GFile to the specified child, or
- *     %NULL if the display name couldn't be converted.
- *     Free the returned object with g_object_unref().
+ *   %NULL if the display name couldn't be converted.
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -22621,8 +23274,8 @@
  * This call does no blocking I/O.
  *
  * Returns: (nullable) (transfer full): a #GFile structure to the
- *     parent of the given #GFile or %NULL if there is no parent. Free
- *     the returned object with g_object_unref().
+ *   parent of the given #GFile or %NULL if there is no parent. Free
+ *   the returned object with g_object_unref().
  */
 
 
@@ -22646,8 +23299,8 @@
  * This call does no blocking I/O.
  *
  * Returns: a string containing the #GFile's parse name.
- *     The returned string should be freed with g_free()
- *     when no longer needed.
+ *   The returned string should be freed with g_free()
+ *   when no longer needed.
  */
 
 
@@ -22661,8 +23314,8 @@
  * This call does no blocking I/O.
  *
  * Returns: (type filename) (nullable): string containing the #GFile's path,
- *     or %NULL if no such path exists. The returned string should be freed
- *     with g_free() when no longer needed.
+ *   or %NULL if no such path exists. The returned string should be freed
+ *   with g_free() when no longer needed.
  */
 
 
@@ -22676,9 +23329,9 @@
  * This call does no blocking I/O.
  *
  * Returns: (type filename) (nullable): string with the relative path from
- *     @descendant to @parent, or %NULL if @descendant doesn't have @parent as
- *     prefix. The returned string should be freed with g_free() when
- *     no longer needed.
+ *   @descendant to @parent, or %NULL if @descendant doesn't have @parent as
+ *   prefix. The returned string should be freed with g_free() when
+ *   no longer needed.
  */
 
 
@@ -22691,9 +23344,9 @@
  * This call does no blocking I/O.
  *
  * Returns: a string containing the #GFile's URI. If the #GFile was constructed
- *     with an invalid URI, an invalid URI is returned.
- *     The returned string should be freed with g_free()
- *     when no longer needed.
+ *   with an invalid URI, an invalid URI is returned.
+ *   The returned string should be freed with g_free()
+ *   when no longer needed.
  */
 
 
@@ -22714,8 +23367,8 @@
  * This call does no blocking I/O.
  *
  * Returns: (nullable): a string containing the URI scheme for the given
- *     #GFile or %NULL if the #GFile was constructed with an invalid URI. The
- *     returned string should be freed with g_free() when no longer needed.
+ *   #GFile or %NULL if the #GFile was constructed with an invalid URI. The
+ *   returned string should be freed with g_free() when no longer needed.
  */
 
 
@@ -22731,7 +23384,7 @@
  * if @file is an immediate child of @parent.
  *
  * Returns: %TRUE if @file is an immediate child of @parent (or any parent in
- *          the case that @parent is %NULL).
+ *   the case that @parent is %NULL).
  * Since: 2.24
  */
 
@@ -22757,7 +23410,7 @@
  * of @prefix.
  *
  * Returns: %TRUE if the @file's parent, grandparent, etc is @prefix,
- *     %FALSE otherwise.
+ *   %FALSE otherwise.
  */
 
 
@@ -22771,8 +23424,8 @@
  * This call does no blocking I/O.
  *
  * Returns: %TRUE if #GFile's backend supports the
- *     given URI scheme, %FALSE if URI scheme is %NULL,
- *     not supported, or #GFile is invalid.
+ *   given URI scheme, %FALSE if URI scheme is %NULL,
+ *   not supported, or #GFile is invalid.
  */
 
 
@@ -22785,9 +23438,9 @@
  * This call does no blocking I/O.
  *
  * Returns: 0 if @file is not a valid #GFile, otherwise an
- *     integer that can be used as hash value for the #GFile.
- *     This function is intended for easily hashing a #GFile to
- *     add to a #GHashTable or similar data structure.
+ *   integer that can be used as hash value for the #GFile.
+ *   This function is intended for easily hashing a #GFile to
+ *   add to a #GHashTable or similar data structure.
  */
 
 
@@ -22850,6 +23503,9 @@
  * This requires the %G_FILE_ATTRIBUTE_TIME_ACCESS attribute. If
  * %G_FILE_ATTRIBUTE_TIME_ACCESS_USEC is provided, the resulting #GDateTime
  * will have microsecond precision.
+ *
+ * If nanosecond precision is needed, %G_FILE_ATTRIBUTE_TIME_ACCESS_NSEC must
+ * be queried separately using g_file_info_get_attribute_uint32().
  *
  * Returns: (transfer full) (nullable): access time, or %NULL if unknown
  * Since: 2.70
@@ -23050,6 +23706,9 @@
  * %G_FILE_ATTRIBUTE_TIME_CREATED_USEC is provided, the resulting #GDateTime
  * will have microsecond precision.
  *
+ * If nanosecond precision is needed, %G_FILE_ATTRIBUTE_TIME_CREATED_NSEC must
+ * be queried separately using g_file_info_get_attribute_uint32().
+ *
  * Returns: (transfer full) (nullable): creation time, or %NULL if unknown
  * Since: 2.70
  */
@@ -23160,6 +23819,9 @@
  * This requires the %G_FILE_ATTRIBUTE_TIME_MODIFIED attribute. If
  * %G_FILE_ATTRIBUTE_TIME_MODIFIED_USEC is provided, the resulting #GDateTime
  * will have microsecond precision.
+ *
+ * If nanosecond precision is needed, %G_FILE_ATTRIBUTE_TIME_MODIFIED_NSEC must
+ * be queried separately using g_file_info_get_attribute_uint32().
  *
  * Returns: (transfer full) (nullable): modification time, or %NULL if unknown
  * Since: 2.62
@@ -23299,6 +23961,8 @@
  * Sets the %G_FILE_ATTRIBUTE_TIME_ACCESS and
  * %G_FILE_ATTRIBUTE_TIME_ACCESS_USEC attributes in the file info to the
  * given date/time value.
+ *
+ * %G_FILE_ATTRIBUTE_TIME_ACCESS_NSEC will be cleared.
  *
  * Since: 2.70
  */
@@ -23464,6 +24128,8 @@
  * %G_FILE_ATTRIBUTE_TIME_CREATED_USEC attributes in the file info to the
  * given date/time value.
  *
+ * %G_FILE_ATTRIBUTE_TIME_CREATED_NSEC will be cleared.
+ *
  * Since: 2.70
  */
 
@@ -23537,6 +24203,8 @@
  * %G_FILE_ATTRIBUTE_TIME_MODIFIED_USEC attributes in the file info to the
  * given date/time value.
  *
+ * %G_FILE_ATTRIBUTE_TIME_MODIFIED_NSEC will be cleared.
+ *
  * Since: 2.62
  */
 
@@ -23549,6 +24217,8 @@
  * Sets the %G_FILE_ATTRIBUTE_TIME_MODIFIED and
  * %G_FILE_ATTRIBUTE_TIME_MODIFIED_USEC attributes in the file info to the
  * given time value.
+ *
+ * %G_FILE_ATTRIBUTE_TIME_MODIFIED_NSEC will be cleared.
  *
  * Deprecated: 2.62: Use g_file_info_set_modification_date_time() instead, as
  *    #GTimeVal is deprecated due to the year 2038 problem.
@@ -23772,7 +24442,7 @@
  * @file: a #GFile
  * @cancellable: (nullable): a #GCancellable or %NULL
  * @etag_out: (out) (nullable) (optional): a location to place the current
- *     entity tag for the file, or %NULL if the entity tag is not needed
+ *   entity tag for the file, or %NULL if the entity tag is not needed
  * @error: a location for a #GError or %NULL
  *
  * Loads the contents of @file and returns it as #GBytes.
@@ -23797,7 +24467,7 @@
  * @file: a #GFile
  * @cancellable: (nullable): a #GCancellable or %NULL
  * @callback: (scope async): a #GAsyncReadyCallback to call when the
- *     request is satisfied
+ *   request is satisfied
  * @user_data: (closure): the data to pass to callback function
  *
  * Asynchronously loads the contents of @file as #GBytes.
@@ -23820,7 +24490,7 @@
  * @file: a #GFile
  * @result: a #GAsyncResult provided to the callback
  * @etag_out: (out) (nullable) (optional): a location to place the current
- *     entity tag for the file, or %NULL if the entity tag is not needed
+ *   entity tag for the file, or %NULL if the entity tag is not needed
  * @error: a location for a #GError, or %NULL
  *
  * Completes an asynchronous request to g_file_load_bytes_async().
@@ -23844,9 +24514,9 @@
  * @cancellable: optional #GCancellable object, %NULL to ignore
  * @contents: (out) (transfer full) (element-type guint8) (array length=length): a location to place the contents of the file
  * @length: (out) (optional): a location to place the length of the contents of the file,
- *    or %NULL if the length is not needed
+ *   or %NULL if the length is not needed
  * @etag_out: (out) (optional) (nullable): a location to place the current entity tag for the file,
- *    or %NULL if the entity tag is not needed
+ *   or %NULL if the entity tag is not needed
  * @error: a #GError, or %NULL
  *
  * Loads the content of the file into memory. The data is always
@@ -23859,7 +24529,7 @@
  * was cancelled, the error %G_IO_ERROR_CANCELLED will be returned.
  *
  * Returns: %TRUE if the @file's contents were successfully loaded.
- *     %FALSE if there were errors.
+ *   %FALSE if there were errors.
  */
 
 
@@ -23892,9 +24562,9 @@
  * @res: a #GAsyncResult
  * @contents: (out) (transfer full) (element-type guint8) (array length=length): a location to place the contents of the file
  * @length: (out) (optional): a location to place the length of the contents of the file,
- *     or %NULL if the length is not needed
+ *   or %NULL if the length is not needed
  * @etag_out: (out) (optional) (nullable): a location to place the current entity tag for the file,
- *     or %NULL if the entity tag is not needed
+ *   or %NULL if the entity tag is not needed
  * @error: a #GError, or %NULL
  *
  * Finishes an asynchronous load of the @file's contents.
@@ -23904,7 +24574,7 @@
  * set to the new entity tag for the @file.
  *
  * Returns: %TRUE if the load was successful. If %FALSE and @error is
- *     present, it will be set appropriately.
+ *   present, it will be set appropriately.
  */
 
 
@@ -23913,10 +24583,10 @@
  * @file: input #GFile
  * @cancellable: optional #GCancellable object, %NULL to ignore
  * @read_more_callback: (scope call) (closure user_data): a
- *     #GFileReadMoreCallback to receive partial data
- *     and to specify whether further data should be read
+ *   #GFileReadMoreCallback to receive partial data
+ *   and to specify whether further data should be read
  * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback to call
- *     when the request is satisfied
+ *   when the request is satisfied
  * @user_data: the data to pass to the callback functions
  *
  * Reads the partial contents of a file. A #GFileReadMoreCallback should
@@ -23939,9 +24609,9 @@
  * @res: a #GAsyncResult
  * @contents: (out) (transfer full) (element-type guint8) (array length=length): a location to place the contents of the file
  * @length: (out) (optional): a location to place the length of the contents of the file,
- *     or %NULL if the length is not needed
+ *   or %NULL if the length is not needed
  * @etag_out: (out) (optional) (nullable): a location to place the current entity tag for the file,
- *     or %NULL if the entity tag is not needed
+ *   or %NULL if the entity tag is not needed
  * @error: a #GError, or %NULL
  *
  * Finishes an asynchronous partial load operation that was started
@@ -23951,7 +24621,7 @@
  * needed.
  *
  * Returns: %TRUE if the load was successful. If %FALSE and @error is
- *     present, it will be set appropriately.
+ *   present, it will be set appropriately.
  */
 
 
@@ -23959,7 +24629,7 @@
  * g_file_make_directory:
  * @file: input #GFile
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Creates a directory. Note that this will only create a child directory
@@ -23986,9 +24656,9 @@
  * @file: input #GFile
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: a #GAsyncReadyCallback to call
- *     when the request is satisfied
+ *   when the request is satisfied
  * @user_data: the data to pass to callback function
  *
  * Asynchronously creates a directory.
@@ -24015,7 +24685,7 @@
  * g_file_make_directory_with_parents:
  * @file: input #GFile
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Creates a directory and any parent directories that may not
@@ -24042,9 +24712,9 @@
  * g_file_make_symbolic_link:
  * @file: a #GFile with the name of the symlink to create
  * @symlink_value: (type filename): a string with the path for the target
- *     of the new symlink
+ *   of the new symlink
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError
  *
  * Creates a symbolic link named @file which contains the string
@@ -24055,6 +24725,39 @@
  * was cancelled, the error %G_IO_ERROR_CANCELLED will be returned.
  *
  * Returns: %TRUE on the creation of a new symlink, %FALSE otherwise.
+ */
+
+
+/**
+ * g_file_make_symbolic_link_async: (virtual make_symbolic_link_async)
+ * @file: a #GFile with the name of the symlink to create
+ * @symlink_value: (type filename): a string with the path for the target
+ *   of the new symlink
+ * @io_priority: the [I/O priority][io-priority] of the request
+ * @cancellable: (nullable): optional #GCancellable object,
+ *   %NULL to ignore
+ * @callback: a #GAsyncReadyCallback to call
+ *   when the request is satisfied
+ * @user_data: the data to pass to callback function
+ *
+ * Asynchronously creates a symbolic link named @file which contains the
+ * string @symlink_value.
+ *
+ * Since: 2.74
+ */
+
+
+/**
+ * g_file_make_symbolic_link_finish: (virtual make_symbolic_link_finish)
+ * @file: input #GFile
+ * @result: a #GAsyncResult
+ * @error: a #GError, or %NULL
+ *
+ * Finishes an asynchronous symbolic link creation, started with
+ * g_file_make_symbolic_link_async().
+ *
+ * Returns: %TRUE on successful directory creation, %FALSE otherwise.
+ * Since: 2.74
  */
 
 
@@ -24090,7 +24793,7 @@
  * callback will be invoked.
  *
  * Returns: %TRUE if successful, with the out parameters set.
- *          %FALSE otherwise, with @error set.
+ *   %FALSE otherwise, with @error set.
  * Since: 2.38
  */
 
@@ -24129,7 +24832,7 @@
  * more information.
  *
  * Returns: %TRUE if successful, with the out parameters set.
- *          %FALSE otherwise, with @error set.
+ *   %FALSE otherwise, with @error set.
  * Since: 2.38
  */
 
@@ -24139,7 +24842,7 @@
  * @file: input #GFile
  * @flags: a set of #GFileMonitorFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Obtains a file or directory monitor for the given file,
@@ -24150,8 +24853,8 @@
  * was cancelled, the error %G_IO_ERROR_CANCELLED will be returned.
  *
  * Returns: (transfer full): a #GFileMonitor for the given @file,
- *     or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   or %NULL on error.
+ *   Free the returned object with g_object_unref().
  * Since: 2.18
  */
 
@@ -24171,7 +24874,7 @@
  * @file: input #GFile
  * @flags: a set of #GFileMonitorFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Obtains a directory monitor for the given file.
@@ -24188,8 +24891,8 @@
  * you must register individual watches with g_file_monitor().
  *
  * Returns: (transfer full): a #GFileMonitor for the given @file,
- *     or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   or %NULL on error.
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -24215,7 +24918,7 @@
  * @file: input #GFile
  * @flags: a set of #GFileMonitorFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Obtains a file monitor for the given file. If no file notification
@@ -24234,8 +24937,8 @@
  * backend and/or filesystem type.
  *
  * Returns: (transfer full): a #GFileMonitor for the given @file,
- *     or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   or %NULL on error.
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -24265,11 +24968,11 @@
  * @location: input #GFile
  * @flags: flags affecting the operation
  * @mount_operation: (nullable): a #GMountOperation
- *     or %NULL to avoid user interaction
+ *   or %NULL to avoid user interaction
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (nullable): a #GAsyncReadyCallback to call
- *     when the request is satisfied, or %NULL
+ *   when the request is satisfied, or %NULL
  * @user_data: the data to pass to callback function
  *
  * Starts a @mount_operation, mounting the volume that contains
@@ -24294,8 +24997,8 @@
  * Finishes a mount operation started by g_file_mount_enclosing_volume().
  *
  * Returns: %TRUE if successful. If an error has occurred,
- *     this function will return %FALSE and set @error
- *     appropriately if present.
+ *   this function will return %FALSE and set @error
+ *   appropriately if present.
  */
 
 
@@ -24304,11 +25007,11 @@
  * @file: input #GFile
  * @flags: flags affecting the operation
  * @mount_operation: (nullable): a #GMountOperation,
- *     or %NULL to avoid user interaction
+ *   or %NULL to avoid user interaction
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async) (nullable): a #GAsyncReadyCallback to call
- *     when the request is satisfied, or %NULL
+ *   when the request is satisfied, or %NULL
  * @user_data: (closure): the data to pass to callback function
  *
  * Mounts a file of type G_FILE_TYPE_MOUNTABLE.
@@ -24337,7 +25040,7 @@
  * with g_file_mount_mountable().
  *
  * Returns: (transfer full): a #GFile or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -24347,11 +25050,11 @@
  * @destination: #GFile pointing to the destination location
  * @flags: set of #GFileCopyFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @progress_callback: (nullable) (scope call): #GFileProgressCallback
- *     function for updates
+ *   function for updates
  * @progress_callback_data: (closure): gpointer to user data for
- *     the callback function
+ *   the callback function
  * @error: #GError for returning error conditions, or %NULL
  *
  * Tries to move the file or directory @source to the location specified
@@ -24360,7 +25063,7 @@
  * implementation may support moving directories (for instance on moves
  * inside the same filesystem), but the fallback code does not.
  *
- * If the flag #G_FILE_COPY_OVERWRITE is specified an already
+ * If the flag %G_FILE_COPY_OVERWRITE is specified an already
  * existing @destination file is overwritten.
  *
  * If @cancellable is not %NULL, then the operation can be cancelled by
@@ -24376,7 +25079,7 @@
  * If the @source file does not exist, then the %G_IO_ERROR_NOT_FOUND
  * error is returned, independent on the status of the @destination.
  *
- * If #G_FILE_COPY_OVERWRITE is not specified and the target exists,
+ * If %G_FILE_COPY_OVERWRITE is not specified and the target exists,
  * then the error %G_IO_ERROR_EXISTS is returned.
  *
  * If trying to overwrite a file over a directory, the %G_IO_ERROR_IS_DIRECTORY
@@ -24384,11 +25087,55 @@
  * %G_IO_ERROR_WOULD_MERGE error is returned.
  *
  * If the source is a directory and the target does not exist, or
- * #G_FILE_COPY_OVERWRITE is specified and the target is a file, then
+ * %G_FILE_COPY_OVERWRITE is specified and the target is a file, then
  * the %G_IO_ERROR_WOULD_RECURSE error may be returned (if the native
  * move operation isn't available).
  *
  * Returns: %TRUE on successful move, %FALSE otherwise.
+ */
+
+
+/**
+ * g_file_move_async:
+ * @source: #GFile pointing to the source location
+ * @destination: #GFile pointing to the destination location
+ * @flags: set of #GFileCopyFlags
+ * @io_priority: the [I/O priority][io-priority] of the request
+ * @cancellable: (nullable): optional #GCancellable object,
+ *   %NULL to ignore
+ * @progress_callback: (nullable) (scope call): #GFileProgressCallback
+ *   function for updates
+ * @progress_callback_data: (closure): gpointer to user data for
+ *   the callback function
+ * @callback: a #GAsyncReadyCallback to call
+ *   when the request is satisfied
+ * @user_data: the data to pass to callback function
+ *
+ * Asynchronously moves a file @source to the location of @destination. For details of the behaviour, see g_file_move().
+ *
+ * If @progress_callback is not %NULL, then that function that will be called
+ * just like in g_file_move(). The callback will run in the default main context
+ * of the thread calling g_file_move_async() — the same context as @callback is
+ * run in.
+ *
+ * When the operation is finished, @callback will be called. You can then call
+ * g_file_move_finish() to get the result of the operation.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * g_file_move_finish:
+ * @file: input source #GFile
+ * @result: a #GAsyncResult
+ * @error: a #GError, or %NULL
+ *
+ * Finishes an asynchronous file movement, started with
+ * g_file_move_async().
+ *
+ * Returns: %TRUE on successful file move, %FALSE otherwise.
+ * Since: 2.72
  */
 
 
@@ -24428,7 +25175,7 @@
  * #GOptionContext arguments of type %G_OPTION_ARG_FILENAME.
  *
  * Returns: (transfer full): a new #GFile.
- *    Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -24457,7 +25204,7 @@
 /**
  * g_file_new_for_path:
  * @path: (type filename): a string containing a relative or absolute path.
- *     The string must be encoded in the glib filename encoding.
+ *   The string must be encoded in the glib filename encoding.
  *
  * Constructs a #GFile for a given path. This operation never
  * fails, but the returned object might not support any I/O
@@ -24478,7 +25225,7 @@
  * not supported.
  *
  * Returns: (transfer full): a new #GFile for the given @uri.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -24501,8 +25248,76 @@
  * a temporary file could not be created.
  *
  * Returns: (transfer full): a new #GFile.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  * Since: 2.32
+ */
+
+
+/**
+ * g_file_new_tmp_async:
+ * @tmpl: (type filename) (nullable): Template for the file
+ *   name, as in g_file_open_tmp(), or %NULL for a default template
+ * @io_priority: the [I/O priority][io-priority] of the request
+ * @cancellable: optional #GCancellable object, %NULL to ignore
+ * @callback: (nullable): a #GAsyncReadyCallback to call when the request is done
+ * @user_data: (nullable): data to pass to @callback
+ *
+ * Asynchronously opens a file in the preferred directory for temporary files
+ *  (as returned by g_get_tmp_dir()) as g_file_new_tmp().
+ *
+ * @tmpl should be a string in the GLib file name encoding
+ * containing a sequence of six 'X' characters, and containing no
+ * directory components. If it is %NULL, a default template is used.
+ *
+ * Since: 2.74
+ */
+
+
+/**
+ * g_file_new_tmp_dir_async:
+ * @tmpl: (type filename) (nullable): Template for the file
+ *   name, as in g_dir_make_tmp(), or %NULL for a default template
+ * @io_priority: the [I/O priority][io-priority] of the request
+ * @cancellable: optional #GCancellable object, %NULL to ignore
+ * @callback: (nullable): a #GAsyncReadyCallback to call when the request is done
+ * @user_data: (nullable): data to pass to @callback
+ *
+ * Asynchronously creates a directory in the preferred directory for
+ * temporary files (as returned by g_get_tmp_dir()) as g_dir_make_tmp().
+ *
+ * @tmpl should be a string in the GLib file name encoding
+ * containing a sequence of six 'X' characters, and containing no
+ * directory components. If it is %NULL, a default template is used.
+ *
+ * Since: 2.74
+ */
+
+
+/**
+ * g_file_new_tmp_dir_finish:
+ * @result: a #GAsyncResult
+ * @error: a #GError, or %NULL
+ *
+ * Finishes a temporary directory creation started by
+ * g_file_new_tmp_dir_async().
+ *
+ * Returns: (transfer full): a new #GFile.
+ *   Free the returned object with g_object_unref().
+ * Since: 2.74
+ */
+
+
+/**
+ * g_file_new_tmp_finish:
+ * @result: a #GAsyncResult
+ * @iostream: (out) (not nullable) (transfer full): on return, a #GFileIOStream for the created file
+ * @error: a #GError, or %NULL
+ *
+ * Finishes a temporary file creation started by g_file_new_tmp_async().
+ *
+ * Returns: (transfer full): a new #GFile.
+ *   Free the returned object with g_object_unref().
+ * Since: 2.74
  */
 
 
@@ -24530,7 +25345,7 @@
  * for reading or writing.
  *
  * Returns: (transfer full): #GFileIOStream or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  * Since: 2.22
  */
 
@@ -24540,9 +25355,9 @@
  * @file: input #GFile
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async): a #GAsyncReadyCallback to call
- *     when the request is satisfied
+ *   when the request is satisfied
  * @user_data: (closure): the data to pass to callback function
  *
  * Asynchronously opens @file for reading and writing.
@@ -24568,7 +25383,7 @@
  * g_file_open_readwrite_async().
  *
  * Returns: (transfer full): a #GFileIOStream or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  * Since: 2.22
  */
 
@@ -24671,7 +25486,7 @@
  * This call does no blocking I/O.
  *
  * Returns: (type filename) (nullable): string containing the #GFile's path,
- *     or %NULL if no such path exists. The returned string is owned by @file.
+ *   or %NULL if no such path exists. The returned string is owned by @file.
  * Since: 2.56
  */
 
@@ -24681,10 +25496,10 @@
  * @file: input #GFile
  * @cancellable: optional #GCancellable object, %NULL to ignore
  * @callback: (nullable): a #GAsyncReadyCallback to call
- *     when the request is satisfied, or %NULL
+ *   when the request is satisfied, or %NULL
  * @user_data: the data to pass to callback function
  *
- * Polls a file of type #G_FILE_TYPE_MOUNTABLE.
+ * Polls a file of type %G_FILE_TYPE_MOUNTABLE.
  *
  * If @cancellable is not %NULL, then the operation can be cancelled by
  * triggering the cancellable object from another thread. If the operation
@@ -24729,8 +25544,8 @@
  * was cancelled, the error %G_IO_ERROR_CANCELLED will be returned.
  *
  * Returns: (transfer full): a #GAppInfo if the handle was found,
- *     %NULL if there were errors.
- *     When you are done with it, release it with g_object_unref()
+ *   %NULL if there were errors.
+ *   When you are done with it, release it with g_object_unref()
  */
 
 
@@ -24757,8 +25572,8 @@
  * Finishes a g_file_query_default_handler_async() operation.
  *
  * Returns: (transfer full): a #GAppInfo if the handle was found,
- *     %NULL if there were errors.
- *     When you are done with it, release it with g_object_unref()
+ *   %NULL if there were errors.
+ *   When you are done with it, release it with g_object_unref()
  * Since: 2.60
  */
 
@@ -24767,7 +25582,7 @@
  * g_file_query_exists:
  * @file: input #GFile
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  *
  * Utility function to check if a particular file exists. This is
  * implemented using g_file_query_info() and as such does blocking I/O.
@@ -24793,7 +25608,7 @@
  * that can happen due to races when you execute the operation.
  *
  * Returns: %TRUE if the file exists (and can be detected without error),
- *     %FALSE otherwise (or if cancelled).
+ *   %FALSE otherwise (or if cancelled).
  */
 
 
@@ -24802,7 +25617,7 @@
  * @file: input #GFile
  * @flags: a set of #GFileQueryInfoFlags passed to g_file_query_info()
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  *
  * Utility function to inspect the #GFileType of a file. This is
  * implemented using g_file_query_info() and as such does blocking I/O.
@@ -24810,8 +25625,8 @@
  * The primary use case of this method is to check if a file is
  * a regular file, directory, or symlink.
  *
- * Returns: The #GFileType of the file and #G_FILE_TYPE_UNKNOWN
- *     if the file does not exist
+ * Returns: The #GFileType of the file and %G_FILE_TYPE_UNKNOWN
+ *   if the file does not exist
  * Since: 2.18
  */
 
@@ -24821,7 +25636,7 @@
  * @file: input #GFile
  * @attributes: an attribute query string
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError
  *
  * Similar to g_file_query_info(), but obtains information
@@ -24837,9 +25652,9 @@
  * attributes, and a wildcard like "filesystem::*" means all attributes
  * in the filesystem namespace. The standard namespace for filesystem
  * attributes is "filesystem". Common attributes of interest are
- * #G_FILE_ATTRIBUTE_FILESYSTEM_SIZE (the total size of the filesystem
- * in bytes), #G_FILE_ATTRIBUTE_FILESYSTEM_FREE (number of bytes available),
- * and #G_FILE_ATTRIBUTE_FILESYSTEM_TYPE (type of the filesystem).
+ * %G_FILE_ATTRIBUTE_FILESYSTEM_SIZE (the total size of the filesystem
+ * in bytes), %G_FILE_ATTRIBUTE_FILESYSTEM_FREE (number of bytes available),
+ * and %G_FILE_ATTRIBUTE_FILESYSTEM_TYPE (type of the filesystem).
  *
  * If @cancellable is not %NULL, then the operation can be cancelled
  * by triggering the cancellable object from another thread. If the
@@ -24851,7 +25666,7 @@
  * kind of filesystem the file is on.
  *
  * Returns: (transfer full): a #GFileInfo or %NULL if there was an error.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -24861,9 +25676,9 @@
  * @attributes: an attribute query string
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async): a #GAsyncReadyCallback to call
- *     when the request is satisfied
+ *   when the request is satisfied
  * @user_data: (closure): the data to pass to callback function
  *
  * Asynchronously gets the requested information about the filesystem
@@ -24890,8 +25705,8 @@
  * See g_file_query_filesystem_info_async().
  *
  * Returns: (transfer full): #GFileInfo for given @file
- *     or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   or %NULL on error.
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -24901,7 +25716,7 @@
  * @attributes: an attribute query string
  * @flags: a set of #GFileQueryInfoFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError
  *
  * Gets the requested information about specified @file.
@@ -24917,7 +25732,7 @@
  * "standard::*" means all attributes in the standard namespace.
  * An example attribute query be "standard::*,owner::user".
  * The standard attributes are available as defines, like
- * #G_FILE_ATTRIBUTE_STANDARD_NAME.
+ * %G_FILE_ATTRIBUTE_STANDARD_NAME.
  *
  * If @cancellable is not %NULL, then the operation can be cancelled
  * by triggering the cancellable object from another thread. If the
@@ -24926,7 +25741,7 @@
  *
  * For symlinks, normally the information about the target of the
  * symlink is returned, rather than information about the symlink
- * itself. However if you pass #G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS
+ * itself. However if you pass %G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS
  * in @flags the information about the symlink itself will be returned.
  * Also, for symlinks that point to non-existing files the information
  * about the symlink itself will be returned.
@@ -24936,7 +25751,7 @@
  * filesystem the file is on.
  *
  * Returns: (transfer full): a #GFileInfo for the given @file, or %NULL
- *     on error. Free the returned object with g_object_unref().
+ *   on error. Free the returned object with g_object_unref().
  */
 
 
@@ -24947,9 +25762,9 @@
  * @flags: a set of #GFileQueryInfoFlags
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async): a #GAsyncReadyCallback to call when the
- *     request is satisfied
+ *   request is satisfied
  * @user_data: (closure): the data to pass to callback function
  *
  * Asynchronously gets the requested information about specified @file.
@@ -24974,8 +25789,8 @@
  * See g_file_query_info_async().
  *
  * Returns: (transfer full): #GFileInfo for given @file
- *     or %NULL on error. Free the returned object with
- *     g_object_unref().
+ *   or %NULL on error. Free the returned object with
+ *   g_object_unref().
  */
 
 
@@ -24983,7 +25798,7 @@
  * g_file_query_settable_attributes:
  * @file: input #GFile
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Obtain the list of settable attributes for the file.
@@ -24997,9 +25812,9 @@
  * triggering the cancellable object from another thread. If the operation
  * was cancelled, the error %G_IO_ERROR_CANCELLED will be returned.
  *
- * Returns: a #GFileAttributeInfoList describing the settable attributes.
- *     When you are done with it, release it with
- *     g_file_attribute_info_list_unref()
+ * Returns: (transfer full): a #GFileAttributeInfoList describing the settable attributes.
+ *   When you are done with it, release it with
+ *   g_file_attribute_info_list_unref()
  */
 
 
@@ -25007,7 +25822,7 @@
  * g_file_query_writable_namespaces:
  * @file: input #GFile
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Obtain the list of attribute namespaces where new attributes
@@ -25018,9 +25833,9 @@
  * triggering the cancellable object from another thread. If the operation
  * was cancelled, the error %G_IO_ERROR_CANCELLED will be returned.
  *
- * Returns: a #GFileAttributeInfoList describing the writable namespaces.
- *     When you are done with it, release it with
- *     g_file_attribute_info_list_unref()
+ * Returns: (transfer full): a #GFileAttributeInfoList describing the writable namespaces.
+ *   When you are done with it, release it with
+ *   g_file_attribute_info_list_unref()
  */
 
 
@@ -25043,7 +25858,7 @@
  * on what kind of filesystem the file is on.
  *
  * Returns: (transfer full): #GFileInputStream or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -25052,9 +25867,9 @@
  * @file: input #GFile
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async): a #GAsyncReadyCallback to call
- *     when the request is satisfied
+ *   when the request is satisfied
  * @user_data: (closure): the data to pass to callback function
  *
  * Asynchronously opens @file for reading.
@@ -25078,7 +25893,7 @@
  * g_file_read_async().
  *
  * Returns: (transfer full): a #GFileInputStream or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -25086,11 +25901,11 @@
  * g_file_replace:
  * @file: input #GFile
  * @etag: (nullable): an optional [entity tag][gfile-etag]
- *     for the current #GFile, or #NULL to ignore
+ *   for the current #GFile, or #NULL to ignore
  * @make_backup: %TRUE if a backup should be created
  * @flags: a set of #GFileCreateFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Returns an output stream for overwriting the file, possibly
@@ -25104,7 +25919,7 @@
  * the destination when the stream is closed.
  *
  * By default files created are generally readable by everyone,
- * but if you pass #G_FILE_CREATE_PRIVATE in @flags the file
+ * but if you pass %G_FILE_CREATE_PRIVATE in @flags the file
  * will be made readable only to the current user, to the level that
  * is supported on the target filesystem.
  *
@@ -25136,7 +25951,7 @@
  * possible too, and depend on what kind of filesystem the file is on.
  *
  * Returns: (transfer full): a #GFileOutputStream or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -25144,14 +25959,14 @@
  * g_file_replace_async:
  * @file: input #GFile
  * @etag: (nullable): an [entity tag][gfile-etag] for the current #GFile,
- *     or %NULL to ignore
+ *   or %NULL to ignore
  * @make_backup: %TRUE if a backup should be created
  * @flags: a set of #GFileCreateFlags
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async): a #GAsyncReadyCallback to call
- *     when the request is satisfied
+ *   when the request is satisfied
  * @user_data: (closure): the data to pass to callback function
  *
  * Asynchronously overwrites the file, replacing the contents,
@@ -25172,12 +25987,12 @@
  * @contents: (element-type guint8) (array length=length): a string containing the new contents for @file
  * @length: the length of @contents in bytes
  * @etag: (nullable): the old [entity-tag][gfile-etag] for the document,
- *     or %NULL
+ *   or %NULL
  * @make_backup: %TRUE if a backup should be created
  * @flags: a set of #GFileCreateFlags
  * @new_etag: (out) (optional) (nullable): a location to a new [entity tag][gfile-etag]
- *      for the document. This should be freed with g_free() when no longer
- *      needed, or %NULL
+ *   for the document. This should be freed with g_free() when no longer
+ *   needed, or %NULL
  * @cancellable: optional #GCancellable object, %NULL to ignore
  * @error: a #GError, or %NULL
  *
@@ -25199,7 +26014,7 @@
  * changed the next time it is saved over.
  *
  * Returns: %TRUE if successful. If an error has occurred, this function
- *     will return %FALSE and set @error appropriately if present.
+ *   will return %FALSE and set @error appropriately if present.
  */
 
 
@@ -25266,8 +26081,8 @@
  * @file: input #GFile
  * @res: a #GAsyncResult
  * @new_etag: (out) (optional) (nullable): a location of a new [entity tag][gfile-etag]
- *     for the document. This should be freed with g_free() when it is no
- *     longer needed, or %NULL
+ *   for the document. This should be freed with g_free() when it is no
+ *   longer needed, or %NULL
  * @error: a #GError, or %NULL
  *
  * Finishes an asynchronous replace of the given @file. See
@@ -25288,7 +26103,7 @@
  * g_file_replace_async().
  *
  * Returns: (transfer full): a #GFileOutputStream, or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -25296,11 +26111,11 @@
  * g_file_replace_readwrite:
  * @file: a #GFile
  * @etag: (nullable): an optional [entity tag][gfile-etag]
- *     for the current #GFile, or #NULL to ignore
+ *   for the current #GFile, or #NULL to ignore
  * @make_backup: %TRUE if a backup should be created
  * @flags: a set of #GFileCreateFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: return location for a #GError, or %NULL
  *
  * Returns an output stream for overwriting the file in readwrite mode,
@@ -25315,7 +26130,7 @@
  * rather than just opening for reading or writing.
  *
  * Returns: (transfer full): a #GFileIOStream or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  * Since: 2.22
  */
 
@@ -25324,14 +26139,14 @@
  * g_file_replace_readwrite_async:
  * @file: input #GFile
  * @etag: (nullable): an [entity tag][gfile-etag] for the current #GFile,
- *     or %NULL to ignore
+ *   or %NULL to ignore
  * @make_backup: %TRUE if a backup should be created
  * @flags: a set of #GFileCreateFlags
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async): a #GAsyncReadyCallback to call
- *     when the request is satisfied
+ *   when the request is satisfied
  * @user_data: (closure): the data to pass to callback function
  *
  * Asynchronously overwrites the file in read-write mode,
@@ -25359,7 +26174,7 @@
  * g_file_replace_readwrite_async().
  *
  * Returns: (transfer full): a #GFileIOStream, or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  * Since: 2.22
  */
 
@@ -25373,9 +26188,10 @@
  *
  * This call does no blocking I/O.
  *
- * Returns: (transfer full): #GFile to the resolved path.
- *     %NULL if @relative_path is %NULL or if @file is invalid.
- *     Free the returned object with g_object_unref().
+ * If the @relative_path is an absolute path name, the resolution
+ * is done absolutely (without taking @file path as base).
+ *
+ * Returns: (transfer full): a #GFile for the resolved path.
  */
 
 
@@ -25385,10 +26201,10 @@
  * @attribute: a string containing the attribute's name
  * @type: The type of the attribute
  * @value_p: (nullable): a pointer to the value (or the pointer
- *     itself if the type is a pointer type)
+ *   itself if the type is a pointer type)
  * @flags: a set of #GFileQueryInfoFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Sets an attribute in the file with attribute name @attribute to @value_p.
@@ -25411,7 +26227,7 @@
  * @value: a string containing the attribute's new value
  * @flags: a #GFileQueryInfoFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Sets @attribute of type %G_FILE_ATTRIBUTE_TYPE_BYTE_STRING to @value.
@@ -25423,7 +26239,7 @@
  * was cancelled, the error %G_IO_ERROR_CANCELLED will be returned.
  *
  * Returns: %TRUE if the @attribute was successfully set to @value
- *     in the @file, %FALSE otherwise.
+ *   in the @file, %FALSE otherwise.
  */
 
 
@@ -25434,7 +26250,7 @@
  * @value: a #gint32 containing the attribute's new value
  * @flags: a #GFileQueryInfoFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Sets @attribute of type %G_FILE_ATTRIBUTE_TYPE_INT32 to @value.
@@ -25445,7 +26261,7 @@
  * was cancelled, the error %G_IO_ERROR_CANCELLED will be returned.
  *
  * Returns: %TRUE if the @attribute was successfully set to @value
- *     in the @file, %FALSE otherwise.
+ *   in the @file, %FALSE otherwise.
  */
 
 
@@ -25456,7 +26272,7 @@
  * @value: a #guint64 containing the attribute's new value
  * @flags: a #GFileQueryInfoFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Sets @attribute of type %G_FILE_ATTRIBUTE_TYPE_INT64 to @value.
@@ -25477,7 +26293,7 @@
  * @value: a string containing the attribute's value
  * @flags: #GFileQueryInfoFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Sets @attribute of type %G_FILE_ATTRIBUTE_TYPE_STRING to @value.
@@ -25498,7 +26314,7 @@
  * @value: a #guint32 containing the attribute's new value
  * @flags: a #GFileQueryInfoFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Sets @attribute of type %G_FILE_ATTRIBUTE_TYPE_UINT32 to @value.
@@ -25509,7 +26325,7 @@
  * was cancelled, the error %G_IO_ERROR_CANCELLED will be returned.
  *
  * Returns: %TRUE if the @attribute was successfully set to @value
- *     in the @file, %FALSE otherwise.
+ *   in the @file, %FALSE otherwise.
  */
 
 
@@ -25520,7 +26336,7 @@
  * @value: a #guint64 containing the attribute's new value
  * @flags: a #GFileQueryInfoFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Sets @attribute of type %G_FILE_ATTRIBUTE_TYPE_UINT64 to @value.
@@ -25531,7 +26347,7 @@
  * was cancelled, the error %G_IO_ERROR_CANCELLED will be returned.
  *
  * Returns: %TRUE if the @attribute was successfully set to @value
- *     in the @file, %FALSE otherwise.
+ *   in the @file, %FALSE otherwise.
  */
 
 
@@ -25542,7 +26358,7 @@
  * @flags: a #GFileQueryInfoFlags
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async): a #GAsyncReadyCallback
  * @user_data: (closure): a #gpointer
  *
@@ -25576,7 +26392,7 @@
  * @info: a #GFileInfo
  * @flags: #GFileQueryInfoFlags
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Tries to set all attributes in the #GFileInfo on the target
@@ -25601,7 +26417,7 @@
  * @file: input #GFile
  * @display_name: a string
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Renames @file to the specified display name.
@@ -25610,7 +26426,7 @@
  * for the target filesystem if possible and the @file is renamed to this.
  *
  * If you want to implement a rename operation in the user interface the
- * edit name (#G_FILE_ATTRIBUTE_STANDARD_EDIT_NAME) should be used as the
+ * edit name (%G_FILE_ATTRIBUTE_STANDARD_EDIT_NAME) should be used as the
  * initial value in the rename widget, and then the result after editing
  * should be passed to g_file_set_display_name().
  *
@@ -25621,8 +26437,8 @@
  * was cancelled, the error %G_IO_ERROR_CANCELLED will be returned.
  *
  * Returns: (transfer full): a #GFile specifying what @file was renamed to,
- *     or %NULL if there was an error.
- *     Free the returned object with g_object_unref().
+ *   or %NULL if there was an error.
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -25632,9 +26448,9 @@
  * @display_name: a string
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async): a #GAsyncReadyCallback to call
- *     when the request is satisfied
+ *   when the request is satisfied
  * @user_data: (closure): the data to pass to callback function
  *
  * Asynchronously sets the display name for a given #GFile.
@@ -25658,7 +26474,7 @@
  * g_file_set_display_name_async().
  *
  * Returns: (transfer full): a #GFile or %NULL on error.
- *     Free the returned object with g_object_unref().
+ *   Free the returned object with g_object_unref().
  */
 
 
@@ -25671,7 +26487,7 @@
  * @callback: (nullable): a #GAsyncReadyCallback to call when the request is satisfied, or %NULL
  * @user_data: the data to pass to callback function
  *
- * Starts a file of type #G_FILE_TYPE_MOUNTABLE.
+ * Starts a file of type %G_FILE_TYPE_MOUNTABLE.
  * Using @start_operation, you can request callbacks when, for instance,
  * passwords are needed during authentication.
  *
@@ -25709,14 +26525,14 @@
  * @file: input #GFile
  * @flags: flags affecting the operation
  * @mount_operation: (nullable): a #GMountOperation,
- *     or %NULL to avoid user interaction.
+ *   or %NULL to avoid user interaction.
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (nullable): a #GAsyncReadyCallback to call
- *     when the request is satisfied, or %NULL
+ *   when the request is satisfied, or %NULL
  * @user_data: the data to pass to callback function
  *
- * Stops a file of type #G_FILE_TYPE_MOUNTABLE.
+ * Stops a file of type %G_FILE_TYPE_MOUNTABLE.
  *
  * If @cancellable is not %NULL, then the operation can be cancelled by
  * triggering the cancellable object from another thread. If the operation
@@ -25742,7 +26558,7 @@
  * with g_file_stop_mountable().
  *
  * Returns: %TRUE if the operation finished successfully.
- *     %FALSE otherwise.
+ *   %FALSE otherwise.
  * Since: 2.22
  */
 
@@ -25765,7 +26581,7 @@
  * g_file_trash: (virtual trash)
  * @file: #GFile to send to trash
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @error: a #GError, or %NULL
  *
  * Sends @file to the "Trashcan", if possible. This is similar to
@@ -25788,9 +26604,9 @@
  * @file: input #GFile
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: a #GAsyncReadyCallback to call
- *     when the request is satisfied
+ *   when the request is satisfied
  * @user_data: the data to pass to callback function
  *
  * Asynchronously sends @file to the Trash location, if possible.
@@ -25818,9 +26634,9 @@
  * @file: input #GFile
  * @flags: flags affecting the operation
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async) (nullable): a #GAsyncReadyCallback to call
- *     when the request is satisfied, or %NULL
+ *   when the request is satisfied, or %NULL
  * @user_data: (closure): the data to pass to callback function
  *
  * Unmounts a file of type G_FILE_TYPE_MOUNTABLE.
@@ -25849,9 +26665,9 @@
  * with g_file_unmount_mountable().
  *
  * Returns: %TRUE if the operation finished successfully.
- *     %FALSE otherwise.
+ *   %FALSE otherwise.
  * Deprecated: 2.22: Use g_file_unmount_mountable_with_operation_finish()
- *     instead.
+ *   instead.
  */
 
 
@@ -25860,14 +26676,14 @@
  * @file: input #GFile
  * @flags: flags affecting the operation
  * @mount_operation: (nullable): a #GMountOperation,
- *     or %NULL to avoid user interaction
+ *   or %NULL to avoid user interaction
  * @cancellable: (nullable): optional #GCancellable object,
- *     %NULL to ignore
+ *   %NULL to ignore
  * @callback: (scope async) (nullable): a #GAsyncReadyCallback to call
- *     when the request is satisfied, or %NULL
+ *   when the request is satisfied, or %NULL
  * @user_data: (closure): the data to pass to callback function
  *
- * Unmounts a file of type #G_FILE_TYPE_MOUNTABLE.
+ * Unmounts a file of type %G_FILE_TYPE_MOUNTABLE.
  *
  * If @cancellable is not %NULL, then the operation can be cancelled by
  * triggering the cancellable object from another thread. If the operation
@@ -25894,7 +26710,7 @@
  * with g_file_unmount_mountable_with_operation().
  *
  * Returns: %TRUE if the operation finished successfully.
- *     %FALSE otherwise.
+ *   %FALSE otherwise.
  * Since: 2.22
  */
 
@@ -27068,6 +27884,17 @@
 
 
 /**
+ * g_io_error_from_file_error:
+ * @file_error: a #GFileError.
+ *
+ * Converts #GFileError error codes into GIO error codes.
+ *
+ * Returns: #GIOErrorEnum value for the given #GFileError error value.
+ * Since: 2.74
+ */
+
+
+/**
  * g_io_error_from_win32_error:
  * @error_code: Windows error number.
  *
@@ -27160,7 +27987,7 @@
  * Gets the required type for @extension_point.
  *
  * Returns: the #GType that all implementations must have,
- *     or #G_TYPE_INVALID if the extension point has no required type
+ *   or %G_TYPE_INVALID if the extension point has no required type
  */
 
 
@@ -27689,11 +28516,15 @@
  * @list: a #GListModel
  * @position: the position of the item to fetch
  *
- * Get the item at @position. If @position is greater than the number of
- * items in @list, %NULL is returned.
+ * Get the item at @position.
+ *
+ * If @position is greater than the number of items in @list, %NULL is
+ * returned.
  *
  * %NULL is never returned for an index that is smaller than the length
- * of the list.  See g_list_model_get_n_items().
+ * of the list.
+ *
+ * See also: g_list_model_get_n_items()
  *
  * Returns: (transfer full) (nullable): the item at @position.
  * Since: 2.44
@@ -27704,9 +28535,11 @@
  * g_list_model_get_item_type:
  * @list: a #GListModel
  *
- * Gets the type of the items in @list. All items returned from
- * g_list_model_get_type() are of that type or a subtype, or are an
- * implementation of that interface.
+ * Gets the type of the items in @list.
+ *
+ * All items returned from g_list_model_get_item() are of the type
+ * returned by this function, or a subtype, or if the type is an
+ * interface, they are an implementation of that interface.
  *
  * The item type of a #GListModel can not change during the life of the
  * model.
@@ -27736,11 +28569,18 @@
  * @list: a #GListModel
  * @position: the position of the item to fetch
  *
- * Get the item at @position. If @position is greater than the number of
- * items in @list, %NULL is returned.
+ * Get the item at @position.
+ *
+ * If @position is greater than the number of items in @list, %NULL is
+ * returned.
  *
  * %NULL is never returned for an index that is smaller than the length
- * of the list.  See g_list_model_get_n_items().
+ * of the list.
+ *
+ * This function is meant to be used by language bindings in place
+ * of g_list_model_get_item().
+ *
+ * See also: g_list_model_get_n_items()
  *
  * Returns: (transfer full) (nullable): the object at @position.
  * Since: 2.44
@@ -27822,13 +28662,30 @@
  * @position: (out) (optional): the first position of @item, if it was found.
  *
  * Looks up the given @item in the list store by looping over the items and
- * comparing them with @compare_func until the first occurrence of @item which
+ * comparing them with @equal_func until the first occurrence of @item which
  * matches. If @item was not found, then @position will not be set, and this
  * method will return %FALSE.
  *
  * Returns: Whether @store contains @item. If it was found, @position will be
  * set to the position where @item occurred for the first time.
  * Since: 2.64
+ */
+
+
+/**
+ * g_list_store_find_with_equal_func_full:
+ * @store: a #GListStore
+ * @item: (type GObject): an item
+ * @equal_func: (scope call): A custom equality check function
+ * @user_data: (closure): user data for @equal_func
+ * @position: (out) (optional): the first position of @item, if it was found.
+ *
+ * Like g_list_store_find_with_equal_func() but with an additional @user_data
+ * that is passed to @equal_func.
+ *
+ * Returns: Whether @store contains @item. If it was found, @position will be
+ * set to the position where @item occurred for the first time.
+ * Since: 2.74
  */
 
 
@@ -32207,7 +33064,7 @@
  *
  * This differs from g_resolver_lookup_by_name() in that you can modify
  * the lookup behavior with @flags. For example this can be used to limit
- * results with #G_RESOLVER_NAME_LOOKUP_FLAGS_IPV4_ONLY.
+ * results with %G_RESOLVER_NAME_LOOKUP_FLAGS_IPV4_ONLY.
  *
  * Returns: (element-type GInetAddress) (transfer full): a non-empty #GList
  * of #GInetAddress, or %NULL on error. You
@@ -33079,7 +33936,7 @@
  * activations take the new value for the key (which must have the
  * correct type).
  *
- * Returns: (transfer full): a new #GAction
+ * Returns: (not nullable) (transfer full): a new #GAction
  * Since: 2.32
  */
 
@@ -33143,9 +34000,12 @@
  * @settings.
  *
  * The schema for the child settings object must have been declared
- * in the schema of @settings using a <child> element.
+ * in the schema of @settings using a `<child>` element.
  *
- * Returns: (transfer full): a 'child' settings object
+ * The created child settings object will inherit the #GSettings:delay-apply
+ * mode from @settings.
+ *
+ * Returns: (not nullable) (transfer full): a 'child' settings object
  * Since: 2.26
  */
 
@@ -33327,7 +34187,7 @@
  * what is returned by this function.  %NULL is valid; it is returned
  * just as any other value would be.
  *
- * Returns: (transfer full): the result, which may be %NULL
+ * Returns: (nullable) (transfer full): the result, which may be %NULL
  */
 
 
@@ -33355,7 +34215,7 @@
  * It is a programmer error to give a @key that isn't specified as
  * having a string type in the schema for @settings.
  *
- * Returns: a newly-allocated string
+ * Returns: (not nullable) (transfer full): a newly-allocated string
  * Since: 2.26
  */
 
@@ -33370,7 +34230,7 @@
  * It is a programmer error to give a @key that isn't specified as
  * having an array of strings type in the schema for @settings.
  *
- * Returns: (array zero-terminated=1) (transfer full): a
+ * Returns: (array zero-terminated=1) (not nullable) (transfer full): a
  * newly-allocated, %NULL-terminated array of strings, the value that
  * is stored at @key in @settings.
  * Since: 2.26
@@ -33452,7 +34312,7 @@
  * It is a programmer error to give a @key that isn't contained in the
  * schema for @settings.
  *
- * Returns: a new #GVariant
+ * Returns: (not nullable) (transfer full): a new #GVariant
  * Since: 2.26
  */
 
@@ -33485,8 +34345,8 @@
  * You should free the return value with g_strfreev() when you are done
  * with it.
  *
- * Returns: (transfer full) (element-type utf8): a list of the children on
- *    @settings, in no defined order
+ * Returns: (not nullable) (transfer full) (element-type utf8): a list of the children
+ *    on @settings, in no defined order
  */
 
 
@@ -33503,8 +34363,8 @@
  * You should free the return value with g_strfreev() when you are done
  * with it.
  *
- * Returns: (transfer full) (element-type utf8): a list of the keys on
- *    @settings, in no defined order
+ * Returns: (not nullable) (transfer full) (element-type utf8): a list
+ *    of the keys on @settings, in no defined order
  * Deprecated: 2.46: Use g_settings_schema_list_keys() instead.
  */
 
@@ -33514,9 +34374,9 @@
  *
  * Deprecated.
  *
- * Returns: (element-type utf8) (transfer none): a list of relocatable
- *   #GSettings schemas that are available, in no defined order.  The list must
- *   not be modified or freed.
+ * Returns: (element-type utf8) (transfer none) (not nullable): a list of
+ *   relocatable #GSettings schemas that are available, in no defined order.
+ *   The list must not be modified or freed.
  * Since: 2.28
  * Deprecated: 2.40: Use g_settings_schema_source_list_schemas() instead
  */
@@ -33527,9 +34387,9 @@
  *
  * Deprecated.
  *
- * Returns: (element-type utf8) (transfer none): a list of #GSettings
- *   schemas that are available, in no defined order.  The list must not be
- *   modified or freed.
+ * Returns: (element-type utf8) (transfer none) (not nullable): a list of
+ *   #GSettings schemas that are available, in no defined order.  The list
+ *   must not be modified or freed.
  * Since: 2.26
  * Deprecated: 2.40: Use g_settings_schema_source_list_schemas() instead.
  * If you used g_settings_list_schemas() to check for the presence of
@@ -33556,7 +34416,7 @@
  * call to g_settings_new().  The new #GSettings will hold a reference
  * on the context.  See g_main_context_push_thread_default().
  *
- * Returns: a new #GSettings object
+ * Returns: (not nullable) (transfer full): a new #GSettings object
  * Since: 2.26
  */
 
@@ -33591,7 +34451,7 @@
  * @path is non-%NULL and not equal to the path that the schema does
  * have.
  *
- * Returns: a new #GSettings object
+ * Returns: (not nullable) (transfer full): a new #GSettings object
  * Since: 2.32
  */
 
@@ -33610,7 +34470,7 @@
  * the system to get a settings object that modifies the system default
  * settings instead of the settings for this user.
  *
- * Returns: a new #GSettings object
+ * Returns: (not nullable) (transfer full): a new #GSettings object
  * Since: 2.26
  */
 
@@ -33627,7 +34487,7 @@
  * This is a mix of g_settings_new_with_backend() and
  * g_settings_new_with_path().
  *
- * Returns: a new #GSettings object
+ * Returns: (not nullable) (transfer full): a new #GSettings object
  * Since: 2.26
  */
 
@@ -33651,7 +34511,7 @@
  * begins and ends with '/' and does not contain two consecutive '/'
  * characters.
  *
- * Returns: a new #GSettings object
+ * Returns: (not nullable) (transfer full): a new #GSettings object
  * Since: 2.26
  */
 
@@ -33703,7 +34563,7 @@
  *
  * Get the ID of @schema.
  *
- * Returns: (transfer none): the ID
+ * Returns: (not nullable) (transfer none): the ID
  */
 
 
@@ -33717,7 +34577,7 @@
  * It is a programmer error to request a key that does not exist.  See
  * g_settings_schema_list_keys().
  *
- * Returns: (transfer full): the #GSettingsSchemaKey for @name
+ * Returns: (not nullable) (transfer full): the #GSettingsSchemaKey for @name
  * Since: 2.40
  */
 
@@ -33762,7 +34622,7 @@
  * Note that this is the default value according to the schema.  System
  * administrator defaults and lockdown are not visible via this API.
  *
- * Returns: (transfer full): the default value for the key
+ * Returns: (not nullable) (transfer full): the default value for the key
  * Since: 2.40
  */
 
@@ -33786,7 +34646,7 @@
  * function has to parse all of the source XML files in the schema
  * directory.
  *
- * Returns: (nullable): the description for @key, or %NULL
+ * Returns: (nullable) (transfer none): the description for @key, or %NULL
  * Since: 2.34
  */
 
@@ -33797,7 +34657,7 @@
  *
  * Gets the name of @key.
  *
- * Returns: the name of @key.
+ * Returns: (not nullable) (transfer none): the name of @key.
  * Since: 2.44
  */
 
@@ -33843,7 +34703,7 @@
  * You should free the returned value with g_variant_unref() when it is
  * no longer needed.
  *
- * Returns: (transfer full): a #GVariant describing the range
+ * Returns: (not nullable) (transfer full): a #GVariant describing the range
  * Since: 2.40
  */
 
@@ -33866,7 +34726,7 @@
  * function has to parse all of the source XML files in the schema
  * directory.
  *
- * Returns: (nullable): the summary for @key, or %NULL
+ * Returns: (nullable) (transfer none): the summary for @key, or %NULL
  * Since: 2.34
  */
 
@@ -33877,7 +34737,7 @@
  *
  * Gets the #GVariantType of @key.
  *
- * Returns: (transfer none): the type of @key
+ * Returns: (not nullable) (transfer none): the type of @key
  * Since: 2.40
  */
 
@@ -33904,7 +34764,7 @@
  *
  * Increase the reference count of @key, returning a new reference.
  *
- * Returns: a new reference to @key
+ * Returns: (not nullable) (transfer full): a new reference to @key
  * Since: 2.40
  */
 
@@ -33928,8 +34788,8 @@
  * You should free the return value with g_strfreev() when you are done
  * with it.
  *
- * Returns: (transfer full) (element-type utf8): a list of the children on
- *    @settings, in no defined order
+ * Returns: (not nullable) (transfer full) (element-type utf8): a list of
+ *    the children on @settings, in no defined order
  * Since: 2.44
  */
 
@@ -33944,8 +34804,8 @@
  * (since you should already know what keys are in your schema).  This
  * function is intended for introspection reasons.
  *
- * Returns: (transfer full) (element-type utf8): a list of the keys on
- *   @schema, in no defined order
+ * Returns: (not nullable) (transfer full) (element-type utf8): a list
+ *   of the keys on @schema, in no defined order
  * Since: 2.46
  */
 
@@ -33956,7 +34816,7 @@
  *
  * Increase the reference count of @schema, returning a new reference.
  *
- * Returns: a new reference to @schema
+ * Returns: (transfer full) (not nullable): a new reference to @schema
  * Since: 2.32
  */
 
@@ -34080,7 +34940,7 @@
  *
  * Increase the reference count of @source, returning a new reference.
  *
- * Returns: a new reference to @source
+ * Returns: (transfer full) (not nullable): a new reference to @source
  * Since: 2.32
  */
 
@@ -34539,7 +35399,7 @@
  * @object: (nullable): a #GObject, or %NULL.
  * @callback: a #GAsyncReadyCallback.
  * @user_data: user data passed to @callback.
- * @domain: a #GQuark containing the error domain (usually #G_IO_ERROR).
+ * @domain: a #GQuark containing the error domain (usually %G_IO_ERROR).
  * @code: a specific error code.
  * @format: a formatted error reporting string.
  * @...: a list of variables to fill in @format.
@@ -34819,7 +35679,7 @@
 /**
  * g_simple_async_result_set_error: (skip)
  * @simple: a #GSimpleAsyncResult.
- * @domain: a #GQuark (usually #G_IO_ERROR).
+ * @domain: a #GQuark (usually %G_IO_ERROR).
  * @code: an error code.
  * @format: a formatted error reporting string.
  * @...: a list of variables to fill in @format.
@@ -34833,7 +35693,7 @@
 /**
  * g_simple_async_result_set_error_va: (skip)
  * @simple: a #GSimpleAsyncResult.
- * @domain: a #GQuark (usually #G_IO_ERROR).
+ * @domain: a #GQuark (usually %G_IO_ERROR).
  * @code: an error code.
  * @format: a formatted error reporting string.
  * @args: va_list of arguments.
@@ -34948,7 +35808,7 @@
  * g_simple_proxy_resolver_new:
  * @default_proxy: (nullable): the default proxy to use, eg
  *     "socks://192.168.1.1"
- * @ignore_hosts: (nullable): an optional list of hosts/IP addresses
+ * @ignore_hosts: (array zero-terminated=1) (nullable): an optional list of hosts/IP addresses
  *     to not use a proxy for.
  *
  * Creates a new #GSimpleProxyResolver. See
@@ -34964,7 +35824,7 @@
 /**
  * g_simple_proxy_resolver_set_default_proxy:
  * @resolver: a #GSimpleProxyResolver
- * @default_proxy: the default proxy to use
+ * @default_proxy: (nullable): the default proxy to use
  *
  * Sets the default proxy on @resolver, to be used for any URIs that
  * don't match #GSimpleProxyResolver:ignore-hosts or a proxy set
@@ -34981,7 +35841,7 @@
 /**
  * g_simple_proxy_resolver_set_ignore_hosts:
  * @resolver: a #GSimpleProxyResolver
- * @ignore_hosts: %NULL-terminated list of hosts/IP addresses
+ * @ignore_hosts: (array zero-terminated=1): %NULL-terminated list of hosts/IP addresses
  *     to not use a proxy for
  *
  * Sets the list of ignored hosts.
@@ -35055,7 +35915,7 @@
  * internal errors (other than @cancellable being triggered) will be
  * ignored.
  *
- * Returns: (transfer full): a #GSocketAddress (owned by the caller), or %NULL on
+ * Returns: (transfer full) (nullable): a #GSocketAddress (owned by the caller), or %NULL on
  *     error (in which case *@error will be set) or if there are no
  *     more addresses.
  */
@@ -35088,7 +35948,7 @@
  * g_socket_address_enumerator_next() for more information about
  * error handling.
  *
- * Returns: (transfer full): a #GSocketAddress (owned by the caller), or %NULL on
+ * Returns: (transfer full) (nullable): a #GSocketAddress (owned by the caller), or %NULL on
  *     error (in which case *@error will be set) or if there are no
  *     more addresses.
  */
@@ -35614,8 +36474,13 @@
  * Gets the TLS validation flags used creating TLS connections via
  * @client.
  *
+ * This function does not work as originally designed and is impossible
+ * to use correctly. See #GSocketClient:tls-validation-flags for more
+ * information.
+ *
  * Returns: the TLS validation flags
  * Since: 2.28
+ * Deprecated: 2.72: Do not attempt to ignore validation errors.
  */
 
 
@@ -35783,7 +36648,12 @@
  * Sets the TLS validation flags used when creating TLS connections
  * via @client. The default value is %G_TLS_CERTIFICATE_VALIDATE_ALL.
  *
+ * This function does not work as originally designed and is impossible
+ * to use correctly. See #GSocketClient:tls-validation-flags for more
+ * information.
+ *
  * Since: 2.28
+ * Deprecated: 2.72: Do not attempt to ignore validation errors.
  */
 
 
@@ -39105,7 +39975,7 @@
  *
  * Sets @task's result to @result (by copying it) and completes the task.
  *
- * If @result is %NULL then a #GValue of type #G_TYPE_POINTER
+ * If @result is %NULL then a #GValue of type %G_TYPE_POINTER
  * with a value of %NULL will be used for the result.
  *
  * This is a very generic low-level method intended primarily for use
@@ -39202,7 +40072,8 @@
  * name of the #GSource used for idle completion of the task.
  *
  * This function may only be called before the @task is first used in a thread
- * other than the one it was constructed in.
+ * other than the one it was constructed in. It is called automatically by
+ * g_task_set_source_tag() if not called already.
  *
  * Since: 2.60
  */
@@ -39272,12 +40143,18 @@
  * @task: the #GTask
  * @source_tag: an opaque pointer indicating the source of this task
  *
- * Sets @task's source tag. You can use this to tag a task return
+ * Sets @task's source tag.
+ *
+ * You can use this to tag a task return
  * value with a particular pointer (usually a pointer to the function
  * doing the tagging) and then later check it using
  * g_task_get_source_tag() (or g_async_result_is_tagged()) in the
  * task's "finish" function, to figure out if the response came from a
  * particular place.
+ *
+ * A macro wrapper around this function will automatically set the
+ * task’s name to the string form of @source_tag if it’s not already
+ * set, for convenience.
  *
  * Since: 2.36
  */
@@ -39818,25 +40695,41 @@
 
 /**
  * g_tls_certificate_new_from_file:
- * @file: (type filename): file containing a PEM-encoded certificate to import
- * @error: #GError for error reporting, or %NULL to ignore.
+ * @file: (type filename): file containing a certificate to import
+ * @error: #GError for error reporting, or %NULL to ignore
  *
- * Creates a #GTlsCertificate from the PEM-encoded data in @file. The
- * returned certificate will be the first certificate found in @file. As
- * of GLib 2.44, if @file contains more certificates it will try to load
- * a certificate chain. All certificates will be verified in the order
- * found (top-level certificate should be the last one in the file) and
- * the #GTlsCertificate:issuer property of each certificate will be set
- * accordingly if the verification succeeds. If any certificate in the
- * chain cannot be verified, the first certificate in the file will
- * still be returned.
+ * Creates a #GTlsCertificate from the data in @file.
+ *
+ * As of 2.72, if the filename ends in `.p12` or `.pfx` the data is loaded by
+ * g_tls_certificate_new_from_pkcs12() otherwise it is loaded by
+ * g_tls_certificate_new_from_pem(). See those functions for
+ * exact details.
  *
  * If @file cannot be read or parsed, the function will return %NULL and
- * set @error. Otherwise, this behaves like
- * g_tls_certificate_new_from_pem().
+ * set @error.
  *
  * Returns: the new certificate, or %NULL on error
  * Since: 2.28
+ */
+
+
+/**
+ * g_tls_certificate_new_from_file_with_password:
+ * @file: (type filename): file containing a certificate to import
+ * @password: (not nullable): password for PKCS #12 files
+ * @error: #GError for error reporting, or %NULL to ignore
+ *
+ * Creates a #GTlsCertificate from the data in @file.
+ *
+ * If @file cannot be read or parsed, the function will return %NULL and
+ * set @error.
+ *
+ * Any unknown file types will error with %G_IO_ERROR_NOT_SUPPORTED.
+ * Currently only `.p12` and `.pfx` files are supported.
+ * See g_tls_certificate_new_from_pkcs12() for more details.
+ *
+ * Returns: the new certificate, or %NULL on error
+ * Since: 2.72
  */
 
 
@@ -39931,6 +40824,36 @@
 
 
 /**
+ * g_tls_certificate_new_from_pkcs12:
+ * @data: (array length=length): DER-encoded PKCS #12 format certificate data
+ * @length: the length of @data
+ * @password: (nullable): optional password for encrypted certificate data
+ * @error: #GError for error reporting, or %NULL to ignore.
+ *
+ * Creates a #GTlsCertificate from the data in @data. It must contain
+ * a certificate and matching private key.
+ *
+ * If extra certificates are included they will be verified as a chain
+ * and the #GTlsCertificate:issuer property will be set.
+ * All other data will be ignored.
+ *
+ * You can pass as single password for all of the data which will be
+ * used both for the PKCS #12 container as well as encrypted
+ * private keys. If decryption fails it will error with
+ * %G_TLS_ERROR_BAD_CERTIFICATE_PASSWORD.
+ *
+ * This constructor requires support in the current #GTlsBackend.
+ * If support is missing it will error with
+ * %G_IO_ERROR_NOT_SUPPORTED.
+ *
+ * Other parsing failures will error with %G_TLS_ERROR_BAD_CERTIFICATE.
+ *
+ * Returns: the new certificate, or %NULL if @data is invalid
+ * Since: 2.72
+ */
+
+
+/**
  * g_tls_certificate_verify:
  * @cert: a #GTlsCertificate
  * @identity: (nullable): the expected peer identity
@@ -39941,6 +40864,8 @@
  * certificate outside the context of making a connection, or to
  * check a certificate against a CA that is not part of the system
  * CA database.
+ *
+ * If @cert is valid, %G_TLS_CERTIFICATE_NO_FLAGS is returned.
  *
  * If @identity is not %NULL, @cert's name(s) will be compared against
  * it, and %G_TLS_CERTIFICATE_BAD_IDENTITY will be set in the return
@@ -39953,13 +40878,18 @@
  * @trusted_ca is %NULL, that bit will never be set in the return
  * value.
  *
- * (All other #GTlsCertificateFlags values will always be set or unset
- * as appropriate.)
+ * GLib guarantees that if certificate verification fails, at least one
+ * error will be set in the return value, but it does not guarantee
+ * that all possible errors will be set. Accordingly, you may not safely
+ * decide to ignore any particular type of error. For example, it would
+ * be incorrect to mask %G_TLS_CERTIFICATE_EXPIRED if you want to allow
+ * expired certificates, because this could potentially be the only
+ * error flag set even if other problems exist with the certificate.
  *
  * Because TLS session context is not used, #GTlsCertificate may not
  * perform as many checks on the certificates as #GTlsConnection would.
- * For example, certificate constraints cannot be honored, and some
- * revocation checks cannot be performed. The best way to verify TLS
+ * For example, certificate constraints may not be honored, and
+ * revocation checks may not be performed. The best way to verify TLS
  * certificates used by a TLS connection is to let #GTlsConnection
  * handle the verification.
  *
@@ -40067,8 +40997,13 @@
  *
  * Gets @conn's validation flags
  *
+ * This function does not work as originally designed and is impossible
+ * to use correctly. See #GTlsClientConnection:validation-flags for more
+ * information.
+ *
  * Returns: the validation flags
  * Since: 2.28
+ * Deprecated: 2.72: Do not attempt to ignore validation errors.
  */
 
 
@@ -40136,7 +41071,12 @@
  * checks performed when validating a server certificate. By default,
  * %G_TLS_CERTIFICATE_VALIDATE_ALL is used.
  *
+ * This function does not work as originally designed and is impossible
+ * to use correctly. See #GTlsClientConnection:validation-flags for more
+ * information.
+ *
  * Since: 2.28
+ * Deprecated: 2.72: Do not attempt to ignore validation errors.
  */
 
 
@@ -40274,6 +41214,8 @@
  * Gets the errors associated with validating @conn's peer's
  * certificate, after the handshake has completed or failed. (It is
  * not set during the emission of #GTlsConnection::accept-certificate.)
+ *
+ * See #GTlsConnection:peer-certificate-errors for more information.
  *
  * Returns: @conn's peer's certificate errors
  * Since: 2.28
@@ -40470,6 +41412,9 @@
  * #GTlsConnection::accept-certificate will always be emitted on
  * client-side connections, unless that bit is not set in
  * #GTlsClientConnection:validation-flags).
+ *
+ * There are nonintuitive security implications when using a non-default
+ * database. See #GTlsConnection:database for details.
  *
  * Since: 2.30
  */
@@ -40787,7 +41732,7 @@
  * certificate in the chain by its #GTlsCertificate:issuer property.
  *
  * @purpose describes the purpose (or usage) for which the certificate
- * is being used. Typically @purpose will be set to #G_TLS_DATABASE_PURPOSE_AUTHENTICATE_SERVER
+ * is being used. Typically @purpose will be set to %G_TLS_DATABASE_PURPOSE_AUTHENTICATE_SERVER
  * which means that the certificate is being used to authenticate a server
  * (and we are acting as the client).
  *
@@ -40803,13 +41748,21 @@
  * used.
  *
  * If @chain is found to be valid, then the return value will be 0. If
- * @chain is found to be invalid, then the return value will indicate
- * the problems found. If the function is unable to determine whether
- * @chain is valid or not (eg, because @cancellable is triggered
- * before it completes) then the return value will be
- * %G_TLS_CERTIFICATE_GENERIC_ERROR and @error will be set
- * accordingly. @error is not set when @chain is successfully analyzed
- * but found to be invalid.
+ * @chain is found to be invalid, then the return value will indicate at
+ * least one problem found. If the function is unable to determine
+ * whether @chain is valid (for example, because @cancellable is
+ * triggered before it completes) then the return value will be
+ * %G_TLS_CERTIFICATE_GENERIC_ERROR and @error will be set accordingly.
+ * @error is not set when @chain is successfully analyzed but found to
+ * be invalid.
+ *
+ * GLib guarantees that if certificate verification fails, at least one
+ * error will be set in the return value, but it does not guarantee
+ * that all possible errors will be set. Accordingly, you may not safely
+ * decide to ignore any particular type of error. For example, it would
+ * be incorrect to mask %G_TLS_CERTIFICATE_EXPIRED if you want to allow
+ * expired certificates, because this could potentially be the only
+ * error flag set even if other problems exist with the certificate.
  *
  * Prior to GLib 2.48, GLib's default TLS backend modified @chain to
  * represent the certification path built by #GTlsDatabase during
@@ -40821,14 +41774,14 @@
  *
  * Because TLS session context is not used, #GTlsDatabase may not
  * perform as many checks on the certificates as #GTlsConnection would.
- * For example, certificate constraints cannot be honored, and some
- * revocation checks cannot be performed. The best way to verify TLS
+ * For example, certificate constraints may not be honored, and
+ * revocation checks may not be performed. The best way to verify TLS
  * certificates used by a TLS connection is to let #GTlsConnection
  * handle the verification.
  *
  * The TLS backend may attempt to look up and add missing certificates
- * to the chain. Since GLib 2.70, this may involve HTTP requests to
- * download missing certificates.
+ * to the chain. This may involve HTTP requests to download missing
+ * certificates.
  *
  * This function can block. Use g_tls_database_verify_chain_async() to
  * perform the verification operation asynchronously.

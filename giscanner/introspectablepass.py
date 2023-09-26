@@ -40,6 +40,7 @@ class IntrospectablePass(object):
         self._namespace.walk(self._introspectable_property_analysis)
         self._namespace.walk(self._introspectable_pass3)
         self._namespace.walk(self._remove_non_reachable_backcompat_copies)
+        self._namespace.walk(self._introspectable_symbol_collisions)
 
     def _parameter_warning(self, parent, param, text, position=None):
         # Suppress VFunctions and Callbacks warnings for now
@@ -103,7 +104,7 @@ class IntrospectablePass(object):
                 parent,
                 node,
                 "Missing (scope) annotation for callback without "
-                "GDestroyNotify (valid: %s, %s)" % (ast.PARAM_SCOPE_CALL, ast.PARAM_SCOPE_ASYNC))
+                "GDestroyNotify (valid: %s, %s, %s)" % (ast.PARAM_SCOPE_CALL, ast.PARAM_SCOPE_ASYNC, ast.PARAM_SCOPE_FOREVER))
 
             parent.introspectable = False
             return
@@ -208,6 +209,41 @@ class IntrospectablePass(object):
             if not self._type_is_introspectable(obj.retval.type):
                 obj.introspectable = False
                 return True
+        if isinstance(obj, ast.Signal):
+            if obj.emitter is None:
+                return False
+            parent = stack[0]
+            for method in parent.methods:
+                if method.name != obj.emitter:
+                    continue
+                if not obj.retval.type.is_equiv(method.retval.type):
+                    self._parameter_warning(
+                        parent,
+                        obj,
+                        "Emitter method %s for signal %s::%s does not have the "
+                        "same return value type" % (method.symbol, parent.name, obj.name))
+                    obj.emitter = None
+                    return False
+                n_emitter_params = len(method.parameters)
+                n_signal_params = len(obj.parameters)
+                if n_emitter_params != n_signal_params:
+                    self._parameter_warning(
+                        parent,
+                        obj,
+                        "Emitter method %s for signal %s::%s does not have the "
+                        "same number of arguments (expected: %d)" % (method.symbol, parent.name, obj.name, n_signal_params))
+                    obj.emitter = None
+                    return False
+                for idx, signal_param in enumerate(obj.parameters):
+                    method_param = method.parameters[idx + 1]
+                    if signal_param.type.is_equiv(method_param.type):
+                        self._parameter_warning(
+                            parent,
+                            obj,
+                            "Emitter method %s for signal %s::%s does not have the "
+                            "same type of arguments" % (method.symbol, parent.name, obj.name))
+                        obj.emitter = None
+                        return False
         return True
 
     def _introspectable_property_analysis(self, obj, stack):
@@ -259,4 +295,44 @@ class IntrospectablePass(object):
             # remove functions that are not introspectable
             if not obj.introspectable:
                 obj.internal_skipped = True
+        return True
+
+    def _property_warning(self, parent, prop, text, position=None):
+        context = "property %s:%s: " % (parent.name, prop.name, )
+        message.strict_node(parent, context + text, positions=position)
+
+    def _property_signal_collision(self, obj, prop):
+        for s in obj.signals:
+            if s.skip or not s.introspectable:
+                continue
+            if s.name.replace('-', '_') == prop.name.replace('-', '_'):
+                self._property_warning(obj, prop, "Properties cannot have the same name as signals")
+        return False
+
+    def _property_method_collision(self, obj, prop):
+        for m in obj.methods:
+            if m.skip or not m.introspectable:
+                continue
+            if m.name == prop.name.replace('-', '_'):
+                self._property_warning(obj, prop, "Properties cannot have the same name as methods")
+        return False
+
+    def _property_vfunc_collision(self, obj, prop):
+        for vfunc in obj.virtual_methods:
+            if vfunc.skip or not vfunc.introspectable:
+                continue
+            if vfunc.name == prop.name.replace('-', '_'):
+                self._property_warning(obj, prop, "Properties cannot have the same name as virtual methods")
+        return False
+
+    def _introspectable_symbol_collisions(self, obj, stack):
+        if obj.skip:
+            return False
+        if isinstance(obj, (ast.Class, ast.Interface)):
+            for prop in obj.properties:
+                if prop.skip or not prop.introspectable:
+                    continue
+                self._property_signal_collision(obj, prop)
+                self._property_method_collision(obj, prop)
+                self._property_vfunc_collision(obj, prop)
         return True

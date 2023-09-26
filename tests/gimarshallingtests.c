@@ -3562,6 +3562,35 @@ gi_marshalling_tests_return_gvalue_flat_array (void)
 }
 
 /**
+ * gi_marshalling_tests_gvalue_round_trip:
+ * @value: The first GValue
+ *
+ * Returns: (transfer none):
+ */
+GValue *
+gi_marshalling_tests_gvalue_round_trip (GValue *value)
+{
+  return value;
+}
+
+/**
+ * gi_marshalling_tests_gvalue_copy:
+ * @value: The first GValue
+ *
+ * Returns: (transfer full):
+ */
+GValue *
+gi_marshalling_tests_gvalue_copy (GValue *value)
+{
+  GValue *return_value = g_new0 (GValue, 1);
+
+  g_value_init (return_value, G_VALUE_TYPE (value));
+  g_value_copy (value, return_value);
+
+  return return_value;
+}
+
+/**
  * gi_marshalling_tests_gvalue_flat_array_round_trip:
  * @one: The first GValue
  * @two: The second GValue
@@ -5524,6 +5553,7 @@ enum
   SOME_INT64_PROPERTY,
   SOME_UINT64_PROPERTY,
   SOME_FLOAT_PROPERTY,
+  SOME_STRING_PROPERTY,
   SOME_DOUBLE_PROPERTY,
   SOME_STRV_PROPERTY,
   SOME_BOXED_STRUCT_PROPERTY,
@@ -5554,6 +5584,7 @@ gi_marshalling_tests_properties_object_finalize (GObject *obj)
     self->some_gvalue = NULL;
   }
 
+  g_clear_pointer (&self->some_string, g_free);
   g_clear_pointer (&self->some_strv, g_strfreev);
   g_clear_pointer (&self->some_boxed_struct, gi_marshalling_tests_boxed_struct_free);
   g_clear_pointer (&self->some_variant, g_variant_unref);
@@ -5603,6 +5634,9 @@ gi_marshalling_tests_properties_object_get_property (GObject *object,
       break;
     case SOME_DOUBLE_PROPERTY:
       g_value_set_double (value, self->some_double);
+      break;
+    case SOME_STRING_PROPERTY:
+      g_value_set_string (value, self->some_string);
       break;
     case SOME_STRV_PROPERTY:
       g_value_set_boxed (value, self->some_strv);
@@ -5680,6 +5714,10 @@ gi_marshalling_tests_properties_object_set_property (GObject *object,
       break;
     case SOME_DOUBLE_PROPERTY:
       self->some_double = g_value_get_double (value);
+      break;
+    case SOME_STRING_PROPERTY:
+      g_clear_pointer (&self->some_string, g_free);
+      self->some_string = g_value_dup_string (value);
       break;
     case SOME_STRV_PROPERTY:
       g_strfreev (self->some_strv);
@@ -5811,6 +5849,13 @@ static void gi_marshalling_tests_properties_object_class_init (GIMarshallingTest
                                                         "some-double",
                                                         -1 * G_MAXDOUBLE,
                                                         G_MAXDOUBLE, 0,
+                                                        G_PARAM_READABLE | G_PARAM_WRITABLE | G_PARAM_CONSTRUCT));
+
+  g_object_class_install_property (object_class, SOME_STRING_PROPERTY,
+                                   g_param_spec_string ("some-string",
+                                                        "some-string",
+                                                        "some-string",
+                                                        NULL,
                                                         G_PARAM_READABLE | G_PARAM_WRITABLE | G_PARAM_CONSTRUCT));
 
   g_object_class_install_property (object_class, SOME_STRV_PROPERTY,

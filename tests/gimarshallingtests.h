@@ -1148,6 +1148,12 @@ GValue *gi_marshalling_tests_return_gvalue_flat_array (void);
 
 
 _GI_TEST_EXTERN
+GValue *gi_marshalling_tests_gvalue_round_trip (GValue *value);
+
+_GI_TEST_EXTERN
+GValue *gi_marshalling_tests_gvalue_copy (GValue *value);
+
+_GI_TEST_EXTERN
 GValue *gi_marshalling_tests_gvalue_flat_array_round_trip (const GValue one,
                                                            const GValue two,
                                                            const GValue three);
@@ -2026,6 +2032,7 @@ struct _GIMarshallingTestsPropertiesObject {
     guint64 some_uint64;
     gfloat some_float;
     gdouble some_double;
+    gchar *some_string;
     gchar **some_strv;
     GIMarshallingTestsBoxedStruct* some_boxed_struct;
     GList* some_boxed_glist;

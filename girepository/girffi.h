@@ -53,7 +53,7 @@ typedef struct _GIFunctionInvoker GIFunctionInvoker;
 struct _GIFunctionInvoker {
   ffi_cif cif;
   gpointer native_address;
-  /* <private> */
+  /*< private >*/
   gpointer padding[3];
 };
 
@@ -75,6 +75,12 @@ void          gi_type_info_extract_ffi_return_value (GITypeInfo                 
                                                      GIFFIReturnValue            *ffi_value,
                                                      GIArgument                  *arg);
 
+GI_AVAILABLE_IN_1_72
+void          gi_type_tag_extract_ffi_return_value (GITypeTag         return_tag,
+                                                    GIInfoType        interface_type,
+                                                    GIFFIReturnValue *ffi_value,
+                                                    GIArgument       *arg);
+
 GI_AVAILABLE_IN_ALL
 gboolean      g_function_info_prep_invoker        (GIFunctionInfo       *info,
                                                    GIFunctionInvoker    *invoker,
@@ -90,14 +96,30 @@ GI_AVAILABLE_IN_ALL
 void          g_function_invoker_destroy          (GIFunctionInvoker    *invoker);
 
 
-GI_AVAILABLE_IN_ALL
+GI_DEPRECATED_IN_1_72_FOR(g_callable_info_create_closure)
 ffi_closure * g_callable_info_prepare_closure     (GICallableInfo       *callable_info,
                                                    ffi_cif              *cif,
                                                    GIFFIClosureCallback  callback,
                                                    gpointer              user_data);
-GI_AVAILABLE_IN_ALL
+
+GI_DEPRECATED_IN_1_72_FOR(g_callable_info_destroy_closure)
 void          g_callable_info_free_closure        (GICallableInfo       *callable_info,
                                                    ffi_closure          *closure);
+
+
+GI_AVAILABLE_IN_1_72
+ffi_closure * g_callable_info_create_closure (GICallableInfo       *callable_info,
+                                              ffi_cif              *cif,
+                                              GIFFIClosureCallback  callback,
+                                              gpointer              user_data);
+
+GI_AVAILABLE_IN_1_72
+gpointer * g_callable_info_get_closure_native_address (GICallableInfo       *callable_info,
+                                                       ffi_closure          *closure);
+
+GI_AVAILABLE_IN_1_72
+void          g_callable_info_destroy_closure (GICallableInfo       *callable_info,
+                                               ffi_closure          *closure);
 
 G_END_DECLS
 

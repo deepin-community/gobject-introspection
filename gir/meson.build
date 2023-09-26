@@ -1,3 +1,24 @@
+gir_files = [
+  'DBus-1.0.gir',
+  'DBusGLib-1.0.gir',
+  'fontconfig-2.0.gir',
+  'freetype2-2.0.gir',
+  'GL-1.0.gir',
+  'libxml2-2.0.gir',
+  'Vulkan-1.0.gir',
+  'xft-2.0.gir',
+  'xlib-2.0.gir',
+  'xfixes-4.0.gir',
+  'xrandr-1.3.gir',
+  'win32-1.0.gir',
+]
+# Copy gir files to build directory to have them all in a single place.
+# This is needed when gobject-introspection is a subproject because Meson
+# will add --includedir pointing to build directory automatically.
+foreach gir : gir_files
+  configure_file(input: gir, output: gir, copy: true)
+endforeach
+
 cairo_conf = configuration_data()
 if get_option('cairo_libname') != ''
   cairo_library_name = get_option('cairo_libname')
@@ -21,22 +42,7 @@ cairo_gir = configure_file(
   output: 'cairo-1.0.gir',
   configuration: cairo_conf,
 )
-
-gir_files = [
-  cairo_gir,
-  'DBus-1.0.gir',
-  'DBusGLib-1.0.gir',
-  'fontconfig-2.0.gir',
-  'freetype2-2.0.gir',
-  'GL-1.0.gir',
-  'libxml2-2.0.gir',
-  'Vulkan-1.0.gir',
-  'xft-2.0.gir',
-  'xlib-2.0.gir',
-  'xfixes-4.0.gir',
-  'xrandr-1.3.gir',
-  'win32-1.0.gir',
-]
+gir_files += [cairo_gir]
 
 typelibdir = join_paths(get_option('libdir'), 'girepository-1.0')
 install_data(gir_files, install_dir: girdir)
@@ -98,8 +104,8 @@ glib_command = scanner_command + [
 
 if dep_type == 'pkgconfig'
   glib_command += ['--external-library', '--pkg=glib-2.0']
-  glib_libdir = get_option('gi_cross_pkgconfig_sysroot_path') + glib_dep.get_pkgconfig_variable('libdir')
-  glib_incdir = get_option('gi_cross_pkgconfig_sysroot_path') + join_paths(glib_dep.get_pkgconfig_variable('includedir'), 'glib-2.0')
+  glib_libdir = get_option('gi_cross_pkgconfig_sysroot_path') + glib_dep.get_variable(pkgconfig: 'libdir')
+  glib_incdir = get_option('gi_cross_pkgconfig_sysroot_path') + join_paths(glib_dep.get_variable(pkgconfig: 'includedir'), 'glib-2.0')
   glib_libincdir = join_paths(glib_libdir, 'glib-2.0', 'include')
   glib_files += join_paths(glib_incdir, 'gobject', 'glib-types.h')
   glib_files += join_paths(glib_libincdir, 'glibconfig.h')
@@ -107,7 +113,7 @@ if dep_type == 'pkgconfig'
     glib_files += join_paths(glib_incdir, 'glib-unix.h')
   endif
   # Parse glob to get installed header list
-  ret = run_command(python, '-c', globber.format(join_paths(glib_incdir, 'glib', '*.h')))
+  ret = run_command(python, '-c', globber.format(join_paths(glib_incdir, 'glib', '*.h')), check: true)
   if ret.returncode() != 0
     error('Failed to get glib header list')
   endif
@@ -115,7 +121,7 @@ if dep_type == 'pkgconfig'
   # Get a list of all source files
   glib_srcdir = get_option('glib_src_dir')
   if glib_srcdir != ''
-    ret = run_command(python, '-c', globber.format(join_paths(glib_srcdir, 'glib', '*.c')))
+    ret = run_command(python, '-c', globber.format(join_paths(glib_srcdir, 'glib', '*.c')), check: true)
     if ret.returncode() != 0
       error('Failed to get glib source list')
     endif
@@ -133,20 +139,20 @@ elif dep_type == 'internal'
   # We know exactly what headers will be installed, so just fetch that
   glib_subproject = subproject('glib')
 
-  glibproj_sourcedir = join_paths(meson.source_root(), subprojdir, 'glib')
-  glibproj_builddir = join_paths(meson.build_root(), subprojdir, 'glib')
+  glibproj_sourcedir = join_paths(meson.global_source_root(), subprojdir, 'glib')
+  glibproj_builddir = join_paths(meson.global_build_root(), subprojdir, 'glib')
 
-  glib_files += join_paths(glibproj_sourcedir, 'gobject', 'glib-types.h')
+  glib_files += glib_subproject.get_variable('glib_types_h')
 
   # Generated files, relative to the build directory
   glib_files += [
-    join_paths(glibproj_builddir, 'glib', 'glibconfig.h'),
+    glib_subproject.get_variable('glibconfig_h'),
     glib_subproject.get_variable('glib_enumtypes_h'),
   ]
 
   if giounix_dep.found()
     glib_files += [
-      join_paths(glibproj_sourcedir, 'glib', 'glib-unix.h'),
+      glib_subproject.get_variable('glib_unix_h')
     ]
   endif
 
@@ -184,13 +190,13 @@ elif dep_type == 'internal'
   # XXX: We need include paths to all glib dependencies too. We assume that the
   # dependencies are only libffi and proxy-libintl, and that they are used as
   # subprojects. In the worst case we add paths to non-existent directories.
-  ffi_incdir = join_paths(meson.build_root(), subprojdir, 'libffi', 'include')
+  ffi_incdir = join_paths(meson.global_build_root(), subprojdir, 'libffi', 'include')
   glib_includes += ['-I' + ffi_incdir]
-  intl_incdir = join_paths(meson.source_root(), subprojdir, 'proxy-libintl')
+  intl_incdir = join_paths(meson.global_source_root(), subprojdir, 'proxy-libintl')
   glib_includes += ['-I' + intl_incdir]
 
-  ffi_libdir = join_paths(meson.build_root(), subprojdir, 'libffi', 'src')
-  intl_libdir = join_paths(meson.build_root(), subprojdir, 'proxy-libintl')
+  ffi_libdir = join_paths(meson.global_build_root(), subprojdir, 'libffi', 'src')
+  intl_libdir = join_paths(meson.global_build_root(), subprojdir, 'proxy-libintl')
   glib_libpaths = [
     '-L' + ffi_libdir,
     '-L' + intl_libdir,
@@ -257,13 +263,13 @@ gobject_command = scanner_command + [
 if dep_type == 'pkgconfig'
   gobject_command += ['--external-library', '--pkg=gobject-2.0']
   # Get the installed header list
-  ret = run_command(python, '-c', globber.format(join_paths(glib_incdir, 'gobject', '*.h')))
+  ret = run_command(python, '-c', globber.format(join_paths(glib_incdir, 'gobject', '*.h')), check: true)
   if ret.returncode() != 0
     error('Failed to get gobject header list')
   endif
   gobject_headers = ret.stdout().strip().split('\n')
   if glib_srcdir != ''
-    ret = run_command(python, '-c', globber.format(join_paths(glib_srcdir, 'gobject', '*.c')))
+    ret = run_command(python, '-c', globber.format(join_paths(glib_srcdir, 'gobject', '*.c')), check: true)
     if ret.returncode() != 0
       error('Failed to get gobject source list')
     endif
@@ -332,8 +338,8 @@ else
   gmodule_command += ['--pkg-export=gmodule-2.0']
   gmodule_command += glib_libpaths
   gmodule_files += [
-    join_paths(glibproj_sourcedir, 'gmodule', 'gmodule.h'),
-    join_paths(glibproj_sourcedir, 'gmodule', 'gmodule.c'),
+    glib_subproject.get_variable('gmodule_h'),
+    glib_subproject.get_variable('gmodule_c'),
     glib_subproject.get_variable('gmoduleconf_h'),
   ]
   gmodule_gir_dep = glib_subproject.get_variable('libgmodule')
@@ -373,7 +379,7 @@ gio_command = scanner_command + [
 if dep_type == 'pkgconfig'
   gio_command += ['--external-library', '--pkg=gio-2.0']
   # Get the installed header list
-  ret = run_command(python, '-c', globber.format(join_paths(glib_incdir, 'gio', '*.h')))
+  ret = run_command(python, '-c', globber.format(join_paths(glib_incdir, 'gio', '*.h')), check: true)
   if ret.returncode() != 0
     error('Failed to get gio header list')
   endif
@@ -382,7 +388,7 @@ if dep_type == 'pkgconfig'
   # probably fine since it matches what Autotools does. We are more exact in
   # the subproject case.
   if glib_srcdir != ''
-    ret = run_command(python, '-c', globber.format(join_paths(glib_srcdir, 'gio', '*.c')))
+    ret = run_command(python, '-c', globber.format(join_paths(glib_srcdir, 'gio', '*.c')), check: true)
     if ret.returncode() != 0
       error('Failed to get gio source list')
     endif
@@ -412,9 +418,9 @@ if giounix_dep.found()
   dep_type = giounix_dep.type_name()
   if dep_type == 'pkgconfig'
     gio_command += ['--pkg=gio-unix-2.0']
-    giounix_includedir = get_option('gi_cross_pkgconfig_sysroot_path') + join_paths(giounix_dep.get_pkgconfig_variable('includedir'), 'gio-unix-2.0')
+    giounix_includedir = get_option('gi_cross_pkgconfig_sysroot_path') + join_paths(giounix_dep.get_variable(pkgconfig: 'includedir'), 'gio-unix-2.0')
     # Get the installed gio-unix header list
-    ret = run_command(python, '-c', globber.format(join_paths(giounix_includedir, 'gio', '*.h')))
+    ret = run_command(python, '-c', globber.format(join_paths(giounix_includedir, 'gio', '*.h')), check: true)
     if ret.returncode() != 0
       error('Failed to get gio-unix header list')
     endif

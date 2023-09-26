@@ -1,4 +1,9 @@
 version=4
-opts="searchmode=plain, uversionmangle=s/\.(alpha|beta|rc)/~$1/" \
+opts="searchmode=plain, dversionmangle=s/[+~](?:ds|dfsg)[0-9]*$//, uversionmangle=s/\.(?:alpha|beta|rc)/~$1/, downloadurlmangle=s|cache.json||" \
 https://download.gnome.org/sources/@PACKAGE@/cache.json \
-	[\d.]+[02468]/@PACKAGE@-([\d.]+)@ARCHIVE_EXT@
+	[\d.]+/@PACKAGE@-@ANY_VERSION@@ARCHIVE_EXT@
+# Update the version in parentheses as needed to correspond to the version
+# of GLib for which a subset is present in gir/g*.c
+opts="searchmode=plain, dversionmangle=s/[+~](?:ds|dfsg)[0-9]*$//, uversionmangle=s/\.(?:alpha|beta|rc)/~$1/, downloadurlmangle=s|cache.json||, component=glib" \
+https://download.gnome.org/sources/glib/cache.json \
+	[\d.]+/glib-(2\.74\.0)@ARCHIVE_EXT@
