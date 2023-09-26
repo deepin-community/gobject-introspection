@@ -45,8 +45,62 @@ G_BEGIN_DECLS
  * @tag: a type tag
  *
  * Checks if @tag is a basic type.
+ *
+ * Deprecated: 1.72: Use GI_TYPE_TAG_IS_BASIC() instead
  */
-#define G_TYPE_TAG_IS_BASIC(tag) (tag < GI_TYPE_TAG_ARRAY || tag == GI_TYPE_TAG_UNICHAR)
+#define G_TYPE_TAG_IS_BASIC(tag) GI_TYPE_TAG_IS_BASIC(tag)
+
+/**
+ * GI_TYPE_TAG_IS_BASIC
+ * @tag: a type tag
+ *
+ * Checks if @tag is a basic type.
+ *
+ * Since: 1.72
+ */
+#define GI_TYPE_TAG_IS_BASIC(tag) ((tag) < GI_TYPE_TAG_ARRAY || (tag) == GI_TYPE_TAG_UNICHAR)
+
+/**
+ * GI_TYPE_TAG_IS_NUMERIC:
+ * @tag: a type tag
+ *
+ * Checks if @tag is a numeric type. That is, integer or floating point.
+ *
+ * Since: 1.72
+ */
+#define GI_TYPE_TAG_IS_NUMERIC(tag) ((tag) >= GI_TYPE_TAG_INT8 && (tag) <= GI_TYPE_TAG_DOUBLE)
+
+/**
+ * GI_TYPE_TAG_IS_NUMERIC:
+ * @tag: a type tag
+ *
+ * Checks if @tag is a numeric type. That is, integer or floating point.
+ *
+ * Since: 1.72
+ */
+#define GI_TYPE_TAG_IS_NUMERIC(tag) ((tag) >= GI_TYPE_TAG_INT8 && (tag) <= GI_TYPE_TAG_DOUBLE)
+
+/**
+ * GI_TYPE_TAG_IS_NUMERIC:
+ * @tag: a type tag
+ *
+ * Checks if @tag is a numeric type. That is, integer or floating point.
+ *
+ * Since: 1.72
+ */
+#define GI_TYPE_TAG_IS_NUMERIC(tag) ((tag) >= GI_TYPE_TAG_INT8 && (tag) <= GI_TYPE_TAG_DOUBLE)
+
+/**
+ * GI_TYPE_TAG_IS_CONTAINER:
+ * @tag: a type tag
+ *
+ * Checks if @tag is a container type. That is, a type which may have a nonnull
+ * return from g_type_info_get_param_type().
+ *
+ * Since: 1.72
+ */
+ #define GI_TYPE_TAG_IS_CONTAINER(tag) ((tag) == GI_TYPE_TAG_ARRAY || \
+    ((tag) >= GI_TYPE_TAG_GLIST && (tag) <= GI_TYPE_TAG_GHASH))
 
 GI_AVAILABLE_IN_ALL
 const gchar*           g_type_tag_to_string            (GITypeTag   type);
@@ -90,6 +144,15 @@ void                   g_type_info_argument_from_hash_pointer (GITypeInfo *info,
 
 GI_AVAILABLE_IN_1_66
 gpointer               g_type_info_hash_pointer_from_argument (GITypeInfo *info,
+                                                               GIArgument *arg);
+
+GI_AVAILABLE_IN_1_72
+void                   gi_type_tag_argument_from_hash_pointer (GITypeTag   storage_type,
+                                                               gpointer    hash_pointer,
+                                                               GIArgument *arg);
+
+GI_AVAILABLE_IN_1_72
+gpointer               gi_type_tag_hash_pointer_from_argument (GITypeTag   storage_type,
                                                                GIArgument *arg);
 
 G_END_DECLS

@@ -231,7 +231,7 @@ write_type_info (const gchar *namespace,
 
       xml_end_element (file, "type");
     }
-  else if (G_TYPE_TAG_IS_BASIC (tag))
+  else if (GI_TYPE_TAG_IS_BASIC (tag))
     {
       xml_start_element (file, "type");
       xml_printf (file, " name=\"%s\"", g_type_tag_to_string (tag));
@@ -531,6 +531,9 @@ write_callable_info (const gchar    *namespace,
           break;
         case GI_SCOPE_TYPE_NOTIFIED:
           xml_printf (file, " scope=\"notified\"");
+          break;
+        case GI_SCOPE_TYPE_FOREVER:
+          xml_printf (file, " scope=\"forever\"");
           break;
         default:
           g_assert_not_reached ();

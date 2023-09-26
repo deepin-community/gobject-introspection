@@ -205,6 +205,9 @@ match the namespace prefix.""")
     parser.add_option('', "--warn-error",
                       action="store_true", dest="warn_fatal",
                       help="Turn warnings into fatal errors")
+    parser.add_option('', "--strict",
+                      action="store_true", dest="warn_strict", default=False,
+                      help="If true, enable strict warnings for introspection")
     parser.add_option("-v", "--verbose",
                       action="store_true", dest="verbose",
                       help="be verbose")
@@ -214,6 +217,9 @@ match the namespace prefix.""")
     parser.add_option("", "--filelist",
                       action="store", dest="filelist", default=[],
                       help="file containing headers and sources to be scanned")
+    parser.add_option("", "--compiler",
+                      action="store", dest="compiler", default=None,
+                      help="the C compiler to use internally")
 
     group = get_preprocessor_option_group(parser)
     parser.add_option_group(group)
@@ -455,6 +461,8 @@ def create_source_scanner(options, args):
     # Run the preprocessor, tokenize and construct simple
     # objects representing the raw C symbols
     ss = SourceScanner()
+    if hasattr(options, 'compiler') and options.compiler:
+        ss.set_compiler(options.compiler)
     ss.set_cpp_options(options.cpp_includes,
                        options.cpp_defines,
                        options.cpp_undefines,
@@ -471,7 +479,7 @@ def create_source_scanner(options, args):
 def write_output(data, options):
     """Write encoded XML 'data' to the filename specified in 'options'."""
     if options.output == "-":
-        output = sys.stdout
+        output = sys.stdout.buffer
         try:
             output.write(data)
         except IOError as e:
@@ -576,6 +584,8 @@ def scanner_main(args):
     logger = message.MessageLogger.get(namespace=namespace)
     if options.warn_all:
         logger.enable_warnings(True)
+    if options.warn_strict:
+        logger.enable_strict(True)
 
     transformer = create_transformer(namespace, options)
 
@@ -610,11 +620,12 @@ def scanner_main(args):
     final = IntrospectablePass(transformer, blocks)
     final.validate()
 
+    show_suppression = options.warn_all is False and options.warn_strict is False and options.quiet is False
     warning_count = logger.get_warning_count()
     if options.warn_fatal and warning_count > 0:
         message.fatal("warnings configured as fatal")
         return 1
-    elif warning_count > 0 and options.warn_all is False and options.quiet is False:
+    elif warning_count > 0 and show_suppression:
         print("g-ir-scanner: %s: warning: %d warnings suppressed "
               "(use --warn-all to see them)" %
               (transformer.namespace.name, warning_count, ))

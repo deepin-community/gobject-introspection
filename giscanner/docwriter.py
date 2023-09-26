@@ -945,7 +945,7 @@ class DocFormatterGjs(DocFormatterIntrospectableBase):
             if giname == 'Gdk.Atom':
                 return 'String'
             if giname in ('GLib.ByteArray', 'GLib.Bytes'):
-                return 'ByteArray'
+                return 'Uint8Array'
             if giname == 'GObject.Value':
                 return 'Any'
             if giname == 'GObject.Closure':
@@ -1274,6 +1274,12 @@ class DevDocsFormatterGjs(DocFormatterGjs):
     def format_in_parameters(self, node):
         return ', '.join(p.argname for p in self.get_in_parameters(node))
 
+    def format_signal_parameters(self, node):
+        emitter = self.to_lower_camel_case(node.parent.name)
+        in_params = self.format_in_parameters(node)
+
+        return '%s, %s' % (emitter, in_params) if in_params else emitter
+
 
 LANGUAGES = {
     "devdocs": {
@@ -1288,7 +1294,7 @@ LANGUAGES = {
 
 
 class DocWriter(object):
-    def __init__(self, transformer, language, output_format):
+    def __init__(self, transformer, language, output_format, templates_dir=None):
         self._transformer = transformer
 
         try:
@@ -1300,18 +1306,20 @@ class DocWriter(object):
         self._formatter = formatter_class(self._transformer)
         self._language = self._formatter.language
         self._output_format = output_format
+        self._templates_dir = templates_dir
 
         self._lookup = self._get_template_lookup()
 
     def _get_template_lookup(self):
-        if 'UNINSTALLED_INTROSPECTION_SRCDIR' in os.environ:
+        if self._templates_dir is not None:
+            srcdir = self._templates_dir
+        elif 'UNINSTALLED_INTROSPECTION_SRCDIR' in os.environ:
             top_srcdir = os.environ['UNINSTALLED_INTROSPECTION_SRCDIR']
-            srcdir = os.path.join(top_srcdir, 'giscanner')
+            srcdir = os.path.join(top_srcdir, 'giscanner', 'doctemplates')
         else:
-            srcdir = os.path.dirname(__file__)
+            srcdir = os.path.join(os.path.dirname(__file__), 'doctemplates')
 
-        template_dir = os.path.join(srcdir, 'doctemplates',
-                                    self._formatter.output_format)
+        template_dir = os.path.join(srcdir, self._formatter.output_format)
 
         return TemplateLookup(directories=[template_dir],
                               module_directory=tempfile.mkdtemp(),

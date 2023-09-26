@@ -36,22 +36,12 @@
  * @short_description: Struct representing a function
  *
  * GIFunctionInfo represents a function, method or constructor.
+ *
  * To find out what kind of entity a #GIFunctionInfo represents, call
  * g_function_info_get_flags().
  *
  * See also #GICallableInfo for information on how to retreive arguments and
  * other metadata.
- *
- * <refsect1 id="gi-gifunctioninfo.struct-hierarchy" role="struct_hierarchy">
- * <title role="struct_hierarchy.title">Struct hierarchy</title>
- * <synopsis>
- *   <link linkend="GIBaseInfo">GIBaseInfo</link>
- *    +----<link linkend="gi-GICallableInfo">GICallableInfo</link>
- *          +----GIFunctionInfo
- *          +----<link linkend="gi-GISignalInfo">GISignalInfo</link>
- *          +----<link linkend="gi-GIVFuncInfo">GIVFuncInfo</link>
- * </synopsis>
- * </refsect1>
  */
 
 GIFunctionInfo *
@@ -247,8 +237,7 @@ g_invoke_error_quark (void)
  *    may be %NULL
  * @n_out_args: the length of the @out_args array
  * @return_value: return location for the return value of the
- *    function. If the function returns void, @return_value may be
- *    %NULL
+ *    function.
  * @error: return location for detailed error information, or %NULL
  *
  * Invokes the function described in @info with the given

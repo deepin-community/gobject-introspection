@@ -10,7 +10,7 @@ Forwarded: not-needed
  1 file changed, 3 insertions(+)
 
 diff --git a/girepository/girepository.c b/girepository/girepository.c
-index 7d03485..149f23c 100644
+index a0754f4..28aee6d 100644
 --- a/girepository/girepository.c
 +++ b/girepository/girepository.c
 @@ -221,6 +221,9 @@ init_globals (void)

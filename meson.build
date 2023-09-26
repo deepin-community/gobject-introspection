@@ -1,13 +1,15 @@
 project('gobject-introspection', 'c',
-  version: '1.70.0',
-  meson_version: '>= 0.55.3',
+  version: '1.74.0',
+  meson_version: '>= 0.60.0',
   default_options: [
+    'c_std=gnu99',
     'warning_level=2',
     'buildtype=debugoptimized',
   ],
 )
 
 host_system = host_machine.system()
+host_arch = host_machine.cpu_family()
 gi_versions = meson.project_version().split('.')
 build_root = meson.current_build_dir()
 source_root = meson.current_source_dir()
@@ -30,7 +32,6 @@ if cc.get_id() != 'msvc'
     project_c_args += [
       '-Warray-bounds',
       '-Wcast-align',
-      '-Wdeclaration-after-statement',
       '-Wduplicated-branches',
       '-Wformat=2',
       '-Wformat-nonliteral',
@@ -122,14 +123,8 @@ else
   gi_hidden_visibility_cflags += '-fvisibility=hidden'
 endif
 
-configure_file(
-  configuration: config,
-  output: 'config.h'
-)
 
-# FIXME: Always bumped to match our version
-#glib_version = '>=2.@0@.@1@'.format(gi_versions[1], gi_versions[2])
-glib_version = '>= 2.58.0'
+glib_version = '>=2.@0@.@1@'.format(gi_versions[1], gi_versions[2])
 
 glib_dep = dependency('glib-2.0', version : glib_version,
   fallback: ['glib', 'libglib_dep'])
@@ -154,6 +149,16 @@ else
 endif
 libffi_dep = dependency('libffi',
   fallback : ['libffi', 'ffi_dep'])
+
+if not (host_system == 'darwin' and host_arch == 'aarch64' or
+        host_system == 'linux' and libffi_dep.version().version_compare('>= 3.4'))
+  config.set('LEGACY_GIRFFI_FREE', 1)
+endif
+
+configure_file(
+  configuration: config,
+  output: 'config.h'
+)
 
 # python headers
 cc.check_header('Python.h', dependencies: [python.dependency()], required: true)
@@ -193,8 +198,8 @@ with_doctool = true
 if doctool_option.disabled()
   with_doctool = false
 else
-  has_mako = run_command(python, ['-c', 'import mako']).returncode() == 0
-  has_markdown = run_command(python, ['-c', 'import markdown']).returncode() == 0
+  has_mako = run_command(python, ['-c', 'import mako'], check: false).returncode() == 0
+  has_markdown = run_command(python, ['-c', 'import markdown'], check: false).returncode() == 0
   if not has_mako or not has_markdown
     if doctool_option.enabled()
       error('doctool requires markdown and mako')
@@ -283,10 +288,7 @@ pkg.generate(
 # be named girepo_dep for backward compatibility with projects that where already
 # using that name as fallback: dependency('gobject-introspection-1.0',
 # fallback : ['gobject-introspection', 'girepo_dep'])
-# FIXME: meson.override_dependency() and declare_dependency()'s variable arguments
-# are new in Meson 0.54.0, older versions of Meson won't be able to use g-i as
-# subproject anyway
-if meson.version().version_compare('>=0.54.0') and get_option('build_introspection_data') == true
+if get_option('build_introspection_data') == true
   girepo_dep = declare_dependency(
     sources: typelibs,
     dependencies: girepo_dep,

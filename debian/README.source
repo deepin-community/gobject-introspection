@@ -1,0 +1,19 @@
+Updating to a new upstream release
+----------------------------------
+
+Before importing the new upstream release, the glib component in
+debian/watch should be updated to the version of GLib corresponding
+to the doc-comments in gir/*.c.
+
+If you're lucky, the upstream commit history of gir/ will mention which
+specific version of GLib was used to update the doc-comments. If not,
+take an educated guess.
+
+If you have chosen the right version, then the upstream procedure for
+updating gir/*.c:
+
+    meson _build
+    meson compile -C _build
+    ./misc/update-glib-annotations.py ./glib
+
+should not result in any changes to gir/*.c.

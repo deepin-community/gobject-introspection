@@ -32,7 +32,7 @@
 G_BEGIN_DECLS
 
 typedef struct _GIBaseInfoStub {
-  /* <private> */
+  /*< private >*/
   gint32 dummy1;
   gint32 dummy2;
   gpointer dummy3;
@@ -64,17 +64,6 @@ typedef GIBaseInfo GIFunctionInfo;
  * @short_description: Struct representing a callback
  *
  * GICallbackInfo represents a callback.
- *
- * <refsect1 id="gi-gicallbackinfo.struct-hierarchy" role="struct_hierarchy">
- * <title role="struct_hierarchy.title">Struct hierarchy</title>
- * <synopsis>
- *   <link linkend="GIBaseInfo">GIBaseInfo</link>
- *    +----<link linkend="gi-GICallableInfo">GICallableInfo</link>
- *          +----GIFunctionInfo
- *          +----<link linkend="gi-GISignalInfo">GISignalInfo</link>
- *          +----<link linkend="gi-GIVFuncInfo">GIVFuncInfo</link>
- * </synopsis>
- * </refsect1>
  */
 
 /**
@@ -139,14 +128,6 @@ typedef GIBaseInfo GIConstantInfo;
  * @short_description: Struct representing a value
  *
  * GIValueInfo represents a value.
- *
- * <refsect1 id="gi-givalueinfo.struct-hierarchy" role="struct_hierarchy">
- * <title role="struct_hierarchy.title">Struct hierarchy</title>
- * <synopsis>
- *   <link linkend="GIBaseInfo">GIBaseInfo</link>
- *    +----GIValueInfo
- * </synopsis>
- * </refsect1>
  */
 
 /**
@@ -358,12 +339,14 @@ typedef enum  {
  * GIScopeType:
  * @GI_SCOPE_TYPE_INVALID: The argument is not of callback type.
  * @GI_SCOPE_TYPE_CALL: The callback and associated user_data is only
- * used during the call to this function.
+ *   used during the call to this function.
  * @GI_SCOPE_TYPE_ASYNC: The callback and associated user_data is
- * only used until the callback is invoked, and the callback.
- * is invoked always exactly once.
- * @GI_SCOPE_TYPE_NOTIFIED: The callback and and associated
- * user_data is used until the caller is notfied via the destroy_notify.
+ *   only used until the callback is invoked, and the callback.
+ *   is invoked always exactly once.
+ * @GI_SCOPE_TYPE_NOTIFIED: The callback and associated
+ *   user_data is used until the caller is notfied via the destroy_notify.
+ * @GI_SCOPE_TYPE_FOREVER: The callback and associated user_data is
+ *   used until the process terminates
  *
  * Scope type of a #GIArgInfo representing callback, determines how the
  * callback is invoked and is used to decided when the invoke structs
@@ -373,7 +356,8 @@ typedef enum {
   GI_SCOPE_TYPE_INVALID,
   GI_SCOPE_TYPE_CALL,
   GI_SCOPE_TYPE_ASYNC,
-  GI_SCOPE_TYPE_NOTIFIED
+  GI_SCOPE_TYPE_NOTIFIED,
+  GI_SCOPE_TYPE_FOREVER
 } GIScopeType;
 
 /**
@@ -408,7 +392,7 @@ typedef enum {
   /* Basic types */
   GI_TYPE_TAG_VOID      =  0,
   GI_TYPE_TAG_BOOLEAN   =  1,
-  GI_TYPE_TAG_INT8      =  2,
+  GI_TYPE_TAG_INT8      =  2,  /* Start of GI_TYPE_TAG_IS_NUMERIC types */
   GI_TYPE_TAG_UINT8     =  3,
   GI_TYPE_TAG_INT16     =  4,
   GI_TYPE_TAG_UINT16    =  5,
@@ -417,16 +401,16 @@ typedef enum {
   GI_TYPE_TAG_INT64     =  8,
   GI_TYPE_TAG_UINT64    =  9,
   GI_TYPE_TAG_FLOAT     = 10,
-  GI_TYPE_TAG_DOUBLE    = 11,
+  GI_TYPE_TAG_DOUBLE    = 11,  /* End of numeric types */
   GI_TYPE_TAG_GTYPE     = 12,
   GI_TYPE_TAG_UTF8      = 13,
   GI_TYPE_TAG_FILENAME  = 14,
-  /* Non-basic types; compare with G_TYPE_TAG_IS_BASIC */
-  GI_TYPE_TAG_ARRAY     = 15,
+  /* Non-basic types; compare with GI_TYPE_TAG_IS_BASIC */
+  GI_TYPE_TAG_ARRAY     = 15,  /* container (see GI_TYPE_TAG_IS_CONTAINER) */
   GI_TYPE_TAG_INTERFACE = 16,
-  GI_TYPE_TAG_GLIST     = 17,
-  GI_TYPE_TAG_GSLIST    = 18,
-  GI_TYPE_TAG_GHASH     = 19,
+  GI_TYPE_TAG_GLIST     = 17,  /* container */
+  GI_TYPE_TAG_GSLIST    = 18,  /* container */
+  GI_TYPE_TAG_GHASH     = 19,  /* container */
   GI_TYPE_TAG_ERROR     = 20,
   /* Another basic type */
   GI_TYPE_TAG_UNICHAR   = 21

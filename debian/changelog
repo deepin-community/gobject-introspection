@@ -1,3 +1,92 @@
+gobject-introspection (1.74.0-3) unstable; urgency=medium
+
+  * Team upload
+  * d/control.in: libgirepository1.0-dev is not Multi-Arch: same.
+    libgirepository1.0-dev cannot be Multi-Arch: same, because GLib-2.0.gir
+    differs between architectures (see #905715). It also cannot usefully be
+    Multi-Arch: same because it depends on gobject-introspection, which
+    includes g-ir-scanner, which is an architecture-specific tool.
+    (Reopens: #801672; mitigates: #905715)
+  * Remove versioned constraints unnecessary since buster (oldstable)
+  * Update standards version to 4.6.2 (no changes needed)
+  * d/upstream/metadata: Add
+
+ -- Simon McVittie <smcv@debian.org>  Thu, 19 Jan 2023 19:38:57 +0000
+
+gobject-introspection (1.74.0-2) unstable; urgency=medium
+
+  * debian/control.in: Bump minimum glib to 2.74.0
+  * debian/control.in: Drop explicit glib dependency from libgirepository-1.0-1
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Mon, 19 Sep 2022 18:08:07 -0400
+
+gobject-introspection (1.74.0-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+  * d/copyright: Add copyright/licensing information for girepository/cmph.
+    Thanks to Roderich Schupp. (Closes: #1018708)
+  * Update d/watch
+    - Update GLib to 2.74.0
+    - Fix syntax of dversionmangle by escaping '+'
+    - Use non-capturing parentheses for version mangling
+
+ -- Simon McVittie <smcv@debian.org>  Sun, 18 Sep 2022 19:27:58 +0100
+
+gobject-introspection (1.73.0+ds-1) unstable; urgency=medium
+
+  * Team upload
+  * d/watch, d/gbp.conf: Add GLib source code corresponding to the
+    doc-comments found in gir/*.c as a secondary tarball (Closes: #1017890)
+  * d/copyright: Add copyright information for GLib
+  * d/copyright: Update copyright information for GObject-Introspection
+  * d/README.source: Document how to find the corresponding GLib version
+
+ -- Simon McVittie <smcv@debian.org>  Sat, 27 Aug 2022 16:48:23 +0100
+
+gobject-introspection (1.73.0-2) unstable; urgency=medium
+
+  * Release to unstable
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Mon, 22 Aug 2022 21:47:21 -0400
+
+gobject-introspection (1.73.0-1) experimental; urgency=medium
+
+  * Team upload
+  * d/watch: Look for development versions
+  * New upstream release
+  * d/control.in: Depend on GLib 2.73.x
+  * d/control.in: Build-depend on Meson 0.60.0
+  * Standards-Version: 4.6.1 (no changes required)
+  * Update patch to apply to new version
+  * Remove unused Lintian override now that #970275 was fixed
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 17 Aug 2022 10:57:01 +0100
+
+gobject-introspection (1.72.0-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+  * d/libgirepository-1.0-1.symbols.in: Add new symbols
+  * Upload to unstable
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 18 Mar 2022 12:27:20 +0000
+
+gobject-introspection (1.71.0-1) experimental; urgency=medium
+
+  * New upstream release
+  * debian/control.in: Bump minimum meson to 0.58.2
+  * Drop 2 patches applied in new release
+  * debian/libgirepository-1.0-1.symbols.in: Add new symbols
+
+ -- Jeremy Bicha <jeremy.bicha@canonical.com>  Mon, 14 Feb 2022 11:00:35 -0500
+
+gobject-introspection (1.70.0-3) unstable; urgency=medium
+
+  * Cherry-pick 2 patches to fix build with latest meson
+
+ -- Jeremy Bicha <jbicha@debian.org>  Thu, 13 Jan 2022 21:05:47 -0500
+
 gobject-introspection (1.70.0-2) unstable; urgency=medium
 
   * Team upload

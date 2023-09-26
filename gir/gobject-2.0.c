@@ -56,6 +56,15 @@
 
 
 /**
+ * GBindingGroup:source: (nullable)
+ *
+ * The source object used for binding properties.
+ *
+ * Since: 2.72
+ */
+
+
+/**
  * GObject::notify:
  * @gobject: the object which received the signal.
  * @pspec: the #GParamSpec of the property which changed.
@@ -100,6 +109,52 @@
 
 
 /**
+ * GSignalGroup::bind:
+ * @self: the #GSignalGroup
+ * @instance: a #GObject containing the new value for #GSignalGroup:target
+ *
+ * This signal is emitted when #GSignalGroup:target is set to a new value
+ * other than %NULL. It is similar to #GObject::notify on `target` except it
+ * will not emit when #GSignalGroup:target is %NULL and also allows for
+ * receiving the #GObject without a data-race.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * GSignalGroup::unbind:
+ * @self: a #GSignalGroup
+ *
+ * This signal is emitted when the target instance of @self is set to a
+ * new #GObject.
+ *
+ * This signal will only be emitted if the previous target of @self is
+ * non-%NULL.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * GSignalGroup:target:
+ *
+ * The target instance used when connecting signals.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * GSignalGroup:target-type:
+ *
+ * The #GType of the target property.
+ *
+ * Since: 2.72
+ */
+
+
+/**
  * GWeakRef:
  *
  * A structure containing a weak reference to a #GObject.
@@ -118,11 +173,14 @@
  * objects.
  *
  * If the object's #GObjectClass.dispose method results in additional
- * references to the object being held, any #GWeakRefs taken
- * before it was disposed will continue to point to %NULL.  If
- * #GWeakRefs are taken after the object is disposed and
- * re-referenced, they will continue to point to it until its refcount
+ * references to the object being held (‘re-referencing’), any #GWeakRefs taken
+ * before it was disposed will continue to point to %NULL.  Any #GWeakRefs taken
+ * during disposal and after re-referencing, or after disposal has returned due
+ * to the re-referencing, will continue to point to the object until its refcount
  * goes back to zero, at which point they too will be invalidated.
+ *
+ * It is invalid to take a #GWeakRef on an object during #GObjectClass.dispose
+ * without first having or creating a strong reference to the object.
  */
 
 
@@ -246,6 +304,24 @@
  * binding, source, and target instances to drop.
  *
  * #GBinding is available since GObject 2.26
+ */
+
+
+/**
+ * SECTION:gbindinggroup
+ * @Title: GBindingGroup
+ * @Short_description: Binding multiple properties as a group
+ * @include: glib-object.h
+ *
+ * The #GBindingGroup can be used to bind multiple properties
+ * from an object collectively.
+ *
+ * Use the various methods to bind properties from a single source
+ * object to multiple destination objects. Properties can be bound
+ * bidirectionally and are connected when the source object is set
+ * with g_binding_group_set_source().
+ *
+ * Since: 2.72
  */
 
 
@@ -467,6 +543,34 @@
  * When creating and looking up a #GParamSpec, either separator can be
  * used, but they cannot be mixed. Using `-` is considerably more
  * efficient, and is the ‘canonical form’. Using `_` is discouraged.
+ */
+
+
+/**
+ * SECTION:gsignalgroup
+ * @Title: GSignalGroup
+ * @Short_description: Manage a collection of signals on a GObject
+ *
+ * #GSignalGroup manages to simplify the process of connecting
+ * many signals to a #GObject as a group. As such there is no API
+ * to disconnect a signal from the group.
+ *
+ * In particular, this allows you to:
+ *
+ *  - Change the target instance, which automatically causes disconnection
+ *    of the signals from the old instance and connecting to the new instance.
+ *  - Block and unblock signals as a group
+ *  - Ensuring that blocked state transfers across target instances.
+ *
+ * One place you might want to use such a structure is with #GtkTextView and
+ * #GtkTextBuffer. Often times, you'll need to connect to many signals on
+ * #GtkTextBuffer from a #GtkTextView subclass. This allows you to create a
+ * signal group during instance construction, simply bind the
+ * #GtkTextView:buffer property to #GSignalGroup:target and connect
+ * all the signals you need. When the #GtkTextView:buffer property changes
+ * all of the signals will be transitioned correctly.
+ *
+ * Since: 2.72
  */
 
 
@@ -973,6 +1077,118 @@
 
 
 /**
+ * g_binding_group_bind:
+ * @self: the #GBindingGroup
+ * @source_property: the property on the source to bind
+ * @target: (type GObject) (transfer none) (not nullable): the target #GObject
+ * @target_property: the property on @target to bind
+ * @flags: the flags used to create the #GBinding
+ *
+ * Creates a binding between @source_property on the source object
+ * and @target_property on @target. Whenever the @source_property
+ * is changed the @target_property is updated using the same value.
+ * The binding flag %G_BINDING_SYNC_CREATE is automatically specified.
+ *
+ * See g_object_bind_property() for more information.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * g_binding_group_bind_full:
+ * @self: the #GBindingGroup
+ * @source_property: the property on the source to bind
+ * @target: (type GObject) (transfer none) (not nullable): the target #GObject
+ * @target_property: the property on @target to bind
+ * @flags: the flags used to create the #GBinding
+ * @transform_to: (scope notified) (nullable): the transformation function
+ *     from the source object to the @target, or %NULL to use the default
+ * @transform_from: (scope notified) (nullable): the transformation function
+ *     from the @target to the source object, or %NULL to use the default
+ * @user_data: custom data to be passed to the transformation
+ *             functions, or %NULL
+ * @user_data_destroy: function to be called when disposing the binding,
+ *     to free the resources used by the transformation functions
+ *
+ * Creates a binding between @source_property on the source object and
+ * @target_property on @target, allowing you to set the transformation
+ * functions to be used by the binding. The binding flag
+ * %G_BINDING_SYNC_CREATE is automatically specified.
+ *
+ * See g_object_bind_property_full() for more information.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * g_binding_group_bind_with_closures: (rename-to g_binding_group_bind_full)
+ * @self: the #GBindingGroup
+ * @source_property: the property on the source to bind
+ * @target: (type GObject) (transfer none) (not nullable): the target #GObject
+ * @target_property: the property on @target to bind
+ * @flags: the flags used to create the #GBinding
+ * @transform_to: (nullable) (transfer none): a #GClosure wrapping the
+ *     transformation function from the source object to the @target,
+ *     or %NULL to use the default
+ * @transform_from: (nullable) (transfer none): a #GClosure wrapping the
+ *     transformation function from the @target to the source object,
+ *     or %NULL to use the default
+ *
+ * Creates a binding between @source_property on the source object and
+ * @target_property on @target, allowing you to set the transformation
+ * functions to be used by the binding. The binding flag
+ * %G_BINDING_SYNC_CREATE is automatically specified.
+ *
+ * This function is the language bindings friendly version of
+ * g_binding_group_bind_property_full(), using #GClosures
+ * instead of function pointers.
+ *
+ * See g_object_bind_property_with_closures() for more information.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * g_binding_group_dup_source:
+ * @self: the #GBindingGroup
+ *
+ * Gets the source object used for binding properties.
+ *
+ * Returns: (transfer none) (nullable) (type GObject): a #GObject or %NULL.
+ * Since: 2.72
+ */
+
+
+/**
+ * g_binding_group_new:
+ *
+ * Creates a new #GBindingGroup.
+ *
+ * Returns: (transfer full): a new #GBindingGroup
+ * Since: 2.72
+ */
+
+
+/**
+ * g_binding_group_set_source:
+ * @self: the #GBindingGroup
+ * @source: (type GObject) (nullable) (transfer none): the source #GObject,
+ *   or %NULL to clear it
+ *
+ * Sets @source as the source object used for creating property
+ * bindings. If there is already a source object all bindings from it
+ * will be removed.
+ *
+ * Note that all properties that have been bound must exist on @source.
+ *
+ * Since: 2.72
+ */
+
+
+/**
  * g_binding_unbind:
  * @binding: a #GBinding
  *
@@ -1025,7 +1241,7 @@
  * Boxed type handling functions have to be provided to copy and free
  * opaque boxed structures of this type.
  *
- * For the general case, it is recommended to use #G_DEFINE_BOXED_TYPE
+ * For the general case, it is recommended to use G_DEFINE_BOXED_TYPE()
  * instead of calling g_boxed_type_register_static() directly. The macro
  * will create the appropriate `*_get_type()` function for the boxed type.
  *
@@ -2663,9 +2879,11 @@
  * class initialization:
  *
  * |[<!-- language="C" -->
- * enum {
- *   PROP_0, PROP_FOO, PROP_BAR, N_PROPERTIES
- * };
+ * typedef enum {
+ *   PROP_FOO = 1,
+ *   PROP_BAR,
+ *   N_PROPERTIES
+ * } MyObjectProperty;
  *
  * static GParamSpec *obj_properties[N_PROPERTIES] = { NULL, };
  *
@@ -2678,17 +2896,17 @@
  *     g_param_spec_int ("foo", "Foo", "Foo",
  *                       -1, G_MAXINT,
  *                       0,
- *                       G_PARAM_READWRITE);
+ *                       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
  *
  *   obj_properties[PROP_BAR] =
  *     g_param_spec_string ("bar", "Bar", "Bar",
  *                          NULL,
- *                          G_PARAM_READWRITE);
+ *                          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
  *
  *   gobject_class->set_property = my_object_set_property;
  *   gobject_class->get_property = my_object_get_property;
  *   g_object_class_install_properties (gobject_class,
- *                                      N_PROPERTIES,
+ *                                      G_N_ELEMENTS (obj_properties),
  *                                      obj_properties);
  * }
  * ]|
@@ -2782,8 +3000,8 @@
  *
  * The signal specs expected by this function have the form
  * "modifier::signal_name", where modifier can be one of the following:
- * - signal: equivalent to g_signal_connect_data (..., NULL, 0)
- * - object-signal, object_signal: equivalent to g_signal_connect_object (..., 0)
+ * - signal: equivalent to g_signal_connect_data (..., NULL, G_CONNECT_DEFAULT)
+ * - object-signal, object_signal: equivalent to g_signal_connect_object (..., G_CONNECT_DEFAULT)
  * - swapped-signal, swapped_signal: equivalent to g_signal_connect_data (..., NULL, G_CONNECT_SWAPPED)
  * - swapped_object_signal, swapped-object-signal: equivalent to g_signal_connect_object (..., G_CONNECT_SWAPPED)
  * - signal_after, signal-after: equivalent to g_signal_connect_data (..., NULL, G_CONNECT_AFTER)
@@ -3117,7 +3335,7 @@
  *
  * Creates a new instance of a #GObject subtype and sets its properties.
  *
- * Construction parameters (see #G_PARAM_CONSTRUCT, #G_PARAM_CONSTRUCT_ONLY)
+ * Construction parameters (see %G_PARAM_CONSTRUCT, %G_PARAM_CONSTRUCT_ONLY)
  * which are not explicitly specified are set to their default values. Any
  * private data for the object is guaranteed to be initialized with zeros, as
  * per g_type_create_instance().
@@ -3136,6 +3354,12 @@
  * Similarly, #gfloat is promoted to #gdouble, so you must ensure that the value
  * you provide is a #gdouble, even for a property of type #gfloat.
  *
+ * Since GLib 2.72, all #GObjects are guaranteed to be aligned to at least the
+ * alignment of the largest basic GLib type (typically this is #guint64 or
+ * #gdouble). If you need larger alignment for an element in a #GObject, you
+ * should allocate it on the heap (aligned), or arrange for your #GObject to be
+ * appropriately padded.
+ *
  * Returns: (transfer full) (type GObject.Object): a new instance of
  *   @object_type
  */
@@ -3150,7 +3374,7 @@
  *
  * Creates a new instance of a #GObject subtype and sets its properties.
  *
- * Construction parameters (see #G_PARAM_CONSTRUCT, #G_PARAM_CONSTRUCT_ONLY)
+ * Construction parameters (see %G_PARAM_CONSTRUCT, %G_PARAM_CONSTRUCT_ONLY)
  * which are not explicitly specified are set to their default values.
  *
  * Returns: a new instance of @object_type
@@ -3185,7 +3409,7 @@
  *
  * Creates a new instance of a #GObject subtype and sets its properties.
  *
- * Construction parameters (see #G_PARAM_CONSTRUCT, #G_PARAM_CONSTRUCT_ONLY)
+ * Construction parameters (see %G_PARAM_CONSTRUCT, %G_PARAM_CONSTRUCT_ONLY)
  * which are not explicitly specified are set to their default values.
  *
  * Returns: (type GObject.Object) (transfer full): a new instance of
@@ -3229,12 +3453,11 @@
  * g_object_class_install_property() inside a static array, e.g.:
  *
  * |[<!-- language="C" -->
- *   enum
+ *   typedef enum
  *   {
- *     PROP_0,
- *     PROP_FOO,
+ *     PROP_FOO = 1,
  *     PROP_LAST
- *   };
+ *   } MyObjectProperty;
  *
  *   static GParamSpec *properties[PROP_LAST];
  *
@@ -3244,7 +3467,7 @@
  *     properties[PROP_FOO] = g_param_spec_int ("foo", "Foo", "The foo",
  *                                              0, 100,
  *                                              50,
- *                                              G_PARAM_READWRITE);
+ *                                              G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
  *     g_object_class_install_property (gobject_class,
  *                                      PROP_FOO,
  *                                      properties[PROP_FOO]);
@@ -3703,8 +3926,8 @@
 /**
  * g_param_spec_boolean:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @default_value: default value for the property specified
  * @flags: flags for the property specified
  *
@@ -3723,8 +3946,8 @@
 /**
  * g_param_spec_boxed:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @boxed_type: %G_TYPE_BOXED derived type of this property
  * @flags: flags for the property specified
  *
@@ -3740,8 +3963,8 @@
 /**
  * g_param_spec_char:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @minimum: minimum value for the property specified
  * @maximum: maximum value for the property specified
  * @default_value: default value for the property specified
@@ -3756,8 +3979,8 @@
 /**
  * g_param_spec_double:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @minimum: minimum value for the property specified
  * @maximum: maximum value for the property specified
  * @default_value: default value for the property specified
@@ -3775,8 +3998,8 @@
 /**
  * g_param_spec_enum:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @enum_type: a #GType derived from %G_TYPE_ENUM
  * @default_value: default value for the property specified
  * @flags: flags for the property specified
@@ -3793,8 +4016,8 @@
 /**
  * g_param_spec_flags:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @flags_type: a #GType derived from %G_TYPE_FLAGS
  * @default_value: default value for the property specified
  * @flags: flags for the property specified
@@ -3811,8 +4034,8 @@
 /**
  * g_param_spec_float:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @minimum: minimum value for the property specified
  * @maximum: maximum value for the property specified
  * @default_value: default value for the property specified
@@ -3915,8 +4138,8 @@
 /**
  * g_param_spec_gtype:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @is_a_type: a #GType whose subtypes are allowed as values
  *  of the property (use %G_TYPE_NONE for any type)
  * @flags: flags for the property specified
@@ -3934,8 +4157,8 @@
 /**
  * g_param_spec_int:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @minimum: minimum value for the property specified
  * @maximum: maximum value for the property specified
  * @default_value: default value for the property specified
@@ -3952,8 +4175,8 @@
 /**
  * g_param_spec_int64:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @minimum: minimum value for the property specified
  * @maximum: maximum value for the property specified
  * @default_value: default value for the property specified
@@ -3969,10 +4192,10 @@
 
 /**
  * g_param_spec_internal: (skip)
- * @param_type: the #GType for the property; must be derived from #G_TYPE_PARAM
+ * @param_type: the #GType for the property; must be derived from %G_TYPE_PARAM
  * @name: the canonical name of the property
- * @nick: the nickname of the property
- * @blurb: a short description of the property
+ * @nick: (nullable): the nickname of the property
+ * @blurb: (nullable): a short description of the property
  * @flags: a combination of #GParamFlags
  *
  * Creates a new #GParamSpec instance.
@@ -3981,11 +4204,12 @@
  * the rules for @name. Names which violate these rules lead to undefined
  * behaviour.
  *
- * Beyond the name, #GParamSpecs have two more descriptive
- * strings associated with them, the @nick, which should be suitable
- * for use as a label for the property in a property editor, and the
- * @blurb, which should be a somewhat longer description, suitable for
- * e.g. a tooltip. The @nick and @blurb should ideally be localized.
+ * Beyond the name, #GParamSpecs have two more descriptive strings, the
+ * @nick and @blurb, which may be used as a localized label and description.
+ * For GTK and related libraries these are considered deprecated and may be
+ * omitted, while for other libraries such as GStreamer and its plugins they
+ * are essential. When in doubt, follow the conventions used in the
+ * surrounding code and supporting libraries.
  *
  * Returns: (type GObject.ParamSpec): (transfer floating): a newly allocated
  *     #GParamSpec instance, which is initially floating
@@ -4011,8 +4235,8 @@
 /**
  * g_param_spec_long:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @minimum: minimum value for the property specified
  * @maximum: maximum value for the property specified
  * @default_value: default value for the property specified
@@ -4029,8 +4253,8 @@
 /**
  * g_param_spec_object:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @object_type: %G_TYPE_OBJECT derived type of this property
  * @flags: flags for the property specified
  *
@@ -4060,8 +4284,8 @@
 /**
  * g_param_spec_param:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @param_type: a #GType derived from %G_TYPE_PARAM
  * @flags: flags for the property specified
  *
@@ -4077,8 +4301,8 @@
 /**
  * g_param_spec_pointer:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @flags: flags for the property specified
  *
  * Creates a new #GParamSpecPointer instance specifying a pointer property.
@@ -4252,8 +4476,8 @@
 /**
  * g_param_spec_string:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @default_value: (nullable): default value for the property specified
  * @flags: flags for the property specified
  *
@@ -4268,8 +4492,8 @@
 /**
  * g_param_spec_uchar:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @minimum: minimum value for the property specified
  * @maximum: maximum value for the property specified
  * @default_value: default value for the property specified
@@ -4284,8 +4508,8 @@
 /**
  * g_param_spec_uint:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @minimum: minimum value for the property specified
  * @maximum: maximum value for the property specified
  * @default_value: default value for the property specified
@@ -4302,8 +4526,8 @@
 /**
  * g_param_spec_uint64:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @minimum: minimum value for the property specified
  * @maximum: maximum value for the property specified
  * @default_value: default value for the property specified
@@ -4321,8 +4545,8 @@
 /**
  * g_param_spec_ulong:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @minimum: minimum value for the property specified
  * @maximum: maximum value for the property specified
  * @default_value: default value for the property specified
@@ -4340,8 +4564,8 @@
 /**
  * g_param_spec_unichar:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @default_value: default value for the property specified
  * @flags: flags for the property specified
  *
@@ -4366,8 +4590,8 @@
 /**
  * g_param_spec_value_array: (skip)
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @element_spec: a #GParamSpec describing the elements contained in
  *  arrays of this property, may be %NULL
  * @flags: flags for the property specified
@@ -4386,8 +4610,8 @@
 /**
  * g_param_spec_variant:
  * @name: canonical name of the property specified
- * @nick: nick name for the property specified
- * @blurb: description of the property specified
+ * @nick: (nullable): nick name for the property specified
+ * @blurb: (nullable): description of the property specified
  * @type: a #GVariantType
  * @default_value: (nullable) (transfer full): a #GVariant of type @type to
  *                 use as the default value, or %NULL
@@ -4411,7 +4635,7 @@
  * @pspec_info: The #GParamSpecTypeInfo for this #GParamSpec type.
  *
  * Registers @name as the name of a new static type derived
- * from #G_TYPE_PARAM.
+ * from %G_TYPE_PARAM.
  *
  * The type system uses the information contained in the #GParamSpecTypeInfo
  * structure pointed to by @info to manage the #GParamSpec type and its
@@ -4450,6 +4674,20 @@
  * Checks whether @value contains the default value as specified in @pspec.
  *
  * Returns: whether @value contains the canonical default for this @pspec
+ */
+
+
+/**
+ * g_param_value_is_valid:
+ * @pspec: a valid #GParamSpec
+ * @value: a #GValue of correct type for @pspec
+ *
+ * Return whether the contents of @value comply with the specifications
+ * set out by @pspec.
+ *
+ * Returns: whether the contents of @value comply with the specifications
+ *   set out by @pspec.
+ * Since: 2.74
  */
 
 
@@ -4557,7 +4795,7 @@
  *
  * Adds an emission hook for a signal, which will get called for any emission
  * of that signal, independent of the instance. This is possible only
- * for signals which don't have #G_SIGNAL_NO_HOOKS flag set.
+ * for signals which don't have %G_SIGNAL_NO_HOOKS flag set.
  *
  * Returns: the hook id, for later use with g_signal_remove_emission_hook().
  */
@@ -4583,7 +4821,7 @@
  *    emitted on.
  * @...: parameters to be passed to the parent class closure, followed by a
  *  location for the return value. If the return type of the signal
- *  is #G_TYPE_NONE, the return value location can be omitted.
+ *  is %G_TYPE_NONE, the return value location can be omitted.
  *
  * Calls the original class closure of a signal. This function should
  * only be called from an overridden class closure; see
@@ -4671,9 +4909,10 @@
  * @detail: the detail
  * @...: parameters to be passed to the signal, followed by a
  *  location for the return value. If the return type of the signal
- *  is #G_TYPE_NONE, the return value location can be omitted.
+ *  is %G_TYPE_NONE, the return value location can be omitted.
  *
- * Emits a signal.
+ * Emits a signal. Signal emission is done synchronously.
+ * The method will only return control after all handlers are called or signal emission was stopped.
  *
  * Note that g_signal_emit() resets the return value to the default
  * if no handlers are connected, in contrast to g_signal_emitv().
@@ -4689,7 +4928,8 @@
  *  is %G_TYPE_NONE, the return value location can be omitted. The
  *  number of parameters to pass to this function is defined when creating the signal.
  *
- * Emits a signal.
+ * Emits a signal. Signal emission is done synchronously.
+ * The method will only return control after all handlers are called or signal emission was stopped.
  *
  * Note that g_signal_emit_by_name() resets the return value to the default
  * if no handlers are connected, in contrast to g_signal_emitv().
@@ -4704,9 +4944,10 @@
  * @detail: the detail
  * @var_args: a list of parameters to be passed to the signal, followed by a
  *  location for the return value. If the return type of the signal
- *  is #G_TYPE_NONE, the return value location can be omitted.
+ *  is %G_TYPE_NONE, the return value location can be omitted.
  *
- * Emits a signal.
+ * Emits a signal. Signal emission is done synchronously.
+ * The method will only return control after all handlers are called or signal emission was stopped.
  *
  * Note that g_signal_emit_valist() resets the return value to the default
  * if no handlers are connected, in contrast to g_signal_emitv().
@@ -4724,7 +4965,8 @@
  * store the return value of the signal emission. This must be provided if the
  * specified signal returns a value, but may be ignored otherwise.
  *
- * Emits a signal.
+ * Emits a signal. Signal emission is done synchronously.
+ * The method will only return control after all handlers are called or signal emission was stopped.
  *
  * Note that g_signal_emitv() doesn't change @return_value if no handlers are
  * connected, in contrast to g_signal_emit() and g_signal_emit_valist().
@@ -4739,6 +4981,179 @@
  *
  * Returns: (transfer none) (nullable): the invocation hint of the innermost
  *     signal emission, or %NULL if not found.
+ */
+
+
+/**
+ * g_signal_group_block:
+ * @self: the #GSignalGroup
+ *
+ * Blocks all signal handlers managed by @self so they will not
+ * be called during any signal emissions. Must be unblocked exactly
+ * the same number of times it has been blocked to become active again.
+ *
+ * This blocked state will be kept across changes of the target instance.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * g_signal_group_connect: (skip)
+ * @self: a #GSignalGroup
+ * @detailed_signal: a string of the form "signal-name::detail"
+ * @c_handler: (scope notified): the #GCallback to connect
+ * @data: the data to pass to @c_handler calls
+ *
+ * Connects @c_handler to the signal @detailed_signal
+ * on the target instance of @self.
+ *
+ * You cannot connect a signal handler after #GSignalGroup:target has been set.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * g_signal_group_connect_after: (skip)
+ * @self: a #GSignalGroup
+ * @detailed_signal: a string of the form "signal-name::detail"
+ * @c_handler: (scope notified): the #GCallback to connect
+ * @data: the data to pass to @c_handler calls
+ *
+ * Connects @c_handler to the signal @detailed_signal
+ * on the target instance of @self.
+ *
+ * The @c_handler will be called after the default handler of the signal.
+ *
+ * You cannot connect a signal handler after #GSignalGroup:target has been set.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * g_signal_group_connect_closure:
+ * @self: a #GSignalGroup
+ * @detailed_signal: a string of the form `signal-name` with optional `::signal-detail`
+ * @closure: (not nullable): the closure to connect.
+ * @after: whether the handler should be called before or after the
+ *  default handler of the signal.
+ *
+ * Connects @closure to the signal @detailed_signal on #GSignalGroup:target.
+ *
+ * You cannot connect a signal handler after #GSignalGroup:target has been set.
+ *
+ * Since: 2.74
+ */
+
+
+/**
+ * g_signal_group_connect_data:
+ * @self: a #GSignalGroup
+ * @detailed_signal: a string of the form "signal-name::detail"
+ * @c_handler: (scope notified) (closure data) (destroy notify): the #GCallback to connect
+ * @data: the data to pass to @c_handler calls
+ * @notify: function to be called when disposing of @self
+ * @flags: the flags used to create the signal connection
+ *
+ * Connects @c_handler to the signal @detailed_signal
+ * on the target instance of @self.
+ *
+ * You cannot connect a signal handler after #GSignalGroup:target has been set.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * g_signal_group_connect_object: (skip)
+ * @self: a #GSignalGroup
+ * @detailed_signal: a string of the form `signal-name` with optional `::signal-detail`
+ * @c_handler: (scope notified): the #GCallback to connect
+ * @object: (not nullable) (transfer none): the #GObject to pass as data to @c_handler calls
+ * @flags: #GConnectFlags for the signal connection
+ *
+ * Connects @c_handler to the signal @detailed_signal on #GSignalGroup:target.
+ *
+ * Ensures that the @object stays alive during the call to @c_handler
+ * by temporarily adding a reference count. When the @object is destroyed
+ * the signal handler will automatically be removed.
+ *
+ * You cannot connect a signal handler after #GSignalGroup:target has been set.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * g_signal_group_connect_swapped:
+ * @self: a #GSignalGroup
+ * @detailed_signal: a string of the form "signal-name::detail"
+ * @c_handler: (scope async): the #GCallback to connect
+ * @data: the data to pass to @c_handler calls
+ *
+ * Connects @c_handler to the signal @detailed_signal
+ * on the target instance of @self.
+ *
+ * The instance on which the signal is emitted and @data
+ * will be swapped when calling @c_handler.
+ *
+ * You cannot connect a signal handler after #GSignalGroup:target has been set.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * g_signal_group_dup_target:
+ * @self: the #GSignalGroup
+ *
+ * Gets the target instance used when connecting signals.
+ *
+ * Returns: (nullable) (transfer full) (type GObject): The target instance
+ * Since: 2.72
+ */
+
+
+/**
+ * g_signal_group_new:
+ * @target_type: the #GType of the target instance.
+ *
+ * Creates a new #GSignalGroup for target instances of @target_type.
+ *
+ * Returns: (transfer full): a new #GSignalGroup
+ * Since: 2.72
+ */
+
+
+/**
+ * g_signal_group_set_target:
+ * @self: the #GSignalGroup.
+ * @target: (nullable) (type GObject) (transfer none): The target instance used
+ *     when connecting signals.
+ *
+ * Sets the target instance used when connecting signals. Any signal
+ * that has been registered with g_signal_group_connect_object() or
+ * similar functions will be connected to this object.
+ *
+ * If the target instance was previously set, signals will be
+ * disconnected from that object prior to connecting to @target.
+ *
+ * Since: 2.72
+ */
+
+
+/**
+ * g_signal_group_unblock:
+ * @self: the #GSignalGroup
+ *
+ * Unblocks all signal handlers managed by @self so they will be
+ * called again during any signal emissions unless it is blocked
+ * again. Must be unblocked exactly the same number of times it
+ * has been blocked to become active again.
+ *
+ * Since: 2.72
  */
 
 
@@ -5012,7 +5427,7 @@
  * @accu_data: (nullable) (closure accumulator): user data for the @accumulator.
  * @c_marshaller: (nullable): the function to translate arrays of parameter
  *  values to signal emissions into C language callback invocations or %NULL.
- * @return_type: the type of return value, or #G_TYPE_NONE for a signal
+ * @return_type: the type of return value, or %G_TYPE_NONE for a signal
  *  without a return value.
  * @n_params: the number of parameter types to follow.
  * @...: a list of types, one for each parameter.
@@ -5061,7 +5476,7 @@
  * @accu_data: (nullable) (closure accumulator): user data for the @accumulator.
  * @c_marshaller: (nullable): the function to translate arrays of parameter
  *  values to signal emissions into C language callback invocations or %NULL.
- * @return_type: the type of return value, or #G_TYPE_NONE for a signal
+ * @return_type: the type of return value, or %G_TYPE_NONE for a signal
  *  without a return value.
  * @n_params: the number of parameter types to follow.
  * @...: a list of types, one for each parameter.
@@ -5074,7 +5489,7 @@
  * an object definition, instead the function pointer is passed
  * directly and can be overridden by derived classes with
  * g_signal_override_class_closure() or
- * g_signal_override_class_handler()and chained to with
+ * g_signal_override_class_handler() and chained to with
  * g_signal_chain_from_overridden() or
  * g_signal_chain_from_overridden_handler().
  *
@@ -5101,7 +5516,7 @@
  * @accu_data: (nullable) (closure accumulator): user data for the @accumulator.
  * @c_marshaller: (nullable): the function to translate arrays of parameter
  *  values to signal emissions into C language callback invocations or %NULL.
- * @return_type: the type of return value, or #G_TYPE_NONE for a signal
+ * @return_type: the type of return value, or %G_TYPE_NONE for a signal
  *  without a return value.
  * @n_params: the number of parameter types in @args.
  * @args: va_list of #GType, one for each parameter.
@@ -5132,7 +5547,7 @@
  * @c_marshaller: (nullable): the function to translate arrays of
  *     parameter values to signal emissions into C language callback
  *     invocations or %NULL
- * @return_type: the type of return value, or #G_TYPE_NONE for a signal
+ * @return_type: the type of return value, or %G_TYPE_NONE for a signal
  *     without a return value
  * @n_params: the length of @param_types
  * @param_types: (array length=n_params) (nullable): an array of types, one for
@@ -6224,7 +6639,7 @@
  * instances (if not abstract).  The value of @flags determines the nature
  * (e.g. abstract or not) of the type.
  *
- * Returns: the new type identifier or #G_TYPE_INVALID if registration failed
+ * Returns: the new type identifier or %G_TYPE_INVALID if registration failed
  */
 
 

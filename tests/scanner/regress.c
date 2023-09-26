@@ -3760,6 +3760,160 @@ regress_test_create_fundamental_hidden_class_instance (void)
 }
 
 
+/**
+ * RegressTestFundamentalObjectNoGetSetFunc: (ref-func regress_test_fundamental_object_ref) (unref-func regress_test_fundamental_object_unref)
+ *
+ * Just like a #RegressTestFundamentalObject but without gvalue setter and getter
+ */
+
+static void
+regress_test_fundamental_object_no_get_set_func_finalize (RegressTestFundamentalObjectNoGetSetFunc *self)
+{
+  g_clear_pointer(&self->data, g_free);
+}
+
+static RegressTestFundamentalObjectNoGetSetFunc *
+regress_test_fundamental_object_no_get_set_func_copy (RegressTestFundamentalObjectNoGetSetFunc *self)
+{
+  return regress_test_fundamental_object_no_get_set_func_new (self->data);
+}
+
+static void
+regress_test_fundamental_object_no_get_set_func_class_init (gpointer g_class,
+                                                            gpointer class_data G_GNUC_UNUSED)
+{
+  RegressTestFundamentalObjectClass *mo_class = (RegressTestFundamentalObjectClass*) (g_class);
+
+  mo_class->copy = (RegressTestFundamentalObjectCopyFunction) regress_test_fundamental_object_no_get_set_func_copy;
+  mo_class->finalize = (RegressTestFundamentalObjectFinalizeFunction) regress_test_fundamental_object_no_get_set_func_finalize;
+}
+
+static void
+regress_test_fundamental_object_no_get_set_func_init (GTypeInstance *instance,
+                                                      gpointer       klass G_GNUC_UNUSED)
+{
+  RegressTestFundamentalObject *object = (RegressTestFundamentalObject*) (instance);
+  object->refcount = 1;
+}
+
+GType
+regress_test_fundamental_object_no_get_set_func_get_type (void)
+{
+  static GType _test_fundamental_object_type = 0;
+
+  if (G_UNLIKELY (_test_fundamental_object_type == 0)) {
+    static const GTypeValueTable value_table = {
+      regress_test_value_fundamental_object_init,
+      regress_test_value_fundamental_object_free,
+      regress_test_value_fundamental_object_copy,
+      regress_test_value_fundamental_object_peek_pointer,
+      (char *) "p",
+      regress_test_value_fundamental_object_collect,
+      (char *) "p",
+      regress_test_value_fundamental_object_lcopy
+    };
+    static const GTypeInfo fundamental_object_info = {
+      sizeof (RegressTestFundamentalObjectNoGetSetFuncClass),
+      NULL, NULL,
+      regress_test_fundamental_object_no_get_set_func_class_init,
+      NULL,
+      NULL,
+      sizeof (RegressTestFundamentalObjectNoGetSetFunc),
+      0,
+      (GInstanceInitFunc) regress_test_fundamental_object_no_get_set_func_init,
+      &value_table
+    };
+    static const GTypeFundamentalInfo fundamental_object_fundamental_info = {
+      (G_TYPE_FLAG_CLASSED | G_TYPE_FLAG_INSTANTIATABLE |
+          G_TYPE_FLAG_DERIVABLE | G_TYPE_FLAG_DEEP_DERIVABLE)
+    };
+
+    _test_fundamental_object_type = g_type_fundamental_next ();
+    g_type_register_fundamental (_test_fundamental_object_type, "RegressTestFundamentalObjectNoGetSetFunc",
+        &fundamental_object_info, &fundamental_object_fundamental_info, 0);
+  }
+
+  return _test_fundamental_object_type;
+}
+
+/**
+ * regress_test_fundamental_object_no_get_set_func_new:
+ *
+ * Return value: (transfer full):
+ */
+RegressTestFundamentalObjectNoGetSetFunc *
+regress_test_fundamental_object_no_get_set_func_new (const char *data)
+{
+  RegressTestFundamentalObjectNoGetSetFunc *object;
+
+  object = (RegressTestFundamentalObjectNoGetSetFunc *) g_type_create_instance (regress_test_fundamental_object_no_get_set_func_get_type ());
+  object->data = g_strdup (data);
+
+  return object;
+}
+
+const char *
+regress_test_fundamental_object_no_get_set_func_get_data (RegressTestFundamentalObjectNoGetSetFunc *fundamental)
+{
+  g_return_val_if_fail (G_TYPE_CHECK_INSTANCE_TYPE (fundamental, regress_test_fundamental_object_no_get_set_func_get_type ()), NULL);
+
+  return fundamental->data;
+}
+
+G_DEFINE_TYPE (RegressTestFundamentalSubObjectNoGetSetFunc, regress_test_fundamental_sub_object_no_get_set_func, regress_test_fundamental_object_no_get_set_func_get_type ());
+
+static void
+regress_test_fundamental_sub_object_no_get_set_func_class_init (RegressTestFundamentalSubObjectNoGetSetFuncClass *klass G_GNUC_UNUSED)
+{
+}
+
+static void
+regress_test_fundamental_sub_object_no_get_set_func_init (RegressTestFundamentalSubObjectNoGetSetFunc *self G_GNUC_UNUSED)
+{
+}
+
+/**
+ * regress_test_fundamental_sub_object_no_get_set_func_new:
+ *
+ * Return value: (transfer full):
+ */
+RegressTestFundamentalSubObjectNoGetSetFunc *
+regress_test_fundamental_sub_object_no_get_set_func_new (const char *data)
+{
+  RegressTestFundamentalSubObjectNoGetSetFunc *object;
+  RegressTestFundamentalObjectNoGetSetFunc *parent_object;
+
+  object = (RegressTestFundamentalSubObjectNoGetSetFunc *) g_type_create_instance (regress_test_fundamental_sub_object_no_get_set_func_get_type ());
+  parent_object = (RegressTestFundamentalObjectNoGetSetFunc *) object;
+  parent_object->data = g_strdup (data);
+
+  return object;
+}
+
+static void
+fundamental_object_no_get_set_func_transform_to_compatible_with_fundamental_sub_object (const GValue *src_value,
+                                                                                        GValue       *dest_value)
+{
+  RegressTestFundamentalObjectNoGetSetFunc *src_object;
+  RegressTestFundamentalSubObject *dest_object;
+
+  g_return_if_fail (G_VALUE_TYPE (src_value) == regress_test_fundamental_object_no_get_set_func_get_type ());
+  g_return_if_fail (G_VALUE_TYPE (dest_value) == regress_test_fundamental_sub_object_get_type ());
+
+  src_object = g_value_peek_pointer (src_value);
+  dest_object = regress_test_fundamental_sub_object_new (src_object->data);
+
+  g_value_set_instance (dest_value, dest_object);
+}
+
+void
+regress_test_fundamental_object_no_get_set_func_make_compatible_with_fundamental_sub_object (void)
+{
+  g_value_register_transform_func (
+    regress_test_fundamental_object_no_get_set_func_get_type (),
+    regress_test_fundamental_sub_object_get_type (),
+    fundamental_object_no_get_set_func_transform_to_compatible_with_fundamental_sub_object);
+}
 
 /**
  * regress_test_callback:
