@@ -12,7 +12,7 @@ Forwarded: https://gitlab.gnome.org/GNOME/gobject-introspection/-/merge_requests
  1 file changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/gir/meson.build b/gir/meson.build
-index dc39b47..6c5cf2b 100644
+index f2b3282..bd85c26 100644
 --- a/gir/meson.build
 +++ b/gir/meson.build
 @@ -10,8 +10,12 @@ gir_files = [

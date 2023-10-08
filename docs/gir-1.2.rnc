@@ -215,9 +215,16 @@ grammar {
       attribute name { xsd:string },
       ## Corresponding C type of the record
       attribute c:type { xsd:string }?,
-      ## Binary attribute to tell if the record is disguised, i.e. whether the c:type is a typedef that doesn't look like a pointer, but is one internally
-	  ## Its second meaning is "private" and is set when any typedef struct is parsed which doesn't also include a full struct with fields (https://gitlab.gnome.org/GNOME/gobject-introspection/issues/101)
+      ## Deprecated. Binary attribute to tell if the record is disguised, i.e. whether the c:type
+      ## is a typedef that doesn't look like a pointer, but is one internally. Its second meaning
+      ## is "private" and is set when any typedef struct is parsed which doesn't also include a
+      ## full struct with fields (https://gitlab.gnome.org/GNOME/gobject-introspection/issues/101)
+      ## Replaced by "opaque" and "pointer".
       attribute disguised { "0" | "1" }?,
+      ## Binary attribute for a typedef struct that does not have a corresponding public structure definition
+      attribute opaque { "0" | "1" }?,
+      ## Binary attribute for a typedef struct pointer, e.g. typedef struct Foo* FooPtr
+      attribute pointer { "0" | "1" }?,
       ## GObject compatible C type of the record
       attribute glib:type-name { xsd:string }?,
       ## Function to get the GObject compatible type of the record
@@ -228,6 +235,10 @@ grammar {
       attribute foreign { "0" | "1" }?,
       ## Name of the GObject compatible gtype this record represents. If empty, this record will be hidden from generated public APIs.
       attribute glib:is-gtype-struct-for { xsd:string }?,
+      ## Name of the function used to copy the record
+      attribute copy-function { xsd:string }?,
+      ## Name of the function used to free the record
+      attribute free-function { xsd:string }?,
 
       # Other elements a record can contain
         # mandatory 
@@ -244,7 +255,7 @@ grammar {
     ## Binary attribute which is "0" (false) if the element is not introspectable. It doesn't exist in the bindings, due in general to missing information in the annotations in the original C code
     attribute introspectable { "0" | "1" }?,
     ## Binary attribute which is "1" (true) if the element has been deprecated
-    attribute deprecated { xsd:string }?,
+    attribute deprecated { "0" | "1" }?,
     ## Version number from which this element is deprecated
     attribute deprecated-version { xsd:string }?,
     ## version number of an element
@@ -350,6 +361,8 @@ grammar {
       attribute setter { xsd:string }?,
       ## The getter function for this property
       attribute getter { xsd:string }?,
+      ## The default value of the property, as a string; if missing, the default value is zero for integer types, and null for pointer types
+      attribute default-value { xsd:string }?,
       # Define the transfer of ownership of the property element
       TransferOwnership?,
 
@@ -525,7 +538,7 @@ grammar {
         attribute closure { xsd:integer }?,
         ## the parameter is a destroy_data for callbacks. The value points to a different parameter that is the actual callback
         attribute destroy { xsd:integer }?,
-        ## the parameter is a callback, the value indicates the lifetime of the call. For language bindings which want to know when the resources required to do the call can be freed. "notified" valid until a GDestroyNotify argument is called, "async" only valid for the duration of the first callback invocationi (can only be called once), "call" only valid for the duration of the call, can be called multiple times during the call, "forever" valid until the process terminates.
+        ## the parameter is a callback, the value indicates the lifetime of the call. For language bindings which want to know when the resources required to do the call can be freed. "notified" valid until a GDestroyNotify argument is called, "async" only valid for the duration of the first callback invocation (can only be called once), "call" only valid for the duration of the call, can be called multiple times during the call, "forever" valid until the process terminates.
         attribute scope { "notified" | "async" | "call" | "forever" }?,
         ## direction of the parameter. "in" goes into the callable, "out" for output parameters from the callable (reference in C++, var in Pascal, etc...), "inout" for both (like a pre-allocated structure which will be filled-in by the callable)
         attribute direction { "out" | "in" | "inout" }?,
@@ -569,7 +582,7 @@ grammar {
       attribute nullable { "0" | "1" }?,
       ## the parameter is a user_data for callbacks. The value points to a different parameter that is the actual callback
       attribute closure { xsd:integer }?,
-      ## the parameter is a callback, the value indicates the lifetime of the call. For language bindings which want to know when the resources required to do the call can be freed. "notified" valid until a GDestroyNotify argument is called, "async" only valid for the duration of the first callback invocationi (can only be called once), "call" only valid for the duration of the call, can be called multiple times during the call, "forever" valid until the process terminates.
+      ## the parameter is a callback, the value indicates the lifetime of the call. For language bindings which want to know when the resources required to do the call can be freed. "notified" valid until a GDestroyNotify argument is called, "async" only valid for the duration of the first callback invocation (can only be called once), "call" only valid for the duration of the call, can be called multiple times during the call, "forever" valid until the process terminates.
       attribute scope { "notified" | "async" | "call" | "forever" }?,
       ## the parameter is a destroy_data for callbacks. The value points to a different parameter that is the actual callback
       attribute destroy { xsd:integer }?,
@@ -634,6 +647,10 @@ grammar {
       attribute glib:type-name { xsd:string }?,
       ## function to retrieve the GObject compatible type of the element
       attribute glib:get-type { xsd:string }?,
+      ## Name of the function used to copy the union
+      attribute copy-function { xsd:string }?,
+      ## Name of the function used to free the union
+      attribute free-function { xsd:string }?,
 
       (Info.elements
        & Field*

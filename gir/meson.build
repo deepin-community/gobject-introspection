@@ -107,6 +107,7 @@ if dep_type == 'pkgconfig'
   glib_libdir = get_option('gi_cross_pkgconfig_sysroot_path') + glib_dep.get_variable(pkgconfig: 'libdir')
   glib_incdir = get_option('gi_cross_pkgconfig_sysroot_path') + join_paths(glib_dep.get_variable(pkgconfig: 'includedir'), 'glib-2.0')
   glib_libincdir = join_paths(glib_libdir, 'glib-2.0', 'include')
+  glib_files += join_paths(glib_incdir, 'gobject', 'gobject-visibility.h')
   glib_files += join_paths(glib_incdir, 'gobject', 'glib-types.h')
   glib_files += join_paths(glib_libincdir, 'glibconfig.h')
   if giounix_dep.found()
@@ -133,14 +134,13 @@ elif dep_type == 'internal'
   # XXX: This is a pile of hacks to allow gobject-introspection to parse the
   #      GLib source files when GLib is used as a subproject
   #      Assumes that the builddir layout is 'mirror'
-  #      Assumes the location of the glib subproject dir
   #      We should add API to meson to get a specific file from a specific
   #      subproject
   # We know exactly what headers will be installed, so just fetch that
   glib_subproject = subproject('glib')
 
-  glibproj_sourcedir = join_paths(meson.global_source_root(), subprojdir, 'glib')
-  glibproj_builddir = join_paths(meson.global_build_root(), subprojdir, 'glib')
+  glibproj_sourcedir = glib_subproject.get_variable('glib_source_dir', join_paths(meson.global_source_root(), subprojdir, 'glib'))
+  glibproj_builddir = glib_subproject.get_variable('glib_build_dir', join_paths(meson.global_build_root(), subprojdir, 'glib'))
 
   glib_files += glib_subproject.get_variable('glib_types_h')
 
@@ -238,9 +238,11 @@ glib_gir = custom_target('gir-glib',
   depend_files: gir_giscanner_built_files,
   install: true,
   install_dir: girdir,
+  env: g_ir_scanner_env,
   command: glib_command + [
     '--cflags-begin'] + glib_includes + extra_giscanner_cflags + [
     '-DGLIB_COMPILATION',
+    '-DGOBJECT_COMPILATION',
     '-D__G_I18N_LIB_H__',
     '-DGETTEXT_PACKAGE=Dummy',
     '--cflags-end',
@@ -305,9 +307,11 @@ gobject_gir = custom_target('gir-gobject',
   depend_files: gir_giscanner_built_files,
   install: true,
   install_dir: girdir,
+  env: g_ir_scanner_env,
   command: gobject_command + [
     '--include-uninstalled=' + glib_gir.full_path(),
     '--cflags-begin'] + glib_includes + extra_giscanner_cflags + [
+    '-DGLIB_COMPILATION',
     '-DGOBJECT_COMPILATION',
     '--cflags-end',
     '@INPUT@',
@@ -357,9 +361,11 @@ gir_files += custom_target('gir-gmodule',
   depend_files: gir_giscanner_built_files,
   install: true,
   install_dir: girdir,
+  env: g_ir_scanner_env,
   command: gmodule_command + [
     '--include-uninstalled=' + glib_gir.full_path(),
     '--cflags-begin'] + glib_includes + extra_giscanner_cflags + [
+    '-DGMODULE_COMPILATION',
     '--cflags-end',
     '@INPUT@',
   ]
@@ -452,6 +458,7 @@ gio_gir = custom_target('gir-gio',
   depend_files: gir_giscanner_built_files,
   install: true,
   install_dir: girdir,
+  env: g_ir_scanner_env,
   command: gio_command + [
     '--include-uninstalled=' + gobject_gir.full_path(),
     '--cflags-begin'] + glib_includes + extra_giscanner_cflags + [
@@ -489,6 +496,7 @@ gir_files += custom_target('gir-girepository',
   depend_files: gir_giscanner_built_files,
   install: true,
   install_dir: girdir,
+  env: g_ir_scanner_env,
   command: girepository_command + [
     '--include-uninstalled=' + gobject_gir.full_path(),
     '--cflags-begin'] + glib_includes + extra_giscanner_cflags + [

@@ -28,10 +28,13 @@ from .annotationparser import (
     ANN_ATTRIBUTES,
     ANN_CLOSURE,
     ANN_CONSTRUCTOR,
+    ANN_COPY_FUNC,
+    ANN_DEFAULT_VALUE,
     ANN_DESTROY,
     ANN_ELEMENT_TYPE,
     ANN_EMITTER,
     ANN_FOREIGN,
+    ANN_FREE_FUNC,
     ANN_GET_PROPERTY,
     ANN_GET_VALUE_FUNC,
     ANN_GETTER,
@@ -309,6 +312,13 @@ class MainTransformer(object):
                 node.get_value_func = annotation[0] if annotation else None
         if isinstance(node, ast.Constant):
             self._apply_annotations_constant(node)
+        if isinstance(node, (ast.Record, ast.Union)):
+            block = self._get_block(node)
+            if block:
+                annotation = block.annotations.get(ANN_COPY_FUNC)
+                node.copy_func = annotation[0] if annotation else None
+                annotation = block.annotations.get(ANN_FREE_FUNC)
+                node.free_func = annotation[0] if annotation else None
         return True
 
     def _adjust_container_type(self, parent, node, annotations):
@@ -963,6 +973,9 @@ class MainTransformer(object):
         getter = block.annotations.get(ANN_GETTER)
         if getter:
             prop.getter = getter[0]
+        default_value = block.annotations.get(ANN_DEFAULT_VALUE)
+        if default_value:
+            prop.default_value = default_value[0]
 
     def _apply_annotations_signal(self, parent, signal):
         names = []

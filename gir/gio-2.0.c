@@ -229,8 +229,10 @@
 /**
  * GAppInfoMonitor::changed:
  *
- * Signal emitted when the app info database for changes (ie: newly installed
- * or removed applications).
+ * Signal emitted when the app info database changes, when applications are
+ * installed or removed.
+ *
+ * Since: 2.40
  */
 
 
@@ -2259,6 +2261,8 @@
  * %NULL is never returned for an index that is smaller than the length
  * of the list.  See g_list_model_get_n_items().
  *
+ * The same #GObject instance may not appear more than once in a #GListModel.
+ *
  * Returns: (type GObject) (transfer full) (nullable): the object at @position.
  * Since: 2.44
  */
@@ -2748,14 +2752,18 @@
 /**
  * GNetworkMonitor:network-metered:
  *
- * Whether the network is considered metered. That is, whether the
+ * Whether the network is considered metered.
+ *
+ * That is, whether the
  * system has traffic flowing through the default connection that is
  * subject to limitations set by service providers. For example, traffic
  * might be billed by the amount of data transmitted, or there might be a
  * quota on the amount of traffic per month. This is typical with tethered
  * connections (3G and 4G) and in such situations, bandwidth intensive
  * applications may wish to avoid network activity where possible if it will
- * cost the user money or use up their limited quota.
+ * cost the user money or use up their limited quota. Anything more than a
+ * few hundreds of kilobytes of data usage per hour should be avoided without
+ * asking permission from the user.
  *
  * If more information is required about specific devices then the
  * system network management API should be used instead (for example,
@@ -3031,6 +3039,23 @@
 
 
 /**
+ * GRegistrySettingsBackend:registry-key:
+ *
+ * The location where settings are stored in the registry. Must
+ * start with one of the following:
+ * - `HKEY_CLASSES_ROOT`
+ * - `HKEY_CURRENT_CONFIG`
+ * - `HKEY_CURRENT_USER`
+ * - `HKEY_LOCAL_MACHINE`
+ * - `HKEY_USERS`
+ *
+ * Defaults to `HKEY_CURRENT_USER\Software\GSettings`.
+ *
+ * Since: 2.78
+ */
+
+
+/**
  * GRemoteActionGroup:
  *
  * #GRemoteActionGroup is an opaque data structure and can only be accessed
@@ -3066,6 +3091,24 @@
  *
  * Emitted when the resolver notices that the system resolver
  * configuration has changed.
+ */
+
+
+/**
+ * GResolver:timeout:
+ *
+ * The timeout applied to all resolver lookups, in milliseconds.
+ *
+ * This may be changed through the lifetime of the #GResolver. The new value
+ * will apply to any lookups started after the change, but not to any
+ * already-ongoing lookups.
+ *
+ * If this is `0`, no timeout is applied to lookups.
+ *
+ * No timeout was applied to lookups before this property was added in
+ * GLib 2.78.
+ *
+ * Since: 2.78
  */
 
 
@@ -5114,19 +5157,34 @@
  * @short_description: Monitor application information for changes
  *
  * #GAppInfoMonitor is a very simple object used for monitoring the app
- * info database for changes (ie: newly installed or removed
- * applications).
+ * info database for changes (newly installed or removed applications).
  *
  * Call g_app_info_monitor_get() to get a #GAppInfoMonitor and connect
- * to the "changed" signal.
+ * to the #GAppInfoMonitor::changed signal. The signal will be emitted once when
+ * the app info database changes, and will not be emitted again until after the
+ * next call to g_app_info_get_all() or another `g_app_info_*()` function. This
+ * is because monitoring the app info database for changes is expensive.
+ *
+ * The following functions will re-arm the #GAppInfoMonitor::changed signal so
+ * it can be emitted again:
+ *  - g_app_info_get_all()
+ *  - g_app_info_get_all_for_type()
+ *  - g_app_info_get_default_for_type()
+ *  - g_app_info_get_fallback_for_type()
+ *  - g_app_info_get_recommended_for_type()
+ *  - g_desktop_app_info_get_implementations()
+ *  - g_desktop_app_info_new()
+ *  - g_desktop_app_info_new_from_filename()
+ *  - g_desktop_app_info_new_from_keyfile()
+ *  - g_desktop_app_info_search()
  *
  * In the usual case, applications should try to make note of the change
  * (doing things like invalidating caches) but not act on it.  In
  * particular, applications should avoid making calls to #GAppInfo APIs
  * in response to the change signal, deferring these until the time that
- * the data is actually required.  The exception to this case is when
+ * the updated data is actually required.  The exception to this case is when
  * application information is actually being displayed on the screen
- * (eg: during a search or when the list of all applications is shown).
+ * (for example, during a search or when the list of all applications is shown).
  * The reason for this is that changes to the list of installed
  * applications often come in groups (like during system updates) and
  * rescanning the list on every change is pointless and expensive.
@@ -5179,8 +5237,8 @@
  * instance and g_application_run() promptly returns. See the code
  * examples below.
  *
- * If used, the expected form of an application identifier is the same as
- * that of of a
+ * If used, the expected form of an application identifier is the
+ * same as that of a
  * [D-Bus well-known bus name](https://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names-bus).
  * Examples include: `com.example.MyApp`, `org.example.internal_apps.Calculator`,
  * `org._7_zip.Archiver`.
@@ -5207,6 +5265,10 @@
  * the session bus, and GIO provides the #GDBusActionGroup wrapper to
  * conveniently access them remotely. GIO provides a #GDBusMenuModel wrapper
  * for remote access to exported #GMenuModels.
+ *
+ * Note: Due to the fact that actions are exported on the session bus,
+ * using `maybe` parameters is not supported, since D-Bus does not support
+ * `maybe` types.
  *
  * There is a number of different entry points into a GApplication:
  *
@@ -6533,9 +6595,10 @@
  * #GDebugController:debug-enabled and, by default, g_log_get_debug_enabled().
  * default.
  *
- * By default, all processes will be able to call `SetDebugEnabled()`. If this
- * process is privileged, or might expose sensitive information in its debug
- * output, you may want to restrict the ability to enable debug output to
+ * By default, no processes are allowed to call `SetDebugEnabled()` unless a
+ * #GDebugControllerDBus::authorize signal handler is installed. This is because
+ * the process may be privileged, or might expose sensitive information in its
+ * debug output. You may want to restrict the ability to enable debug output to
  * privileged users or processes.
  *
  * One option is to install a D-Bus security policy which restricts access to
@@ -6783,7 +6846,7 @@
  * - g_file_new_tmp_async() to asynchronously create a temporary file.
  * - g_file_new_tmp_dir_async() to asynchronously create a temporary directory.
  * - g_file_parse_name() from a UTF-8 string gotten from g_file_get_parse_name().
- * - g_file_new_build_filename() to create a file from path elements.
+ * - g_file_new_build_filename() or g_file_new_build_filenamev() to create a file from path elements.
  *
  * One way to think of a #GFile is as an abstraction of a pathname. For
  * normal files the system pathname is what is stored internally, but as
@@ -7056,6 +7119,11 @@
  * optimized than the generic attribute accessors, such as
  * g_file_info_get_attribute_byte_string().This optimization will matter
  * only if calling the API in a tight loop.
+ *
+ * It is an error to call these accessors without specifying their required file
+ * attributes when creating the #GFileInfo. Use g_file_info_has_attribute() or
+ * g_file_info_list_attributes() to check what attributes are specified for a
+ * #GFileInfo.
  *
  * #GFileAttributeMatcher allows for searching through a #GFileInfo for
  * attributes.
@@ -7998,6 +8066,11 @@
  * interfacing with a non-GIO API that expects
  * UNIX-file-descriptor-style asynchronous I/O rather than GIO-style.
  *
+ * Some classes may implement #GPollableInputStream but have only certain
+ * instances of that class be pollable. If g_pollable_input_stream_can_poll()
+ * returns %FALSE, then the behavior of other #GPollableInputStream methods is
+ * undefined.
+ *
  * Since: 2.28
  */
 
@@ -8012,6 +8085,11 @@
  * can be polled for readiness to write. This can be used when
  * interfacing with a non-GIO API that expects
  * UNIX-file-descriptor-style asynchronous I/O rather than GIO-style.
+ *
+ * Some classes may implement #GPollableOutputStream but have only certain
+ * instances of that class be pollable. If g_pollable_output_stream_can_poll()
+ * returns %FALSE, then the behavior of other #GPollableOutputStream methods is
+ * undefined.
  *
  * Since: 2.28
  */
@@ -8224,6 +8302,10 @@
  * #GNetworkAddress and #GNetworkService provide wrappers around
  * #GResolver functionality that also implement #GSocketConnectable,
  * making it easy to connect to a remote host/service.
+ *
+ * The default resolver (see g_resolver_get_default()) has a timeout of 30s set
+ * on it since GLib 2.78. Earlier versions of GLib did not support resolver
+ * timeouts.
  */
 
 
@@ -9527,6 +9609,10 @@
  * #GTask was constructed to be running at least until the task has completed
  * and its data has been freed.
  *
+ * If a #GTask has been constructed and its callback set, it is an error to
+ * not call `g_task_return_*()` on it. GLib will warn at runtime if this happens
+ * (since 2.76).
+ *
  * Here is an example for using GTask as a GAsyncResult:
  * |[<!-- language="C" -->
  *     typedef struct {
@@ -10001,6 +10087,24 @@
  *   having come from the `_async()` wrapper
  *   function (for "short-circuit" results, such as when passing
  *   0 to g_input_stream_read_async()).
+ *
+ * ## Thread-safety considerations
+ *
+ * Due to some infelicities in the API design, there is a
+ * thread-safety concern that users of GTask have to be aware of:
+ *
+ * If the `main` thread drops its last reference to the source object
+ * or the task data before the task is finalized, then the finalizers
+ * of these objects may be called on the worker thread.
+ *
+ * This is a problem if the finalizers use non-threadsafe API, and
+ * can lead to hard-to-debug crashes. Possible workarounds include:
+ *
+ * - Clear task data in a signal handler for `notify::completed`
+ *
+ * - Keep iterating a main context in the main thread and defer
+ *   dropping the reference to the source object to that main
+ *   context when the task is finalized
  */
 
 
@@ -11571,6 +11675,40 @@
 
 
 /**
+ * g_action_map_remove_action_entries:
+ * @action_map: The #GActionMap
+ * @entries: (array length=n_entries) (element-type GActionEntry): a pointer to
+ *           the first item in an array of #GActionEntry structs
+ * @n_entries: the length of @entries, or -1 if @entries is %NULL-terminated
+ *
+ * Remove actions from a #GActionMap. This is meant as the reverse of
+ * g_action_map_add_action_entries().
+ *
+ *
+ * |[<!-- language="C" -->
+ * static const GActionEntry entries[] = {
+ *     { "quit",         activate_quit              },
+ *     { "print-string", activate_print_string, "s" }
+ * };
+ *
+ * void
+ * add_actions (GActionMap *map)
+ * {
+ *   g_action_map_add_action_entries (map, entries, G_N_ELEMENTS (entries), NULL);
+ * }
+ *
+ * void
+ * remove_actions (GActionMap *map)
+ * {
+ *   g_action_map_remove_action_entries (map, entries, G_N_ELEMENTS (entries));
+ * }
+ * ]|
+ *
+ * Since: 2.78
+ */
+
+
+/**
  * g_action_name_is_valid:
  * @action_name: a potential action name
  *
@@ -11590,8 +11728,9 @@
 /**
  * g_action_parse_detailed_name:
  * @detailed_name: a detailed action name
- * @action_name: (out): the action name
- * @target_value: (out): the target value, or %NULL for no target
+ * @action_name: (out) (optional) (not nullable) (transfer full): the action name
+ * @target_value: (out) (optional) (nullable) (transfer full): the target value,
+ *   or %NULL for no target
  * @error: a pointer to a %NULL #GError, or %NULL
  *
  * Parses a detailed action name into its separate name and target
@@ -11601,23 +11740,29 @@
  *
  * The first format is used to represent an action name with no target
  * value and consists of just an action name containing no whitespace
- * nor the characters ':', '(' or ')'.  For example: "app.action".
+ * nor the characters `:`, `(` or `)`.  For example: `app.action`.
  *
  * The second format is used to represent an action with a target value
- * that is a non-empty string consisting only of alphanumerics, plus '-'
- * and '.'.  In that case, the action name and target value are
- * separated by a double colon ("::").  For example:
- * "app.action::target".
+ * that is a non-empty string consisting only of alphanumerics, plus `-`
+ * and `.`.  In that case, the action name and target value are
+ * separated by a double colon (`::`).  For example:
+ * `app.action::target`.
  *
  * The third format is used to represent an action with any type of
  * target value, including strings.  The target value follows the action
- * name, surrounded in parens.  For example: "app.action(42)".  The
+ * name, surrounded in parens.  For example: `app.action(42)`.  The
  * target value is parsed using g_variant_parse().  If a tuple-typed
  * value is desired, it must be specified in the same way, resulting in
- * two sets of parens, for example: "app.action((1,2,3))".  A string
- * target can be specified this way as well: "app.action('target')".
- * For strings, this third format must be used if * target value is
- * empty or contains characters other than alphanumerics, '-' and '.'.
+ * two sets of parens, for example: `app.action((1,2,3))`.  A string
+ * target can be specified this way as well: `app.action('target')`.
+ * For strings, this third format must be used if target value is
+ * empty or contains characters other than alphanumerics, `-` and `.`.
+ *
+ * If this function returns %TRUE, a non-%NULL value is guaranteed to be returned
+ * in @action_name (if a pointer is passed in). A %NULL value may still be
+ * returned in @target_value, as the @detailed_name may not contain a target.
+ *
+ * If returned, the #GVariant in @target_value is guaranteed to not be floating.
  *
  * Returns: %TRUE if successful, else %FALSE with @error set
  * Since: 2.38
@@ -11903,6 +12048,10 @@
  *
  * Gets the executable's name for the installed application.
  *
+ * This is intended to be used for debugging or labelling what program is going
+ * to be run. To launch the executable, use g_app_info_launch() and related
+ * functions, rather than spawning the return value from this function.
+ *
  * Returns: (type filename): a string containing the @appinfo's application
  * binaries name
  */
@@ -12024,9 +12173,9 @@
  * environment variable with the path of the launched desktop file and
  * `GIO_LAUNCHED_DESKTOP_FILE_PID` to the process id of the launched
  * process. This can be used to ignore `GIO_LAUNCHED_DESKTOP_FILE`,
- * should it be inherited by further processes. The `DISPLAY` and
- * `DESKTOP_STARTUP_ID` environment variables are also set, based
- * on information provided in @context.
+ * should it be inherited by further processes. The `DISPLAY`,
+ * `XDG_ACTIVATION_TOKEN` and `DESKTOP_STARTUP_ID` environment
+ * variables are also set, based on information provided in @context.
  *
  * Returns: %TRUE on successful launch, %FALSE otherwise.
  */
@@ -12152,6 +12301,10 @@
  * The #GAppInfoMonitor will emit a "changed" signal in the
  * thread-default main context whenever the list of installed
  * applications (as reported by g_app_info_get_all()) may have changed.
+ *
+ * The #GAppInfoMonitor::changed signal will only be emitted once until
+ * g_app_info_get_all() (or another `g_app_info_*()` function) is called. Doing
+ * so will re-arm the signal ready to notify about the next change.
  *
  * You must only call g_object_unref() on the return value from under
  * the same main context as you created it.
@@ -12291,13 +12444,21 @@
  * g_app_launch_context_get_startup_notify_id:
  * @context: a #GAppLaunchContext
  * @info: a #GAppInfo
- * @files: (element-type GFile): a #GList of of #GFile objects
+ * @files: (element-type GFile): a #GList of #GFile objects
  *
  * Initiates startup notification for the application and returns the
- * `DESKTOP_STARTUP_ID` for the launched operation, if supported.
+ * `XDG_ACTIVATION_TOKEN` or `DESKTOP_STARTUP_ID` for the launched operation,
+ * if supported.
  *
- * Startup notification IDs are defined in the
- * [FreeDesktop.Org Startup Notifications standard](http://standards.freedesktop.org/startup-notification-spec/startup-notification-latest.txt).
+ * The returned token may be referred to equivalently as an ‘activation token’
+ * (using Wayland terminology) or a ‘startup sequence ID’ (using X11 terminology).
+ * The two [are interoperable](https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/staging/xdg-activation/x11-interoperation.rst).
+ *
+ * Activation tokens are defined in the [XDG Activation Protocol](https://wayland.app/protocols/xdg-activation-v1),
+ * and startup notification IDs are defined in the
+ * [freedesktop.org Startup Notification Protocol](http://standards.freedesktop.org/startup-notification-spec/startup-notification-latest.txt).
+ *
+ * Support for the XDG Activation Protocol was added in GLib 2.76.
  *
  * Returns: (nullable): a startup notification ID for the application, or %NULL if
  *     not supported.
@@ -12415,6 +12576,8 @@
  * inspected and modified.  If %G_APPLICATION_HANDLES_COMMAND_LINE is
  * set, then the resulting dictionary is sent to the primary instance,
  * where g_application_command_line_get_options_dict() will return it.
+ * As it has been passed outside the process at this point, the types of all
+ * values in the options dict must be checked before being used.
  * This "packing" is done according to the type of the argument --
  * booleans for normal flags, strings for strings, bytestrings for
  * filenames, etc.  The packing only occurs if the flag is given (ie: we
@@ -12621,7 +12784,7 @@
  * g_application_command_line_get_options_dict:
  * @cmdline: a #GApplicationCommandLine
  *
- * Gets the options there were passed to g_application_command_line().
+ * Gets the options that were passed to g_application_command_line().
  *
  * If you did not override local_command_line() then these are the same
  * options that were parsed according to the #GOptionEntrys added to the
@@ -12630,6 +12793,9 @@
  *
  * If no options were sent then an empty dictionary is returned so that
  * you don't need to check for %NULL.
+ *
+ * The data has been passed via an untrusted external process, so the types of
+ * all values must be checked before being used.
  *
  * Returns: (transfer none): a #GVariantDict with the options
  * Since: 2.40
@@ -12647,9 +12813,12 @@
  * information like the current working directory and the startup
  * notification ID.
  *
+ * It comes from an untrusted external process and hence the types of all
+ * values must be validated before being used.
+ *
  * For local invocation, it will be %NULL.
  *
- * Returns: (nullable): the platform data, or %NULL
+ * Returns: (nullable) (transfer full): the platform data, or %NULL
  * Since: 2.28
  */
 
@@ -12928,7 +13097,7 @@
  * Increases the use count of @application.
  *
  * Use this function to indicate that the application has a reason to
- * continue to run.  For example, g_application_hold() is called by GTK+
+ * continue to run.  For example, g_application_hold() is called by GTK
  * when a toplevel window is on the screen.
  *
  * To cancel the hold, call g_application_release().
@@ -13731,8 +13900,8 @@
  * @count: the number of bytes that will be read from the stream
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object
- * @callback: (scope async): a #GAsyncReadyCallback
- * @user_data: (closure): a #gpointer
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ * @user_data: a #gpointer
  *
  * Reads data into @stream's buffer asynchronously, up to @count size.
  * @io_priority can be used to prioritize reads. For the synchronous
@@ -14837,12 +15006,14 @@
  * @inbuf: (array length=inbuf_size) (element-type guint8): the buffer
  *         containing the data to convert.
  * @inbuf_size: the number of bytes in @inbuf
- * @outbuf: (element-type guint8) (array length=outbuf_size): a buffer to write
- *    converted data in.
+ * @outbuf: (element-type guint8) (array length=outbuf_size) (not nullable): a
+ *    buffer to write converted data in.
  * @outbuf_size: the number of bytes in @outbuf, must be at least one
  * @flags: a #GConverterFlags controlling the conversion details
- * @bytes_read: (out): will be set to the number of bytes read from @inbuf on success
- * @bytes_written: (out): will be set to the number of bytes written to @outbuf on success
+ * @bytes_read: (out) (not nullable): will be set to the number of bytes read
+ *    from @inbuf on success
+ * @bytes_written: (out) (not nullable): will be set to the number of bytes
+ *    written to @outbuf on success
  * @error: location to store the error occurring, or %NULL to ignore
  *
  * This is the main operation used when converting data. It is to be called
@@ -15248,8 +15419,8 @@
  * @stream: a given #GDataInputStream.
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): callback to call when the request is satisfied.
- * @user_data: (closure): the data to pass to callback function.
+ * @callback: (scope async) (closure user_data): callback to call when the request is satisfied.
+ * @user_data: the data to pass to callback function.
  *
  * The asynchronous version of g_data_input_stream_read_line().  It is
  * an error to have two outstanding calls to this function.
@@ -16582,6 +16753,10 @@
  * constraint is violated, the export will fail and 0 will be
  * returned (with @error set accordingly).
  *
+ * Exporting menus with sections containing more than
+ * %G_MENU_EXPORTER_MAX_SECTION_SIZE items is not supported and results in
+ * undefined behavior.
+ *
  * You can unexport the menu model using
  * g_dbus_connection_unexport_menu_model() with the return value of
  * this function.
@@ -17278,7 +17453,7 @@
  * @user_data_free_func: (nullable): function to free @user_data with when
  *     subscription is removed or %NULL
  *
- * Subscribes to signals on @connection and invokes @callback with a whenever
+ * Subscribes to signals on @connection and invokes @callback whenever
  * the signal is received. Note that @callback will be invoked in the
  * [thread-default main context][g-main-context-push-thread-default]
  * of the thread you are calling this method from.
@@ -18012,14 +18187,14 @@
 
 
 /**
- * g_dbus_interface_skeleton_get_vtable: (skip)
+ * g_dbus_interface_skeleton_get_vtable:
  * @interface_: A #GDBusInterfaceSkeleton.
  *
  * Gets the interface vtable for the D-Bus interface implemented by
  * @interface_. The returned function pointers should expect @interface_
  * itself to be passed as @user_data.
  *
- * Returns: A #GDBusInterfaceVTable (never %NULL).
+ * Returns: (not nullable) (transfer none): the vtable of the D-Bus interface implemented by the skeleton
  * Since: 2.30
  */
 
@@ -20819,11 +20994,11 @@
  * @uris: (element-type utf8): List of URIs
  * @launch_context: (nullable): a #GAppLaunchContext
  * @spawn_flags: #GSpawnFlags, used for each process
- * @user_setup: (scope async) (nullable): a #GSpawnChildSetupFunc, used once
+ * @user_setup: (scope async) (nullable) (closure user_setup_data): a #GSpawnChildSetupFunc, used once
  *     for each process.
- * @user_setup_data: (closure user_setup) (nullable): User data for @user_setup
- * @pid_callback: (scope call) (nullable): Callback for child processes
- * @pid_callback_data: (closure pid_callback) (nullable): User data for @callback
+ * @user_setup_data: User data for @user_setup
+ * @pid_callback: (scope call) (nullable) (closure pid_callback_data): Callback for child processes
+ * @pid_callback_data: User data for @callback
  * @stdin_fd: file descriptor to use for child's stdin, or -1
  * @stdout_fd: file descriptor to use for child's stdout, or -1
  * @stderr_fd: file descriptor to use for child's stderr, or -1
@@ -22091,9 +22266,9 @@
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async): a #GAsyncReadyCallback to call
- *   when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously opens @file for appending.
  *
@@ -22229,7 +22404,7 @@
  * @matcher: a #GFileAttributeMatcher.
  * @attribute: a file attribute key.
  *
- * Checks if a attribute matcher only matches a given attribute. Always
+ * Checks if an attribute matcher only matches a given attribute. Always
  * returns %FALSE if "*" was used when creating the matcher.
  *
  * Returns: %TRUE if the matcher only matches @attribute. %FALSE otherwise.
@@ -22367,9 +22542,9 @@
  * @flags: set of #GFileCopyFlags
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @progress_callback: (nullable) (scope call): function to callback with
+ * @progress_callback: (nullable) (scope call) (closure progress_callback_data): function to callback with
  *   progress information, or %NULL if progress information is not needed
- * @progress_callback_data: (closure): user data to pass to @progress_callback
+ * @progress_callback_data: user data to pass to @progress_callback
  * @error: #GError to set on error, or %NULL
  *
  * Copies the file @source to the location specified by @destination.
@@ -22425,11 +22600,13 @@
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @progress_callback: (nullable) (scope notified): function to callback with progress
- *   information, or %NULL if progress information is not needed
- * @progress_callback_data: (closure progress_callback) (nullable): user data to pass to @progress_callback
- * @callback: (scope async): a #GAsyncReadyCallback to call when the request is satisfied
- * @user_data: (closure callback): the data to pass to callback function
+ * @progress_callback: (nullable) (scope notified) (closure progress_callback_data):
+ *   function to callback with progress information, or %NULL if
+ *   progress information is not needed
+ * @progress_callback_data: user data to pass to @progress_callback
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback
  *
  * Copies the file @source to the location specified by @destination
  * asynchronously. For details of the behaviour, see g_file_copy().
@@ -22520,9 +22697,9 @@
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async): a #GAsyncReadyCallback to call
- *   when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously creates a new file and returns an output stream
  * for writing to it. The file must not already exist.
@@ -22596,9 +22773,9 @@
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async): a #GAsyncReadyCallback to call
- *   when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously creates a new file and returns a stream
  * for reading and writing to it. The file must not already exist.
@@ -22730,9 +22907,9 @@
  * @flags: flags affecting the operation
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async) (nullable): a #GAsyncReadyCallback to call
- *   when the request is satisfied, or %NULL
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (nullable) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Starts an asynchronous eject on a mountable.
  * When this operation has completed, @callback will be called with
@@ -22771,9 +22948,9 @@
  *   or %NULL to avoid user interaction
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async) (nullable): a #GAsyncReadyCallback to call
- *   when the request is satisfied, or %NULL
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (nullable) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Starts an asynchronous eject on a mountable.
  * When this operation has completed, @callback will be called with
@@ -22851,9 +23028,9 @@
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async): a #GAsyncReadyCallback to call when the
- *   request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously gets the requested information about the files
  * in a directory. The result is a #GFileEnumerator object that will
@@ -22905,8 +23082,9 @@
  * @enumerator: a #GFileEnumerator.
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): a #GAsyncReadyCallback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously closes the file enumerator.
  *
@@ -23076,26 +23254,72 @@
  * @num_files: the number of file info objects to request
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): a #GAsyncReadyCallback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Request information for a number of files from the enumerator asynchronously.
- * When all i/o for the operation is finished the @callback will be called with
+ * When all I/O for the operation is finished the @callback will be called with
  * the requested information.
  *
  * See the documentation of #GFileEnumerator for information about the
  * order of returned files.
  *
- * The callback can be called with less than @num_files files in case of error
- * or at the end of the enumerator. In case of a partial error the callback will
- * be called with any succeeding items and no error, and on the next request the
- * error will be reported. If a request is cancelled the callback will be called
- * with %G_IO_ERROR_CANCELLED.
+ * Once the end of the enumerator is reached, or if an error occurs, the
+ * @callback will be called with an empty list. In this case, the previous call
+ * to g_file_enumerator_next_files_async() will typically have returned fewer
+ * than @num_files items.
+ *
+ * If a request is cancelled the callback will be called with
+ * %G_IO_ERROR_CANCELLED.
+ *
+ * This leads to the following pseudo-code usage:
+ * |[
+ * g_autoptr(GFile) dir = get_directory ();
+ * g_autoptr(GFileEnumerator) enumerator = NULL;
+ * g_autolist(GFileInfo) files = NULL;
+ * g_autoptr(GError) local_error = NULL;
+ *
+ * enumerator = yield g_file_enumerate_children_async (dir,
+ *                                                     G_FILE_ATTRIBUTE_STANDARD_NAME ","
+ *                                                     G_FILE_ATTRIBUTE_STANDARD_TYPE,
+ *                                                     G_FILE_QUERY_INFO_NONE,
+ *                                                     G_PRIORITY_DEFAULT,
+ *                                                     cancellable,
+ *                                                     …,
+ *                                                     &local_error);
+ * if (enumerator == NULL)
+ *   g_error ("Error enumerating: %s", local_error->message);
+ *
+ * // Loop until no files are returned, either because the end of the enumerator
+ * // has been reached, or an error was returned.
+ * do
+ *   {
+ *     files = yield g_file_enumerator_next_files_async (enumerator,
+ *                                                       5,  // number of files to request
+ *                                                       G_PRIORITY_DEFAULT,
+ *                                                       cancellable,
+ *                                                       …,
+ *                                                       &local_error);
+ *
+ *     // Process the returned files, but don’t assume that exactly 5 were returned.
+ *     for (GList *l = files; l != NULL; l = l->next)
+ *       {
+ *         GFileInfo *info = l->data;
+ *         handle_file_info (info);
+ *       }
+ *   }
+ * while (files != NULL);
+ *
+ * if (local_error != NULL &&
+ *     !g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+ *   g_error ("Error while enumerating: %s", local_error->message);
+ * ]|
  *
  * During an async request no other sync and async calls are allowed, and will
  * result in %G_IO_ERROR_PENDING errors.
  *
- * Any outstanding i/o request with higher priority (lower numerical value) will
+ * Any outstanding I/O request with higher priority (lower numerical value) will
  * be executed before an outstanding request with lower priority. Default
  * priority is %G_PRIORITY_DEFAULT.
  */
@@ -23171,9 +23395,9 @@
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async): a #GAsyncReadyCallback to call
- *   when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously gets the mount for the file.
  *
@@ -23500,9 +23724,10 @@
  * Gets the access time of the current @info and returns it as a
  * #GDateTime.
  *
- * This requires the %G_FILE_ATTRIBUTE_TIME_ACCESS attribute. If
- * %G_FILE_ATTRIBUTE_TIME_ACCESS_USEC is provided, the resulting #GDateTime
- * will have microsecond precision.
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_TIME_ACCESS. If %G_FILE_ATTRIBUTE_TIME_ACCESS_USEC is
+ * provided, the resulting #GDateTime will additionally have microsecond
+ * precision.
  *
  * If nanosecond precision is needed, %G_FILE_ATTRIBUTE_TIME_ACCESS_NSEC must
  * be queried separately using g_file_info_get_attribute_uint32().
@@ -23517,7 +23742,7 @@
  * @info: a #GFileInfo.
  * @attribute: a file attribute key.
  *
- * Gets the value of a attribute, formatted as a string.
+ * Gets the value of an attribute, formatted as a string.
  * This escapes things as needed to make the string valid
  * UTF-8.
  *
@@ -23565,6 +23790,24 @@
  *
  * Returns: (transfer none): %TRUE if @info has an attribute named @attribute,
  *      %FALSE otherwise.
+ */
+
+
+/**
+ * g_file_info_get_attribute_file_path:
+ * @info: a #GFileInfo.
+ * @attribute: a file attribute key.
+ *
+ * Gets the value of a byte string attribute as a file path.
+ *
+ * If the attribute does not contain a byte string, `NULL` will be returned.
+ *
+ * This function is meant to be used by language bindings that have specific
+ * handling for Unix paths.
+ *
+ * Returns: (type filename) (nullable): the contents of the @attribute value as
+ * a file path, or %NULL otherwise.
+ * Since: 2.78
  */
 
 
@@ -23690,6 +23933,9 @@
  *
  * Gets the file's content type.
  *
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE.
+ *
  * Returns: (nullable): a string containing the file's content type,
  * or %NULL if unknown.
  */
@@ -23702,9 +23948,10 @@
  * Gets the creation time of the current @info and returns it as a
  * #GDateTime.
  *
- * This requires the %G_FILE_ATTRIBUTE_TIME_CREATED attribute. If
- * %G_FILE_ATTRIBUTE_TIME_CREATED_USEC is provided, the resulting #GDateTime
- * will have microsecond precision.
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_TIME_CREATED. If %G_FILE_ATTRIBUTE_TIME_CREATED_USEC is
+ * provided, the resulting #GDateTime will additionally have microsecond
+ * precision.
  *
  * If nanosecond precision is needed, %G_FILE_ATTRIBUTE_TIME_CREATED_NSEC must
  * be queried separately using g_file_info_get_attribute_uint32().
@@ -23719,8 +23966,8 @@
  * @info: a #GFileInfo.
  *
  * Returns the #GDateTime representing the deletion date of the file, as
- * available in G_FILE_ATTRIBUTE_TRASH_DELETION_DATE. If the
- * G_FILE_ATTRIBUTE_TRASH_DELETION_DATE attribute is unset, %NULL is returned.
+ * available in %G_FILE_ATTRIBUTE_TRASH_DELETION_DATE. If the
+ * %G_FILE_ATTRIBUTE_TRASH_DELETION_DATE attribute is unset, %NULL is returned.
  *
  * Returns: (nullable): a #GDateTime, or %NULL.
  * Since: 2.36
@@ -23733,6 +23980,9 @@
  *
  * Gets a display name for a file. This is guaranteed to always be set.
  *
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME.
+ *
  * Returns: (not nullable): a string containing the display name.
  */
 
@@ -23742,6 +23992,9 @@
  * @info: a #GFileInfo.
  *
  * Gets the edit name for a file.
+ *
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_STANDARD_EDIT_NAME.
  *
  * Returns: a string containing the edit name.
  */
@@ -23754,6 +24007,9 @@
  * Gets the [entity tag][gfile-etag] for a given
  * #GFileInfo. See %G_FILE_ATTRIBUTE_ETAG_VALUE.
  *
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_ETAG_VALUE.
+ *
  * Returns: (nullable): a string containing the value of the "etag:value" attribute.
  */
 
@@ -23765,6 +24021,9 @@
  * Gets a file's type (whether it is a regular file, symlink, etc).
  * This is different from the file's content type, see g_file_info_get_content_type().
  *
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_STANDARD_TYPE.
+ *
  * Returns: a #GFileType for the given file.
  */
 
@@ -23774,6 +24033,9 @@
  * @info: a #GFileInfo.
  *
  * Gets the icon for a file.
+ *
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_STANDARD_ICON.
  *
  * Returns: (nullable) (transfer none): #GIcon for the given @info.
  */
@@ -23785,6 +24047,9 @@
  *
  * Checks if a file is a backup file.
  *
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_STANDARD_IS_BACKUP.
+ *
  * Returns: %TRUE if file is a backup file, %FALSE otherwise.
  */
 
@@ -23795,6 +24060,9 @@
  *
  * Checks if a file is hidden.
  *
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_STANDARD_IS_HIDDEN.
+ *
  * Returns: %TRUE if the file is a hidden file, %FALSE otherwise.
  */
 
@@ -23804,6 +24072,9 @@
  * @info: a #GFileInfo.
  *
  * Checks if a file is a symlink.
+ *
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK.
  *
  * Returns: %TRUE if the given @info is a symlink.
  */
@@ -23816,9 +24087,10 @@
  * Gets the modification time of the current @info and returns it as a
  * #GDateTime.
  *
- * This requires the %G_FILE_ATTRIBUTE_TIME_MODIFIED attribute. If
- * %G_FILE_ATTRIBUTE_TIME_MODIFIED_USEC is provided, the resulting #GDateTime
- * will have microsecond precision.
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_TIME_MODIFIED. If %G_FILE_ATTRIBUTE_TIME_MODIFIED_USEC is
+ * provided, the resulting #GDateTime will additionally have microsecond
+ * precision.
  *
  * If nanosecond precision is needed, %G_FILE_ATTRIBUTE_TIME_MODIFIED_NSEC must
  * be queried separately using g_file_info_get_attribute_uint32().
@@ -23836,6 +24108,10 @@
  * Gets the modification time of the current @info and sets it
  * in @result.
  *
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_TIME_MODIFIED. If %G_FILE_ATTRIBUTE_TIME_MODIFIED_USEC is
+ * provided it will be used too.
+ *
  * Deprecated: 2.62: Use g_file_info_get_modification_date_time() instead, as
  *    #GTimeVal is deprecated due to the year 2038 problem.
  */
@@ -23846,6 +24122,9 @@
  * @info: a #GFileInfo.
  *
  * Gets the name for a file. This is guaranteed to always be set.
+ *
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_STANDARD_NAME.
  *
  * Returns: (type filename) (not nullable): a string containing the file name.
  */
@@ -23859,6 +24138,9 @@
  * the %G_FILE_ATTRIBUTE_STANDARD_SIZE attribute and is converted
  * from #guint64 to #goffset before returning the result.
  *
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_STANDARD_SIZE.
+ *
  * Returns: a #goffset containing the file's size (in bytes).
  */
 
@@ -23870,6 +24152,9 @@
  * Gets the value of the sort_order attribute from the #GFileInfo.
  * See %G_FILE_ATTRIBUTE_STANDARD_SORT_ORDER.
  *
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_STANDARD_SORT_ORDER.
+ *
  * Returns: a #gint32 containing the value of the "standard::sort_order" attribute.
  */
 
@@ -23879,6 +24164,9 @@
  * @info: a #GFileInfo.
  *
  * Gets the symbolic icon for a file.
+ *
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_STANDARD_SYMBOLIC_ICON.
  *
  * Returns: (nullable) (transfer none): #GIcon for the given @info.
  * Since: 2.34
@@ -23891,7 +24179,10 @@
  *
  * Gets the symlink target for a given #GFileInfo.
  *
- * Returns: (nullable): a string containing the symlink target.
+ * It is an error to call this if the #GFileInfo does not contain
+ * %G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET.
+ *
+ * Returns: (type filename) (nullable): a string containing the symlink target.
  */
 
 
@@ -23999,6 +24290,22 @@
  *
  * Sets the @attribute to contain the given @attr_value,
  * if possible.
+ */
+
+
+/**
+ * g_file_info_set_attribute_file_path:
+ * @info: a #GFileInfo.
+ * @attribute: a file attribute key.
+ * @attr_value: (type filename): a file path.
+ *
+ * Sets the @attribute to contain the given @attr_value,
+ * if possible.
+ *
+ * This function is meant to be used by language bindings that have specific
+ * handling for Unix paths.
+ *
+ * Since: 2.78
  */
 
 
@@ -24270,7 +24577,7 @@
 /**
  * g_file_info_set_symlink_target:
  * @info: a #GFileInfo.
- * @symlink_target: a static string containing a path to a symlink target.
+ * @symlink_target: (type filename): a static string containing a path to a symlink target.
  *
  * Sets the %G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET attribute in the file info
  * to the given symlink target.
@@ -24310,8 +24617,9 @@
  * @attributes: a file attribute query string.
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): callback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Queries the stream information asynchronously.
  * When the operation is finished @callback will be called.
@@ -24389,8 +24697,9 @@
  * @attributes: a file attribute query string.
  * @io_priority: the [I/O priority][gio-GIOScheduler] of the request
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): callback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously queries the @stream for a #GFileInfo. When completed,
  * @callback will be called with a #GAsyncResult which can be used to
@@ -24466,9 +24775,9 @@
  * g_file_load_bytes_async:
  * @file: a #GFile
  * @cancellable: (nullable): a #GCancellable or %NULL
- * @callback: (scope async): a #GAsyncReadyCallback to call when the
- *   request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously loads the contents of @file as #GBytes.
  *
@@ -25010,9 +25319,9 @@
  *   or %NULL to avoid user interaction
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async) (nullable): a #GAsyncReadyCallback to call
- *   when the request is satisfied, or %NULL
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Mounts a file of type G_FILE_TYPE_MOUNTABLE.
  * Using @mount_operation, you can request callbacks when, for instance,
@@ -25051,9 +25360,9 @@
  * @flags: set of #GFileCopyFlags
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @progress_callback: (nullable) (scope call): #GFileProgressCallback
+ * @progress_callback: (nullable) (scope call) (closure progress_callback_data): #GFileProgressCallback
  *   function for updates
- * @progress_callback_data: (closure): gpointer to user data for
+ * @progress_callback_data: gpointer to user data for
  *   the callback function
  * @error: #GError for returning error conditions, or %NULL
  *
@@ -25103,12 +25412,11 @@
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @progress_callback: (nullable) (scope call): #GFileProgressCallback
- *   function for updates
- * @progress_callback_data: (closure): gpointer to user data for
- *   the callback function
- * @callback: a #GAsyncReadyCallback to call
- *   when the request is satisfied
+ * @progress_callback: (nullable) (scope call) (closure progress_callback_data):
+ *   #GFileProgressCallback function for updates
+ * @progress_callback_data: gpointer to user data for the callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
  * @user_data: the data to pass to callback function
  *
  * Asynchronously moves a file @source to the location of @destination. For details of the behaviour, see g_file_move().
@@ -25152,6 +25460,22 @@
  *
  * Returns: (transfer full): a new #GFile
  * Since: 2.56
+ */
+
+
+/**
+ * g_file_new_build_filenamev:
+ * @args: (array zero-terminated=1) (element-type filename): %NULL-terminated
+ *   array of strings containing the path elements.
+ *
+ * Constructs a #GFile from a vector of elements using the correct
+ * separator for filenames.
+ *
+ * Using this function is equivalent to calling g_build_filenamev(),
+ * followed by g_file_new_for_path() on the result.
+ *
+ * Returns: (transfer full): a new #GFile
+ * Since: 2.78
  */
 
 
@@ -25356,9 +25680,9 @@
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async): a #GAsyncReadyCallback to call
- *   when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously opens @file for reading and writing.
  *
@@ -25677,9 +26001,9 @@
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async): a #GAsyncReadyCallback to call
- *   when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously gets the requested information about the filesystem
  * that the specified @file is on. The result is a #GFileInfo object
@@ -25763,9 +26087,9 @@
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async): a #GAsyncReadyCallback to call when the
- *   request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously gets the requested information about specified @file.
  * The result is a #GFileInfo object that contains key-value attributes
@@ -25868,9 +26192,9 @@
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async): a #GAsyncReadyCallback to call
- *   when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously opens @file for reading.
  *
@@ -25965,9 +26289,9 @@
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async): a #GAsyncReadyCallback to call
- *   when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously overwrites the file, replacing the contents,
  * possibly creating a backup copy of the file first.
@@ -26145,9 +26469,9 @@
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async): a #GAsyncReadyCallback to call
- *   when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously overwrites the file in read-write mode,
  * replacing the contents, possibly creating a backup copy
@@ -26359,8 +26683,9 @@
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async): a #GAsyncReadyCallback
- * @user_data: (closure): a #gpointer
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously sets the attributes of @file with @info.
  *
@@ -26449,9 +26774,9 @@
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async): a #GAsyncReadyCallback to call
- *   when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously sets the display name for a given #GFile.
  *
@@ -26635,9 +26960,9 @@
  * @flags: flags affecting the operation
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async) (nullable): a #GAsyncReadyCallback to call
- *   when the request is satisfied, or %NULL
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (nullable) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Unmounts a file of type G_FILE_TYPE_MOUNTABLE.
  *
@@ -26679,9 +27004,9 @@
  *   or %NULL to avoid user interaction
  * @cancellable: (nullable): optional #GCancellable object,
  *   %NULL to ignore
- * @callback: (scope async) (nullable): a #GAsyncReadyCallback to call
- *   when the request is satisfied, or %NULL
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (nullable) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Unmounts a file of type %G_FILE_TYPE_MOUNTABLE.
  *
@@ -26831,7 +27156,7 @@
 
 
 /**
- * g_icon_equal:
+ * g_icon_equal: (virtual equal)
  * @icon1: (nullable): pointer to the first #GIcon.
  * @icon2: (nullable): pointer to the second #GIcon.
  *
@@ -26843,7 +27168,7 @@
 
 /**
  * g_icon_hash: (virtual hash)
- * @icon: (not nullable): #gconstpointer to an icon object.
+ * @icon: (not nullable) (type Gio.Icon): #gconstpointer to an icon object.
  *
  * Gets a hash for an icon.
  *
@@ -26871,7 +27196,7 @@
 
 
 /**
- * g_icon_serialize:
+ * g_icon_serialize: (virtual serialize)
  * @icon: a #GIcon
  *
  * Serializes a #GIcon into a #GVariant. An equivalent #GIcon can be retrieved
@@ -26886,7 +27211,7 @@
 
 
 /**
- * g_icon_to_string: (virtual to_tokens)
+ * g_icon_to_string:
  * @icon: a #GIcon.
  *
  * Generates a textual representation of @icon that can be used for
@@ -27477,8 +27802,9 @@
  * @stream: A #GInputStream.
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional cancellable object
- * @callback: (scope async): callback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Requests an asynchronous closes of the stream, releasing resources related to it.
  * When the operation is finished @callback will be called.
@@ -27603,8 +27929,9 @@
  * @count: (in): the number of bytes that will be read from the stream
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore
- * @callback: (scope async): callback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Request an asynchronous read of @count bytes from the stream into the
  * buffer starting at @buffer.
@@ -27652,8 +27979,9 @@
  * @io_priority: the [I/O priority][io-priority]
  * of the request.
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): callback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Request an asynchronous read of @count bytes from the stream into the buffer
  * starting at @buffer. When the operation is finished @callback will be called.
@@ -27724,8 +28052,9 @@
  * @count: the number of bytes that will be read from the stream
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): callback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Request an asynchronous read of @count bytes from the stream into a
  * new #GBytes. When the operation is finished @callback will be
@@ -27825,8 +28154,9 @@
  * @count: the number of bytes that will be skipped from the stream
  * @io_priority: the [I/O priority][io-priority] of the request
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): callback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Request an asynchronous skip of @count bytes from the stream.
  * When the operation is finished @callback will be called.
@@ -28320,8 +28650,9 @@
  * @stream: a #GIOStream
  * @io_priority: the io priority of the request
  * @cancellable: (nullable): optional cancellable object
- * @callback: (scope async): callback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Requests an asynchronous close of the stream, releasing resources
  * related to it. When the operation is finished @callback will be
@@ -28422,8 +28753,9 @@
  * @flags: a set of #GIOStreamSpliceFlags.
  * @io_priority: the io priority of the request.
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): a #GAsyncReadyCallback.
- * @user_data: (closure): user data passed to @callback.
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously splice the output stream of @stream1 to the input stream of
  * @stream2, and splice the output stream of @stream2 to the input stream of
@@ -28657,7 +28989,7 @@
 /**
  * g_list_store_find_with_equal_func:
  * @store: a #GListStore
- * @item: (type GObject): an item
+ * @item: (type GObject) (nullable): an item
  * @equal_func: (scope call): A custom equality check function
  * @position: (out) (optional): the first position of @item, if it was found.
  *
@@ -28665,6 +28997,10 @@
  * comparing them with @equal_func until the first occurrence of @item which
  * matches. If @item was not found, then @position will not be set, and this
  * method will return %FALSE.
+ *
+ * @item is always passed as second parameter to @equal_func.
+ *
+ * Since GLib 2.76 it is possible to pass `NULL` for @item.
  *
  * Returns: Whether @store contains @item. If it was found, @position will be
  * set to the position where @item occurred for the first time.
@@ -28675,13 +29011,17 @@
 /**
  * g_list_store_find_with_equal_func_full:
  * @store: a #GListStore
- * @item: (type GObject): an item
- * @equal_func: (scope call): A custom equality check function
- * @user_data: (closure): user data for @equal_func
+ * @item: (type GObject) (nullable): an item
+ * @equal_func: (scope call) (closure user_data): A custom equality check function
+ * @user_data: user data for @equal_func
  * @position: (out) (optional): the first position of @item, if it was found.
  *
  * Like g_list_store_find_with_equal_func() but with an additional @user_data
  * that is passed to @equal_func.
+ *
+ * @item is always passed as second parameter to @equal_func.
+ *
+ * Since GLib 2.76 it is possible to pass `NULL` for @item.
  *
  * Returns: Whether @store contains @item. If it was found, @position will be
  * set to the position where @item occurred for the first time.
@@ -28712,8 +29052,8 @@
  * g_list_store_insert_sorted:
  * @store: a #GListStore
  * @item: (type GObject): the new item
- * @compare_func: (scope call): pairwise comparison function for sorting
- * @user_data: (closure): user data for @compare_func
+ * @compare_func: (scope call) (closure user_data): pairwise comparison function for sorting
+ * @user_data: user data for @compare_func
  *
  * Inserts @item into @store at a position to be determined by the
  * @compare_func.
@@ -28769,8 +29109,8 @@
 /**
  * g_list_store_sort:
  * @store: a #GListStore
- * @compare_func: (scope call): pairwise comparison function for sorting
- * @user_data: (closure): user data for @compare_func
+ * @compare_func: (scope call) (closure user_data): pairwise comparison function for sorting
+ * @user_data: user data for @compare_func
  *
  * Sort the items in @store according to @compare_func.
  *
@@ -28827,9 +29167,9 @@
  * @icon: a #GLoadableIcon.
  * @size: an integer.
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): a #GAsyncReadyCallback to call when the
- *            request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Loads an icon asynchronously. To finish this function, see
  * g_loadable_icon_load_finish(). For the synchronous, blocking
@@ -30888,9 +31228,9 @@
  * @monitor: a #GNetworkMonitor
  * @connectable: a #GSocketConnectable
  * @cancellable: (nullable): a #GCancellable, or %NULL
- * @callback: (scope async): a #GAsyncReadyCallback to call when the
- *     request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *     to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously attempts to determine whether or not the host
  * pointed to by @connectable can be reached, without actually
@@ -31222,7 +31562,7 @@
  * application-wide action (start with "app.").
  *
  * If @target is non-%NULL, @action will be activated with @target as
- * its parameter.
+ * its parameter. If @target is floating, it will be consumed.
  *
  * When no default action is set, the application that the notification
  * was sent on is activated.
@@ -31342,8 +31682,9 @@
  * @stream: A #GOutputStream.
  * @io_priority: the io priority of the request.
  * @cancellable: (nullable): optional cancellable object
- * @callback: (scope async): callback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Requests an asynchronous close of the stream, releasing resources
  * related to it. When the operation is finished @callback will be
@@ -31396,8 +31737,9 @@
  * @stream: a #GOutputStream.
  * @io_priority: the io priority of the request.
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): a #GAsyncReadyCallback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Forces an asynchronous write of all user-space buffered data for
  * the given @stream.
@@ -31524,8 +31866,9 @@
  * @flags: a set of #GOutputStreamSpliceFlags.
  * @io_priority: the io priority of the request.
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): a #GAsyncReadyCallback.
- * @user_data: (closure): user data passed to @callback.
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Splices a stream asynchronously.
  * When the operation is finished @callback will be called.
@@ -31655,8 +31998,9 @@
  * @count: the number of bytes to write
  * @io_priority: the io priority of the request
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore
- * @callback: (scope async): callback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *     to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Request an asynchronous write of @count bytes from @buffer into
  * the stream. When the operation is finished @callback will be called.
@@ -31708,8 +32052,9 @@
  * @count: the number of bytes to write
  * @io_priority: the io priority of the request.
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): callback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *     to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Request an asynchronous write of @count bytes from @buffer into
  * the stream. When the operation is finished @callback will be called.
@@ -31778,8 +32123,9 @@
  * @bytes: The bytes to write
  * @io_priority: the io priority of the request.
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): callback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * This function is similar to g_output_stream_write_async(), but
  * takes a #GBytes as input.  Due to the refcounted nature of #GBytes,
@@ -31907,8 +32253,9 @@
  * @n_vectors: the number of vectors to write
  * @io_priority: the I/O priority of the request
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore
- * @callback: (scope async): callback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *     to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Request an asynchronous write of the bytes contained in the @n_vectors @vectors into
  * the stream. When the operation is finished @callback will be called.
@@ -31961,8 +32308,9 @@
  * @n_vectors: the number of vectors to write
  * @io_priority: the I/O priority of the request.
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): callback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *     to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Request an asynchronous write of the bytes contained in @n_vectors @vectors into
  * the stream. When the operation is finished @callback will be called.
@@ -32221,6 +32569,9 @@
  * triggers, so you should use g_pollable_input_stream_read_nonblocking()
  * rather than g_input_stream_read() from the callback.
  *
+ * The behaviour of this method is undefined if
+ * g_pollable_input_stream_can_poll() returns %FALSE for @stream.
+ *
  * Returns: (transfer full): a new #GSource
  * Since: 2.28
  */
@@ -32238,6 +32589,9 @@
  * non-blocking behavior, you should always use
  * g_pollable_input_stream_read_nonblocking(), which will return a
  * %G_IO_ERROR_WOULD_BLOCK error rather than blocking.
+ *
+ * The behaviour of this method is undefined if
+ * g_pollable_input_stream_can_poll() returns %FALSE for @stream.
  *
  * Returns: %TRUE if @stream is readable, %FALSE if not. If an error
  *   has occurred on @stream, this will result in
@@ -32267,6 +32621,9 @@
  * if @cancellable has already been cancelled when you call, which
  * may happen if you call this method after a source triggers due
  * to having been cancelled.
+ *
+ * The behaviour of this method is undefined if
+ * g_pollable_input_stream_can_poll() returns %FALSE for @stream.
  *
  * Returns: the number of bytes read, or -1 on error (including
  *   %G_IO_ERROR_WOULD_BLOCK).
@@ -32304,6 +32661,9 @@
  * triggers, so you should use g_pollable_output_stream_write_nonblocking()
  * rather than g_output_stream_write() from the callback.
  *
+ * The behaviour of this method is undefined if
+ * g_pollable_output_stream_can_poll() returns %FALSE for @stream.
+ *
  * Returns: (transfer full): a new #GSource
  * Since: 2.28
  */
@@ -32321,6 +32681,9 @@
  * non-blocking behavior, you should always use
  * g_pollable_output_stream_write_nonblocking(), which will return a
  * %G_IO_ERROR_WOULD_BLOCK error rather than blocking.
+ *
+ * The behaviour of this method is undefined if
+ * g_pollable_output_stream_can_poll() returns %FALSE for @stream.
  *
  * Returns: %TRUE if @stream is writable, %FALSE if not. If an error
  *   has occurred on @stream, this will result in
@@ -32355,6 +32718,9 @@
  * transports like D/TLS require that you re-send the same @buffer and
  * @count in the next write call.
  *
+ * The behaviour of this method is undefined if
+ * g_pollable_output_stream_can_poll() returns %FALSE for @stream.
+ *
  * Returns: the number of bytes written, or -1 on error (including
  *   %G_IO_ERROR_WOULD_BLOCK).
  */
@@ -32386,6 +32752,9 @@
  * Also note that if %G_POLLABLE_RETURN_WOULD_BLOCK is returned some underlying
  * transports like D/TLS require that you re-send the same @vectors and
  * @n_vectors in the next write call.
+ *
+ * The behaviour of this method is undefined if
+ * g_pollable_output_stream_can_poll() returns %FALSE for @stream.
  *
  * Returns: %@G_POLLABLE_RETURN_OK on success, %G_POLLABLE_RETURN_WOULD_BLOCK
  * if the stream is not currently writable (and @error is *not* set), or
@@ -32693,7 +33062,7 @@
  * @proxy_address: a #GProxyAddress
  * @cancellable: (nullable): a #GCancellable
  * @callback: (scope async): a #GAsyncReadyCallback
- * @user_data: (closure): callback data
+ * @user_data: callback data
  *
  * Asynchronous version of g_proxy_connect().
  *
@@ -32760,7 +33129,7 @@
  *
  * Looks into the system proxy configuration to determine what proxy,
  * if any, to use to connect to @uri. The returned proxy URIs are of
- * the form `<protocol>://[user[:password]@]host:port` or
+ * the form `<protocol>://[user[:password]@]host[:port]` or
  * `direct://`, where <protocol> could be http, rtsp, socks
  * or other proxying protocol.
  *
@@ -32787,7 +33156,7 @@
  * @uri: a URI representing the destination to connect to
  * @cancellable: (nullable): a #GCancellable, or %NULL
  * @callback: (scope async): callback to call after resolution completes
- * @user_data: (closure): data for @callback
+ * @user_data: data for @callback
  *
  * Asynchronous lookup of proxy. See g_proxy_resolver_lookup() for more
  * details.
@@ -32827,6 +33196,19 @@
  *
  * Returns: %TRUE if hostname resolution is supported.
  * Since: 2.26
+ */
+
+
+/**
+ * g_registry_settings_backend_new:
+ * @registry_key: (nullable): the path to the registry key where
+ *                settings are stored, or %NULL.
+ *
+ * If @registry_key is %NULL then the default path
+ * `HKEY_CURRENT_USER\Software\GSettings` is used.
+ *
+ * Returns: (transfer full): a registry-backed #GSettingsBackend
+ * Since: 2.78
  */
 
 
@@ -32921,6 +33303,17 @@
 
 
 /**
+ * g_resolver_get_timeout:
+ * @resolver: a #GResolver
+ *
+ * Get the timeout applied to all resolver lookups. See #GResolver:timeout.
+ *
+ * Returns: the resolver timeout, in milliseconds, or `0` for no timeout
+ * Since: 2.78
+ */
+
+
+/**
  * g_resolver_lookup_by_address:
  * @resolver: a #GResolver
  * @address: the address to reverse-resolve
@@ -32948,8 +33341,8 @@
  * @resolver: a #GResolver
  * @address: the address to reverse-resolve
  * @cancellable: (nullable): a #GCancellable, or %NULL
- * @callback: (scope async): callback to call after resolution completes
- * @user_data: (closure): data for @callback
+ * @callback: (scope async) (closure user_data): callback to call after resolution completes
+ * @user_data: data for @callback
  *
  * Begins asynchronously reverse-resolving @address to determine its
  * associated hostname, and eventually calls @callback, which must
@@ -33022,8 +33415,8 @@
  * @resolver: a #GResolver
  * @hostname: the hostname to look up the address of
  * @cancellable: (nullable): a #GCancellable, or %NULL
- * @callback: (scope async): callback to call after resolution completes
- * @user_data: (closure): data for @callback
+ * @callback: (scope async) (closure user_data): callback to call after resolution completes
+ * @user_data: data for @callback
  *
  * Begins asynchronously resolving @hostname to determine its
  * associated IP address(es), and eventually calls @callback, which
@@ -33080,8 +33473,8 @@
  * @hostname: the hostname to look up the address of
  * @flags: extra #GResolverNameLookupFlags for the lookup
  * @cancellable: (nullable): a #GCancellable, or %NULL
- * @callback: (scope async): callback to call after resolution completes
- * @user_data: (closure): data for @callback
+ * @callback: (scope async) (closure user_data): callback to call after resolution completes
+ * @user_data: data for @callback
  *
  * Begins asynchronously resolving @hostname to determine its
  * associated IP address(es), and eventually calls @callback, which
@@ -33145,8 +33538,8 @@
  * @rrname: the DNS name to look up the record for
  * @record_type: the type of DNS record to look up
  * @cancellable: (nullable): a #GCancellable, or %NULL
- * @callback: (scope async): callback to call after resolution completes
- * @user_data: (closure): data for @callback
+ * @callback: (scope async) (closure user_data): callback to call after resolution completes
+ * @user_data: data for @callback
  *
  * Begins asynchronously performing a DNS lookup for the given
  * @rrname, and eventually calls @callback, which must call
@@ -33226,8 +33619,8 @@
  * @protocol: the networking protocol to use for @service (eg, "tcp")
  * @domain: the DNS domain to look up the service in
  * @cancellable: (nullable): a #GCancellable, or %NULL
- * @callback: (scope async): callback to call after resolution completes
- * @user_data: (closure): data for @callback
+ * @callback: (scope async) (closure user_data): callback to call after resolution completes
+ * @user_data: data for @callback
  *
  * Begins asynchronously performing a DNS SRV lookup for the given
  * @service and @protocol in the given @domain, and eventually calls
@@ -33274,6 +33667,17 @@
  * itself as the default resolver for all later code to use.
  *
  * Since: 2.22
+ */
+
+
+/**
+ * g_resolver_set_timeout:
+ * @resolver: a #GResolver
+ * @timeout_ms: timeout in milliseconds, or `0` for no timeouts
+ *
+ * Set the timeout applied to all resolver lookups. See #GResolver:timeout.
+ *
+ * Since: 2.78
  */
 
 
@@ -35416,7 +35820,7 @@
  * g_simple_async_report_gerror_in_idle:
  * @object: (nullable): a #GObject, or %NULL
  * @callback: (scope async): a #GAsyncReadyCallback.
- * @user_data: (closure): user data passed to @callback.
+ * @user_data: user data passed to @callback.
  * @error: the #GError to report
  *
  * Reports an error in an idle function. Similar to
@@ -35549,7 +35953,7 @@
  * g_simple_async_result_new:
  * @source_object: (nullable): a #GObject, or %NULL.
  * @callback: (scope async): a #GAsyncReadyCallback.
- * @user_data: (closure): user data passed to @callback.
+ * @user_data: user data passed to @callback.
  * @source_tag: the asynchronous function.
  *
  * Creates a #GSimpleAsyncResult.
@@ -35572,7 +35976,7 @@
  * g_simple_async_result_new_error:
  * @source_object: (nullable): a #GObject, or %NULL.
  * @callback: (scope async): a #GAsyncReadyCallback.
- * @user_data: (closure): user data passed to @callback.
+ * @user_data: user data passed to @callback.
  * @domain: a #GQuark.
  * @code: an error code.
  * @format: a string with format characters.
@@ -35589,7 +35993,7 @@
  * g_simple_async_result_new_from_error:
  * @source_object: (nullable): a #GObject, or %NULL.
  * @callback: (scope async): a #GAsyncReadyCallback.
- * @user_data: (closure): user data passed to @callback.
+ * @user_data: user data passed to @callback.
  * @error: a #GError
  *
  * Creates a #GSimpleAsyncResult from an error condition.
@@ -35602,8 +36006,8 @@
 /**
  * g_simple_async_result_new_take_error: (skip)
  * @source_object: (nullable): a #GObject, or %NULL
- * @callback: (scope async): a #GAsyncReadyCallback
- * @user_data: (closure): user data passed to @callback
+ * @callback: (scope async): a #GAsyncReadyCallback.
+ * @user_data: user data passed to @callback.
  * @error: a #GError
  *
  * Creates a #GSimpleAsyncResult from an error condition, and takes over the
@@ -35925,9 +36329,9 @@
  * g_socket_address_enumerator_next_async:
  * @enumerator: a #GSocketAddressEnumerator
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): a #GAsyncReadyCallback to call when the request
- *     is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async) (closure user_data): a #GAsyncReadyCallback to call
+ *   when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously retrieves the next #GSocketAddress from @enumerator
  * and then calls @callback, which must call
@@ -36128,7 +36532,7 @@
  * @connectable: a #GSocketConnectable specifying the remote address.
  * @cancellable: (nullable): a #GCancellable, or %NULL
  * @callback: (scope async): a #GAsyncReadyCallback
- * @user_data: (closure): user data for the callback
+ * @user_data: user data for the callback
  *
  * This is the asynchronous version of g_socket_client_connect().
  *
@@ -36214,7 +36618,7 @@
  * @default_port: the default port to connect to
  * @cancellable: (nullable): a #GCancellable, or %NULL
  * @callback: (scope async): a #GAsyncReadyCallback
- * @user_data: (closure): user data for the callback
+ * @user_data: user data for the callback
  *
  * This is the asynchronous version of g_socket_client_connect_to_host().
  *
@@ -36274,7 +36678,7 @@
  * @service: the name of the service to connect to
  * @cancellable: (nullable): a #GCancellable, or %NULL
  * @callback: (scope async): a #GAsyncReadyCallback
- * @user_data: (closure): user data for the callback
+ * @user_data: user data for the callback
  *
  * This is the asynchronous version of
  * g_socket_client_connect_to_service().
@@ -36339,7 +36743,7 @@
  * @default_port: the default port to connect to
  * @cancellable: (nullable): a #GCancellable, or %NULL
  * @callback: (scope async): a #GAsyncReadyCallback
- * @user_data: (closure): user data for the callback
+ * @user_data: user data for the callback
  *
  * This is the asynchronous version of g_socket_client_connect_to_uri().
  *
@@ -36872,7 +37276,7 @@
  * @address: a #GSocketAddress specifying the remote address.
  * @cancellable: (nullable): a %GCancellable or %NULL
  * @callback: (scope async): a #GAsyncReadyCallback
- * @user_data: (closure): user data for the callback
+ * @user_data: user data for the callback
  *
  * Asynchronously connect @connection to the specified remote address.
  *
@@ -37015,7 +37419,7 @@
  * If there is no implementation for this kind of control message, %NULL
  * will be returned.
  *
- * Returns: (transfer full): the deserialized message or %NULL
+ * Returns: (nullable) (transfer full): the deserialized message or %NULL
  * Since: 2.22
  */
 
@@ -37542,7 +37946,7 @@
  * @listener: a #GSocketListener
  * @cancellable: (nullable): a #GCancellable, or %NULL
  * @callback: (scope async): a #GAsyncReadyCallback
- * @user_data: (closure): user data for the callback
+ * @user_data: user data for the callback
  *
  * This is the asynchronous version of g_socket_listener_accept().
  *
@@ -37601,7 +38005,7 @@
  * @listener: a #GSocketListener
  * @cancellable: (nullable): a #GCancellable, or %NULL
  * @callback: (scope async): a #GAsyncReadyCallback
- * @user_data: (closure): user data for the callback
+ * @user_data: user data for the callback
  *
  * This is the asynchronous version of g_socket_listener_accept_socket().
  *
@@ -37835,7 +38239,7 @@
  * @socket: a #GSocket
  * @buffer: (array length=size) (element-type guint8) (out caller-allocates):
  *     a buffer to read data into (which should be at least @size bytes long).
- * @size: the number of bytes you want to read from the socket
+ * @size: (in): the number of bytes you want to read from the socket
  * @cancellable: (nullable): a %GCancellable or %NULL
  * @error: #GError for error reporting, or %NULL to ignore.
  *
@@ -37876,7 +38280,7 @@
  *     pointer, or %NULL
  * @buffer: (array length=size) (element-type guint8) (out caller-allocates):
  *     a buffer to read data into (which should be at least @size bytes long).
- * @size: the number of bytes you want to read from the socket
+ * @size: (in): the number of bytes you want to read from the socket
  * @cancellable: (nullable): a %GCancellable or %NULL
  * @error: #GError for error reporting, or %NULL to ignore.
  *
@@ -38051,7 +38455,7 @@
  * @socket: a #GSocket
  * @buffer: (array length=size) (element-type guint8) (out caller-allocates):
  *     a buffer to read data into (which should be at least @size bytes long).
- * @size: the number of bytes you want to read from the socket
+ * @size: (in): the number of bytes you want to read from the socket
  * @blocking: whether to do blocking or non-blocking I/O
  * @cancellable: (nullable): a %GCancellable or %NULL
  * @error: #GError for error reporting, or %NULL to ignore.
@@ -39069,7 +39473,7 @@
 /**
  * g_subprocess_launcher_set_child_setup: (skip)
  * @self: a #GSubprocessLauncher
- * @child_setup: a #GSpawnChildSetupFunc to use as the child setup function
+ * @child_setup: (closure user_data): a #GSpawnChildSetupFunc to use as the child setup function
  * @user_data: user data for @child_setup
  * @destroy_notify: a #GDestroyNotify for @user_data
  *
@@ -39548,7 +39952,8 @@
  * callback to @callback, with @task as the callback's `user_data`.
  *
  * It will set the @source’s name to the task’s name (as set with
- * g_task_set_name()), if one has been set.
+ * g_task_set_name()), if one has been set on the task and the source doesn’t
+ * yet have a name.
  *
  * This takes a reference on @task until @source is destroyed.
  *
@@ -39562,7 +39967,7 @@
  *
  * Gets @task's #GCancellable
  *
- * Returns: (transfer none): @task's #GCancellable
+ * Returns: (nullable) (transfer none): @task's #GCancellable
  * Since: 2.36
  */
 
@@ -39708,7 +40113,7 @@
  *   this task, or %NULL.
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
  * @callback: (scope async): a #GAsyncReadyCallback.
- * @callback_data: (closure): user data passed to @callback.
+ * @callback_data: user data passed to @callback.
  *
  * Creates a #GTask acting on @source_object, which will eventually be
  * used to invoke @callback in the current
@@ -39813,8 +40218,8 @@
  * g_task_report_error:
  * @source_object: (nullable) (type GObject): the #GObject that owns
  *   this task, or %NULL.
- * @callback: (scope async): a #GAsyncReadyCallback.
- * @callback_data: (closure): user data passed to @callback.
+ * @callback: (scope async) (closure callback_data): a #GAsyncReadyCallback.
+ * @callback_data: user data passed to @callback.
  * @source_tag: an opaque pointer indicating the source of this task
  * @error: (transfer full): error to report
  *
@@ -39835,8 +40240,8 @@
  * g_task_report_new_error:
  * @source_object: (nullable) (type GObject): the #GObject that owns
  *   this task, or %NULL.
- * @callback: (scope async): a #GAsyncReadyCallback.
- * @callback_data: (closure): user data passed to @callback.
+ * @callback: (scope async) (closure callback_data): a #GAsyncReadyCallback.
+ * @callback_data: user data passed to @callback.
  * @source_tag: an opaque pointer indicating the source of this task
  * @domain: a #GQuark.
  * @code: an error code.
@@ -40004,6 +40409,13 @@
  * tasks), but don't want them to all run at once, you should only queue a
  * limited number of them (around ten) at a time.
  *
+ * Be aware that if your task depends on other tasks to complete, use of this
+ * function could lead to a livelock if the other tasks also use this function
+ * and enough of them (around 10) execute in a dependency chain, as that will
+ * exhaust the thread pool. If this situation is possible, consider using a
+ * separate worker thread or thread pool explicitly, rather than using
+ * g_task_run_in_thread().
+ *
  * Since: 2.36
  */
 
@@ -40157,6 +40569,19 @@
  * set, for convenience.
  *
  * Since: 2.36
+ */
+
+
+/**
+ * g_task_set_static_name:
+ * @task: a #GTask
+ * @name: (nullable): a human readable name for the task. Must be a string literal
+ *
+ * Sets @task’s name, used in debugging and profiling.
+ *
+ * This is a variant of g_task_set_name() that avoids copying @name.
+ *
+ * Since: 2.76
  */
 
 
@@ -41692,7 +42117,7 @@
  * g_tls_database_lookup_certificates_issued_by() for more information.
  *
  * The database may choose to hold a reference to the issuer byte array for the duration
- * of of this asynchronous operation. The byte array should not be modified during
+ * of this asynchronous operation. The byte array should not be modified during
  * this time.
  *
  * Since: 2.30
@@ -42267,8 +42692,9 @@
  * g_unix_connection_receive_credentials_async:
  * @connection: A #GUnixConnection.
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): a #GAsyncReadyCallback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously receive credentials.
  *
@@ -42351,8 +42777,9 @@
  * g_unix_connection_send_credentials_async:
  * @connection: A #GUnixConnection.
  * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
- * @callback: (scope async): a #GAsyncReadyCallback to call when the request is satisfied
- * @user_data: (closure): the data to pass to callback function
+ * @callback: (scope async): a #GAsyncReadyCallback
+ *   to call when the request is satisfied
+ * @user_data: the data to pass to callback function
  *
  * Asynchronously send credentials.
  *

@@ -6,7 +6,7 @@ Source: gobject-introspection
 Section: devel
 Priority: optional
 Maintainer: Debian GNOME Maintainers <pkg-gnome-maintainers@lists.alioth.debian.org>
-Uploaders: Iain Lane <laney@debian.org>, Jeremy Bicha <jbicha@ubuntu.com>, Laurent Bigonville <bigon@debian.org>, Matthias Klumpp <mak@debian.org>, Michael Biebl <biebl@debian.org>, Tim Lunn <tim@feathertop.org>
+Uploaders: Iain Lane <laney@debian.org>, Jeremy Bícha <jbicha@ubuntu.com>, Laurent Bigonville <bigon@debian.org>, Marco Trevisan (Treviño) <marco@ubuntu.com>, Matthias Klumpp <mak@debian.org>, Michael Biebl <biebl@debian.org>, Tim Lunn <tim@feathertop.org>
 Build-Depends: debhelper-compat (= 13),
                dh-sequence-gnome,
                dh-sequence-python3,
@@ -19,13 +19,13 @@ Build-Depends: debhelper-compat (= 13),
                flex,
                gtk-doc-tools,
                bison,
-               libglib2.0-dev (>= 2.74.0),
+               libglib2.0-dev (>= 2.78.0),
                libcairo2-dev,
                libffi-dev (>= 3.4),
                libtool,
                python3-mako,
                python3-markdown
-Build-Depends-Indep: libglib2.0-doc (>= 2.73.0)
+Build-Depends-Indep: libglib2.0-doc (>= 2.78.0)
 Rules-Requires-Root: no
 Standards-Version: 4.6.2
 Vcs-Browser: https://salsa.debian.org/gnome-team/gobject-introspection
@@ -64,7 +64,7 @@ Depends: libgirepository-1.0-1 (= ${binary:Version}),
          gobject-introspection (= ${binary:Version}),
          gir1.2-glib-2.0 (= ${binary:Version}),
          gir1.2-freedesktop (= ${binary:Version}),
-         libglib2.0-dev (>= 2.74.0),
+         libglib2.0-dev (>= 2.78.0),
          libffi-dev (>= 3.4),
          ${shlibs:Depends},
          ${misc:Depends}

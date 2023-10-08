@@ -285,6 +285,7 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
             my @libraries = ();
             my @symbols = ();
             my $infunction = 0;
+            my $intype = 0;
             while (<$f>) {
                 # "Parse" the XML file
                 chomp;
@@ -307,15 +308,22 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
                         verbose_print ("  Library: $shlibname");
                         push @libraries, find_library ($shlibname, $package);
                     }
-                } elsif (/<(method|constructor|function)\s.*c:identifier="(.*?)"/) {
-                    push @symbols, $2;
-                } elsif (/<(method|constructor|function)/) {
+                } elsif (/<(?:(?:virtual-)?method|constructor|function)\s.*c:identifier="(.*?)"/) {
+                    push @symbols, $1;
+                } elsif (/<(?:(?:virtual-)?method|constructor|function)/) {
                     $infunction = 1;
                 } elsif ($infunction and /c:identifier="(.*?)"/) {
                     push @symbols, $1;
+                } elsif (/<(?:class|interface|enumeration|bitfield|boxed|record|union)\s.*glib:(?:get-type|.*?-func)="(.*?)"/) {
+                    push @symbols, $1 unless $1 =~ /^intern/;
+                } elsif (/<(?:class|interface|enumeration|bitfield|boxed|record|union)/) {
+                    $intype = 1;
+                } elsif ($intype and /glib:(?:get-type|.*?-func)="(.*?)"/) {
+                    push @symbols, $1 unless $1 =~ /^intern/;
                 }
                 if (/>$/) {
                     $infunction = 0;
+                    $intype = 0;
                 }
             }
             close $f;

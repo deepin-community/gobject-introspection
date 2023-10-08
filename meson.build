@@ -1,5 +1,5 @@
 project('gobject-introspection', 'c',
-  version: '1.74.0',
+  version: '1.78.1',
   meson_version: '>= 0.60.0',
   default_options: [
     'c_std=gnu99',
@@ -90,14 +90,14 @@ config.set('GI_MICRO_VERSION', gi_versions[2])
 
 config.set_quoted('GIR_SUFFIX', 'gir-1.0')
 gir_dir_prefix = get_option('gir_dir_prefix')
-if gir_dir_prefix == ''
-    gir_dir_prefix = join_paths(get_option('prefix'), get_option('datadir'))
+if gir_dir_prefix == '' or gir_dir_prefix == get_option('datadir')
+    gir_dir_prefix = get_option('datadir')
     gir_dir_pc_prefix = '${datadir}'
 else
-    gir_dir_prefix = join_paths(get_option('prefix'), gir_dir_prefix)
     gir_dir_pc_prefix = join_paths('${prefix}', gir_dir_prefix)
 endif
-girdir = join_paths(gir_dir_prefix, 'gir-1.0')
+girdir = join_paths(get_option('prefix'), gir_dir_prefix, 'gir-1.0')
+config.set_quoted('GOBJECT_INTROSPECTION_DATADIR', join_paths(get_option('prefix'), get_option('datadir')))
 config.set_quoted('GIR_DIR', girdir)
 config.set_quoted('GOBJECT_INTROSPECTION_LIBDIR', join_paths(get_option('prefix'), get_option('libdir')))
 
@@ -123,36 +123,43 @@ else
   gi_hidden_visibility_cflags += '-fvisibility=hidden'
 endif
 
+# Reset to 0 if g-i micro version exceeds GLib's
+glib_micro_version = 0  # gi_versions[2]
+glib_version = '>=2.@0@.@1@'.format(gi_versions[1], glib_micro_version)
 
-glib_version = '>=2.@0@.@1@'.format(gi_versions[1], gi_versions[2])
-
-glib_dep = dependency('glib-2.0', version : glib_version,
-  fallback: ['glib', 'libglib_dep'])
-gobject_dep = dependency('gobject-2.0', version : glib_version,
-  fallback: ['glib', 'libgobject_dep'])
-gio_dep = dependency('gio-2.0', version : glib_version,
-  fallback: ['glib', 'libgio_dep'])
-gmodule_dep = dependency('gmodule-2.0', version : glib_version,
-  fallback: ['glib', 'libgmodule_dep'])
+glib_dep = dependency('glib-2.0', version: glib_version,
+                      default_options: ['tests=false'])
+gobject_dep = dependency('gobject-2.0', version: glib_version)
+gio_dep = dependency('gio-2.0', version: glib_version)
+gmodule_dep = dependency('gmodule-2.0', version: glib_version)
 if host_system != 'windows'
-  giounix_dep = dependency('gio-unix-2.0', version : glib_version,
-    fallback: ['glib', 'libgiounix_dep'])
-  giowin_dep = dependency('', required : false)
+  giounix_dep = dependency('gio-unix-2.0', version: glib_version)
+  giowin_dep = disabler()
 else
   # Don't even try to look for gio-unix-2.0 on Windows because Meson will
   # fruitlessly try to find it in the glib subproject even when we don't want
   # it to look in the subproject at all. Just use a not-found dependency.
-  giounix_dep = dependency('', required : false)
+  giounix_dep = disabler()
   # XXX: Autotools doesn't build girs for gio-win32-2.0, but maybe we should?
-  giowin_dep = dependency('gio-windows-2.0', version : glib_version,
-    fallback: ['glib', 'libgiowin32_dep'])
+  giowin_dep = dependency('gio-windows-2.0', version: glib_version)
 endif
-libffi_dep = dependency('libffi',
-  fallback : ['libffi', 'ffi_dep'])
+
+# We either get libffi from the system, or from GLib's own subproject
+libffi_dep = dependency('libffi')
 
 if not (host_system == 'darwin' and host_arch == 'aarch64' or
         host_system == 'linux' and libffi_dep.version().version_compare('>= 3.4'))
   config.set('LEGACY_GIRFFI_FREE', 1)
+endif
+
+# Replicate https://github.com/mesonbuild/meson/pull/10275 setting
+# the correct env in the custom_target
+pkg_config = find_program('pkg-config')
+g_ir_scanner_env = environment()
+dep_type = glib_dep.type_name()
+if dep_type == 'internal'
+  g_ir_scanner_env.append('PKG_CONFIG_PATH', meson.global_build_root() + '/meson-uninstalled')
+  g_ir_scanner_env.set('PKG_CONFIG', pkg_config.full_path())
 endif
 
 configure_file(

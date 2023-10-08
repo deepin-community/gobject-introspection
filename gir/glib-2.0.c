@@ -682,7 +682,7 @@
 /**
  * GHookCheckMarshaller:
  * @hook: a #GHook
- * @user_data: user data
+ * @marshal_data: user data
  *
  * Defines the type of function used by g_hook_list_marshal_check().
  *
@@ -715,7 +715,7 @@
 /**
  * GHookFindFunc:
  * @hook: a #GHook
- * @user_data: user data passed to g_hook_find_func()
+ * @data: user data passed to g_hook_find_func()
  *
  * Defines the type of the function passed to g_hook_find().
  *
@@ -761,7 +761,7 @@
 /**
  * GHookMarshaller:
  * @hook: a #GHook
- * @user_data: user data
+ * @marshal_data: user data
  *
  * Defines the type of function used by g_hook_list_marshal().
  */
@@ -1026,7 +1026,7 @@
  * GIOFunc:
  * @source: the #GIOChannel event source
  * @condition: the condition which has been satisfied
- * @user_data: user data set in g_io_add_watch() or g_io_add_watch_full()
+ * @data: user data set in g_io_add_watch() or g_io_add_watch_full()
  *
  * Specifies the type of function passed to g_io_add_watch() or
  * g_io_add_watch_full(), which is called when the requested condition
@@ -1387,7 +1387,7 @@
 /**
  * GNodeForeachFunc:
  * @node: a #GNode.
- * @user_data: user data passed to g_node_children_foreach().
+ * @data: user data passed to g_node_children_foreach().
  *
  * Specifies the type of function passed to g_node_children_foreach().
  * The function is called with each child node, together with the user
@@ -1398,7 +1398,7 @@
 /**
  * GNodeTraverseFunc:
  * @node: a #GNode.
- * @user_data: user data passed to g_node_traverse().
+ * @data: user data passed to g_node_traverse().
  *
  * Specifies the type of function passed to g_node_traverse(). The
  * function is called with each of the nodes visited, together with the
@@ -1858,7 +1858,7 @@
  * GSequenceIterCompareFunc:
  * @a: a #GSequenceIter
  * @b: a #GSequenceIter
- * @user_data: user data
+ * @data: user data
  *
  * A #GSequenceIterCompareFunc is a function used to compare iterators.
  * It must return zero if the iterators compare equal, a negative value
@@ -2051,7 +2051,7 @@
 
 /**
  * GThreadFunc:
- * @user_data: data passed to the thread
+ * @data: data passed to the thread
  *
  * Specifies the type of the @func functions passed to g_thread_new()
  * or g_thread_try_new().
@@ -2224,7 +2224,7 @@
  * GTraverseFunc:
  * @key: a key of a #GTree node
  * @value: the value corresponding to the key
- * @user_data: user data passed to g_tree_traverse()
+ * @data: user data passed to g_tree_traverse()
  *
  * Specifies the type of function passed to g_tree_traverse(). It is
  * passed the key and value of each node, together with the @user_data
@@ -2943,6 +2943,89 @@
 
 
 /**
+ * G_CXX_STD_CHECK_VERSION:
+ * @version: The C++ version to be checked for compatibility
+ *
+ * Macro to check if the current compiler supports a specified @version
+ * of the C++ standard. Such value must be numeric and can be provided both
+ * in the short form for the well-known versions (e.g. `11`, `17`...) or in
+ * the complete form otherwise (e.g. `201103L`, `201703L`, `205503L`...).
+ *
+ * When a C compiler is used, the macro is defined and returns always %FALSE.
+ *
+ * This value is compared against %G_CXX_STD_VERSION.
+ *
+ * |[<!-- language="C" -->
+ * #if G_CXX_STD_CHECK_VERSION(20)
+ * #endif
+ * ]|
+ *
+ * See also: %G_C_STD_CHECK_VERSION
+ *
+ * Returns: %TRUE if @version is supported by the compiler, %FALSE otherwise
+ * Since: 2.76
+ */
+
+
+/**
+ * G_CXX_STD_VERSION:
+ *
+ * The C++ standard version the code is compiling against, it's defined
+ * with the same value of `__cplusplus` for C++ standard compatible
+ * compilers, while it uses `_MSVC_LANG` in MSVC, given that the
+ * standard definition depends on a compilation flag in such compiler.
+ *
+ * This is granted to be undefined when not compiling with a C++ compiler.
+ *
+ * See also: %G_CXX_STD_CHECK_VERSION and %G_C_STD_VERSION
+ *
+ * Since: 2.76
+ */
+
+
+/**
+ * G_C_STD_CHECK_VERSION:
+ * @version: The C version to be checked for compatibility
+ *
+ * Macro to check if the current compiler supports a specified @version
+ * of the C standard. Such value must be numeric and can be provided both
+ * in the short form for the well-known versions (e.g. `90`, `99`...) or in
+ * the complete form otherwise (e.g. `199000L`, `199901L`, `205503L`...).
+ *
+ * When a C++ compiler is used, the macro is defined and returns always %FALSE.
+ *
+ * This value is compared against %G_C_STD_VERSION.
+ *
+ * |[<!-- language="C" -->
+ * #if G_C_STD_CHECK_VERSION(17)
+ * #endif
+ * ]|
+ *
+ * See also: %G_CXX_STD_CHECK_VERSION
+ *
+ * Returns: %TRUE if @version is supported by the compiler, %FALSE otherwise
+ * Since: 2.76
+ */
+
+
+/**
+ * G_C_STD_VERSION:
+ *
+ * The C standard version the code is compiling against, it's normally
+ * defined with the same value of `__STDC_VERSION__` for C standard
+ * compatible compilers, while it uses the lowest standard version
+ * in pure MSVC, given that in such compiler the definition depends on
+ * a compilation flag.
+ *
+ * This is granted to be undefined when compiling with a C++ compiler.
+ *
+ * See also: %G_C_STD_CHECK_VERSION and %G_CXX_STD_VERSION
+ *
+ * Since: 2.76
+ */
+
+
+/**
  * G_DATE_BAD_DAY:
  *
  * Represents an invalid #GDateDay.
@@ -3068,7 +3151,7 @@
  * meant to be portable across different compilers and must be placed
  * before the function declaration.
  *
- * |[<!-- language="C" --
+ * |[<!-- language="C" -->
  * G_DEPRECATED
  * int my_mistake (void);
  * ]|
@@ -3086,7 +3169,7 @@
  * is meant to be portable across different compilers and must be placed
  * before the function declaration.
  *
- * |[<!-- language="C" --
+ * |[<!-- language="C" -->
  * G_DEPRECATED_FOR(my_replacement)
  * int my_mistake (void);
  * ]|
@@ -3150,6 +3233,10 @@
  * sscanf ("42", "%" G_GINT16_FORMAT, &in)
  * out = in * 1000;
  * g_print ("%" G_GINT32_FORMAT, out);
+ *
+ * This is not necessarily the correct format for printing and scanning
+ * `int16_t` values, even though the in-memory representation is the same.
+ * Standard C macros like `PRId16` and `SCNd16` should be used for `int16_t`.
  * ]|
  */
 
@@ -3169,6 +3256,10 @@
  * g_print ("%#" G_GINT16_MODIFIER "x", value);
  * ]|
  *
+ * This is not necessarily the correct modifier for printing and scanning
+ * `int16_t` values, even though the in-memory representation is the same.
+ * Standard C macros like `PRId16` and `SCNd16` should be used for `int16_t`.
+ *
  * Since: 2.4
  */
 
@@ -3178,6 +3269,10 @@
  *
  * This is the platform dependent conversion specifier for scanning
  * and printing values of type #gint32. See also %G_GINT16_FORMAT.
+ *
+ * This is not necessarily the correct modifier for printing and scanning
+ * `int32_t` values, even though the in-memory representation is the same.
+ * Standard C macros like `PRId32` and `SCNd32` should be used for `int32_t`.
  */
 
 
@@ -3187,6 +3282,10 @@
  * The platform dependent length modifier for conversion specifiers
  * for scanning and printing values of type #gint32 or #guint32. It
  * is a string literal. See also %G_GINT16_MODIFIER.
+ *
+ * This is not necessarily the correct modifier for printing and scanning
+ * `int32_t` values, even though the in-memory representation is the same.
+ * Standard C macros like `PRId32` and `SCNd32` should be used for `int32_t`.
  *
  * Since: 2.4
  */
@@ -3198,6 +3297,9 @@
  *
  * This macro is used to insert 64-bit integer literals
  * into the source code.
+ *
+ * It is similar to the standard C `INT64_C` macro,
+ * which should be preferred in new code.
  */
 
 
@@ -3213,6 +3315,10 @@
  * if %G_GINT64_FORMAT is defined. Due to its weak error handling, scanf()
  * is not recommended for parsing anyway; consider using g_ascii_strtoull()
  * instead.
+ *
+ * This is not necessarily the correct format for printing and scanning
+ * `int64_t` values, even though the in-memory representation is the same.
+ * Standard C macros like `PRId64` and `SCNd64` should be used for `int64_t`.
  */
 
 
@@ -3227,6 +3333,10 @@
  * though the types are supported. On such platforms %G_GINT64_MODIFIER
  * is not defined.
  *
+ * This is not necessarily the correct modifier for printing and scanning
+ * `int64_t` values, even though the in-memory representation is the same.
+ * Standard C macros like `PRId64` and `SCNd64` should be used for `int64_t`.
+ *
  * Since: 2.4
  */
 
@@ -3236,6 +3346,12 @@
  *
  * This is the platform dependent conversion specifier for scanning
  * and printing values of type #gintptr.
+ *
+ * Note that this is not necessarily the correct format to scan or
+ * print an `intptr_t`, even though the in-memory representation is the
+ * same.
+ * Standard C macros like `PRIdPTR` and `SCNdPTR` should be used for
+ * `intptr_t`.
  *
  * Since: 2.22
  */
@@ -3247,6 +3363,12 @@
  * The platform dependent length modifier for conversion specifiers
  * for scanning and printing values of type #gintptr or #guintptr.
  * It is a string literal.
+ *
+ * Note that this is not necessarily the correct modifier to scan or
+ * print an `intptr_t`, even though the in-memory representation is the
+ * same.
+ * Standard C macros like `PRIdPTR` and `SCNdPTR` should be used for
+ * `intptr_t`.
  *
  * Since: 2.22
  */
@@ -3305,7 +3427,7 @@
  *   G_GNUC_END_IGNORE_DEPRECATIONS
  * ]|
  *
- * |[<!-- language="C" --
+ * |[<!-- language="C" -->
  * static void
  * test_deprecated_function (void)
  * {
@@ -3408,6 +3530,9 @@
  * This is the platform dependent conversion specifier for scanning
  * and printing values of type #goffset. See also %G_GINT64_FORMAT.
  *
+ * This format should only be used with #goffset values, and not
+ * with `off_t`, which is not necessarily the same type or even the same size.
+ *
  * Since: 2.20
  */
 
@@ -3419,6 +3544,9 @@
  * for scanning and printing values of type #goffset. It is a string
  * literal. See also %G_GINT64_MODIFIER.
  *
+ * This modifier should only be used with #goffset values, and not
+ * with `off_t`, which is not necessarily the same type or even the same size.
+ *
  * Since: 2.20
  */
 
@@ -3428,6 +3556,11 @@
  *
  * This is the platform dependent conversion specifier for scanning
  * and printing values of type #gsize. See also %G_GINT16_FORMAT.
+ *
+ * Note that this is not necessarily the correct format to scan or
+ * print a `size_t`, even though the in-memory representation is the
+ * same. The standard C `"zu"` format should be used for `size_t`,
+ * assuming a C99-compliant `printf` implementation is available.
  *
  * Since: 2.6
  */
@@ -3440,6 +3573,11 @@
  * for scanning and printing values of type #gsize. It
  * is a string literal.
  *
+ * Note that this is not necessarily the correct modifier to scan or
+ * print a `size_t`, even though the in-memory representation is the
+ * same. The Standard C `"z"` modifier should be used for `size_t`,
+ * assuming a C99-compliant `printf` implementation is available.
+ *
  * Since: 2.6
  */
 
@@ -3449,6 +3587,11 @@
  *
  * This is the platform dependent conversion specifier for scanning
  * and printing values of type #gssize. See also %G_GINT16_FORMAT.
+ *
+ * Note that this is not necessarily the correct format to scan or print
+ * a POSIX `ssize_t` or a Windows `SSIZE_T`, even though the in-memory
+ * representation is the same.
+ * On POSIX platforms, the `"zd"` format should be used for `ssize_t`.
  *
  * Since: 2.6
  */
@@ -3461,6 +3604,11 @@
  * for scanning and printing values of type #gssize. It
  * is a string literal.
  *
+ * Note that this is not necessarily the correct modifier to scan or print
+ * a POSIX `ssize_t` or a Windows `SSIZE_T`, even though the in-memory
+ * representation is the same.
+ * On POSIX platforms, the `"z"` modifier should be used for `ssize_t`.
+ *
  * Since: 2.6
  */
 
@@ -3470,6 +3618,10 @@
  *
  * This is the platform dependent conversion specifier for scanning
  * and printing values of type #guint16. See also %G_GINT16_FORMAT
+ *
+ * This is not necessarily the correct modifier for printing and scanning
+ * `uint16_t` values, even though the in-memory representation is the same.
+ * Standard C macros like `PRIu16` and `SCNu16` should be used for `uint16_t`.
  */
 
 
@@ -3478,6 +3630,10 @@
  *
  * This is the platform dependent conversion specifier for scanning
  * and printing values of type #guint32. See also %G_GINT16_FORMAT.
+ *
+ * This is not necessarily the correct modifier for printing and scanning
+ * `uint32_t` values, even though the in-memory representation is the same.
+ * Standard C macros like `PRIu32` and `SCNu32` should be used for `uint32_t`.
  */
 
 
@@ -3487,6 +3643,9 @@
  *
  * This macro is used to insert 64-bit unsigned integer
  * literals into the source code.
+ *
+ * It is similar to the standard C `UINT64_C` macro,
+ * which should be preferred in new code.
  *
  * Since: 2.10
  */
@@ -3504,6 +3663,10 @@
  * if %G_GINT64_FORMAT is defined. Due to its weak error handling, scanf()
  * is not recommended for parsing anyway; consider using g_ascii_strtoull()
  * instead.
+ *
+ * This is not necessarily the correct modifier for printing and scanning
+ * `uint64_t` values, even though the in-memory representation is the same.
+ * Standard C macros like `PRIu64` and `SCNu64` should be used for `uint64_t`.
  */
 
 
@@ -3512,6 +3675,12 @@
  *
  * This is the platform dependent conversion specifier
  * for scanning and printing values of type #guintptr.
+ *
+ * Note that this is not necessarily the correct format to scan or
+ * print a `uintptr_t`, even though the in-memory representation is the
+ * same.
+ * Standard C macros like `PRIuPTR` and `SCNuPTR` should be used for
+ * `uintptr_t`.
  *
  * Since: 2.22
  */
@@ -4032,7 +4201,7 @@
  * not advisable, as it cannot be filtered against using the `G_MESSAGES_DEBUG`
  * environment variable.
  *
- * For example, GTK+ uses this in its `Makefile.am`:
+ * For example, GTK uses this in its `Makefile.am`:
  * |[
  * AM_CPPFLAGS = -DG_LOG_DOMAIN=\"Gtk\"
  * ]|
@@ -4065,6 +4234,9 @@
  * G_MAXDOUBLE:
  *
  * The maximum value which can be held in a #gdouble.
+ *
+ * This is the same as standard C `DBL_MAX`, which is available since C99
+ * and should be preferred in new code.
  */
 
 
@@ -4072,6 +4244,9 @@
  * G_MAXFLOAT:
  *
  * The maximum value which can be held in a #gfloat.
+ *
+ * This is the same as standard C `FLT_MAX`, which is available since C99
+ * and should be preferred in new code.
  */
 
 
@@ -4079,6 +4254,9 @@
  * G_MAXINT:
  *
  * The maximum value which can be held in a #gint.
+ *
+ * This is the same as standard C `INT_MAX`, which is available since C99
+ * and should be preferred in new code.
  */
 
 
@@ -4086,6 +4264,9 @@
  * G_MAXINT16:
  *
  * The maximum value which can be held in a #gint16.
+ *
+ * This is the same as standard C `INT16_MAX`, which should be
+ * preferred in new code.
  *
  * Since: 2.4
  */
@@ -4095,6 +4276,9 @@
  * G_MAXINT32:
  *
  * The maximum value which can be held in a #gint32.
+ *
+ * This is the same as standard C `INT32_MAX`, which should be
+ * preferred in new code.
  *
  * Since: 2.4
  */
@@ -4112,6 +4296,9 @@
  *
  * The maximum value which can be held in a #gint8.
  *
+ * This is the same as standard C `INT8_MAX`, which should be
+ * preferred in new code.
+ *
  * Since: 2.4
  */
 
@@ -4120,6 +4307,9 @@
  * G_MAXLONG:
  *
  * The maximum value which can be held in a #glong.
+ *
+ * This is the same as standard C `ULONG_MAX`, which is available since C99
+ * and should be preferred in new code.
  */
 
 
@@ -4134,6 +4324,9 @@
  * G_MAXSHORT:
  *
  * The maximum value which can be held in a #gshort.
+ *
+ * This is the same as standard C `SHRT_MAX`, which is available since C99
+ * and should be preferred in new code.
  */
 
 
@@ -4141,6 +4334,9 @@
  * G_MAXSIZE:
  *
  * The maximum value which can be held in a #gsize.
+ *
+ * This is the same as standard C `SIZE_MAX` (available since C99),
+ * which should be preferred in new code.
  *
  * Since: 2.4
  */
@@ -4159,6 +4355,9 @@
  * G_MAXUINT:
  *
  * The maximum value which can be held in a #guint.
+ *
+ * This is the same as standard C `UINT_MAX`, which is available since C99
+ * and should be preferred in new code.
  */
 
 
@@ -4166,6 +4365,9 @@
  * G_MAXUINT16:
  *
  * The maximum value which can be held in a #guint16.
+ *
+ * This is the same as standard C `UINT16_MAX`, which should be
+ * preferred in new code.
  *
  * Since: 2.4
  */
@@ -4176,6 +4378,9 @@
  *
  * The maximum value which can be held in a #guint32.
  *
+ * This is the same as standard C `UINT32_MAX`, which should be
+ * preferred in new code.
+ *
  * Since: 2.4
  */
 
@@ -4184,6 +4389,9 @@
  * G_MAXUINT64:
  *
  * The maximum value which can be held in a #guint64.
+ *
+ * This is the same as standard C `UINT64_MAX`, which should be
+ * preferred in new code.
  */
 
 
@@ -4191,6 +4399,9 @@
  * G_MAXUINT8:
  *
  * The maximum value which can be held in a #guint8.
+ *
+ * This is the same as standard C `UINT8_MAX`, which should be
+ * preferred in new code.
  *
  * Since: 2.4
  */
@@ -4200,6 +4411,9 @@
  * G_MAXULONG:
  *
  * The maximum value which can be held in a #gulong.
+ *
+ * This is the same as standard C `ULONG_MAX`, which is available since C99
+ * and should be preferred in new code.
  */
 
 
@@ -4207,6 +4421,9 @@
  * G_MAXUSHORT:
  *
  * The maximum value which can be held in a #gushort.
+ *
+ * This is the same as standard C `USHRT_MAX`, which is available since C99
+ * and should be preferred in new code.
  */
 
 
@@ -4217,6 +4434,9 @@
  *
  * If you are interested in the smallest value which can be held
  * in a #gdouble, use -%G_MAXDOUBLE.
+ *
+ * This is the same as standard C `DBL_MIN`, which is available since C99
+ * and should be preferred in new code.
  */
 
 
@@ -4227,6 +4447,9 @@
  *
  * If you are interested in the smallest value which can be held
  * in a #gfloat, use -%G_MAXFLOAT.
+ *
+ * This is the same as standard C `FLT_MIN`, which is available since C99
+ * and should be preferred in new code.
  */
 
 
@@ -4234,6 +4457,9 @@
  * G_MININT:
  *
  * The minimum value which can be held in a #gint.
+ *
+ * This is the same as standard C `INT_MIN`, which is available since C99
+ * and should be preferred in new code.
  */
 
 
@@ -4241,6 +4467,9 @@
  * G_MINLONG:
  *
  * The minimum value which can be held in a #glong.
+ *
+ * This is the same as standard C `LONG_MIN`, which is available since C99
+ * and should be preferred in new code.
  */
 
 
@@ -4255,6 +4484,9 @@
  * G_MINSHORT:
  *
  * The minimum value which can be held in a #gshort.
+ *
+ * This is the same as standard C `SHRT_MIN`, which is available since C99
+ * and should be preferred in new code.
  */
 
 
@@ -4296,6 +4528,19 @@
  *
  * This macro is defined only on UNIX. So you can bracket
  * UNIX-specific code in "\#ifdef G_OS_UNIX".
+ *
+ * To detect whether to compile features that require a specific kernel
+ * or operating system, check for the appropriate OS-specific predefined
+ * macros instead, for example:
+ *
+ * - Linux kernel (any libc, including glibc, musl or Android): `\#ifdef __linux__`
+ * - Linux kernel and GNU user-space: `\#if defined(__linux__) && defined(__GLIBC__)`
+ * - FreeBSD kernel (any libc, including glibc): `\#ifdef __FreeBSD_kernel__`
+ * - FreeBSD kernel and user-space: `\#ifdef __FreeBSD__`
+ * - Apple operating systems (macOS, iOS, tvOS), regardless of whether
+ *   Cocoa/Carbon toolkits are available: `\#ifdef __APPLE__`
+ *
+ * See <https://sourceforge.net/p/predef/wiki/OperatingSystems/> for more.
  */
 
 
@@ -4576,7 +4821,12 @@
  *
  * Returns the offset, in bytes, of a member of a struct.
  *
- * Returns: the offset of @member from the start of @struct_type
+ * Consider using standard C `offsetof()`, available since at least C89
+ * and C++98, in new code (but note that `offsetof()` returns a `size_t`
+ * rather than a `long`).
+ *
+ * Returns: the offset of @member from the start of @struct_type,
+ *  as a value of type #glong.
  */
 
 
@@ -4674,6 +4924,9 @@
  *
  * Each invocation of `G_VA_COPY (ap1, ap2)` must be matched with a
  * corresponding `va_end (ap1)` call in the same function.
+ *
+ * This is equivalent to standard C `va_copy()`, available since C99
+ * and C++11, which should be preferred in new code.
  */
 
 
@@ -5233,52 +5486,6 @@
 
 
 /**
- * SECTION:bookmarkfile
- * @title: Bookmark file parser
- * @short_description: parses files containing bookmarks
- *
- * GBookmarkFile lets you parse, edit or create files containing bookmarks
- * to URI, along with some meta-data about the resource pointed by the URI
- * like its MIME type, the application that is registering the bookmark and
- * the icon that should be used to represent the bookmark. The data is stored
- * using the
- * [Desktop Bookmark Specification](http://www.gnome.org/~ebassi/bookmark-spec).
- *
- * The syntax of the bookmark files is described in detail inside the
- * Desktop Bookmark Specification, here is a quick summary: bookmark
- * files use a sub-class of the XML Bookmark Exchange Language
- * specification, consisting of valid UTF-8 encoded XML, under the
- * <xbel> root element; each bookmark is stored inside a
- * <bookmark> element, using its URI: no relative paths can
- * be used inside a bookmark file. The bookmark may have a user defined
- * title and description, to be used instead of the URI. Under the
- * <metadata> element, with its owner attribute set to
- * `http://freedesktop.org`, is stored the meta-data about a resource
- * pointed by its URI. The meta-data consists of the resource's MIME
- * type; the applications that have registered a bookmark; the groups
- * to which a bookmark belongs to; a visibility flag, used to set the
- * bookmark as "private" to the applications and groups that has it
- * registered; the URI and MIME type of an icon, to be used when
- * displaying the bookmark inside a GUI.
- *
- * Here is an example of a bookmark file:
- * [bookmarks.xbel](https://gitlab.gnome.org/GNOME/glib/-/blob/HEAD/glib/tests/bookmarks.xbel)
- *
- * A bookmark file might contain more than one bookmark; each bookmark
- * is accessed through its URI.
- *
- * The important caveat of bookmark files is that when you add a new
- * bookmark you must also add the application that is registering it, using
- * g_bookmark_file_add_application() or g_bookmark_file_set_application_info().
- * If a bookmark has no applications then it won't be dumped when creating
- * the on disk representation, using g_bookmark_file_to_data() or
- * g_bookmark_file_to_file().
- *
- * The #GBookmarkFile parser was added in GLib 2.12.
- */
-
-
-/**
  * SECTION:byte_order
  * @title: Byte Order Macros
  * @short_description: a portable way to convert between different byte orders
@@ -5388,7 +5595,7 @@
  * Character:  P  r  e  s  e  n  t  a  c  i  ó     n  .  s  x  i
  * Hex code:   50 72 65 73 65 6e 74 61 63 69 c3 b3 6e 2e 73 78 69
  * ]|
- * Glib uses UTF-8 for its strings, and GUI toolkits like GTK+ that use
+ * GLib uses UTF-8 for its strings, and GUI toolkits like GTK that use
  * GLib do the same thing. If you get a file name from the file system,
  * for example, from readdir() or from g_dir_read_name(), and you wish
  * to display the file name to the user, you  will need to convert it
@@ -5645,7 +5852,7 @@
  * These two kinds of errors are fundamentally different: runtime errors
  * should be handled or reported to the user, programming errors should
  * be eliminated by fixing the bug in the program. This is why most
- * functions in GLib and GTK+ do not use the #GError facility.
+ * functions in GLib and GTK do not use the #GError facility.
  *
  * Functions that can fail take a return location for a #GError as their
  * last argument. On error, a new #GError instance will be allocated and
@@ -6131,6 +6338,52 @@
 
 
 /**
+ * SECTION:gbookmarkfile
+ * @title: Bookmark file parser
+ * @short_description: parses files containing bookmarks
+ *
+ * GBookmarkFile lets you parse, edit or create files containing bookmarks
+ * to URI, along with some meta-data about the resource pointed by the URI
+ * like its MIME type, the application that is registering the bookmark and
+ * the icon that should be used to represent the bookmark. The data is stored
+ * using the
+ * [Desktop Bookmark Specification](http://www.gnome.org/~ebassi/bookmark-spec).
+ *
+ * The syntax of the bookmark files is described in detail inside the
+ * Desktop Bookmark Specification, here is a quick summary: bookmark
+ * files use a sub-class of the XML Bookmark Exchange Language
+ * specification, consisting of valid UTF-8 encoded XML, under the
+ * <xbel> root element; each bookmark is stored inside a
+ * <bookmark> element, using its URI: no relative paths can
+ * be used inside a bookmark file. The bookmark may have a user defined
+ * title and description, to be used instead of the URI. Under the
+ * <metadata> element, with its owner attribute set to
+ * `http://freedesktop.org`, is stored the meta-data about a resource
+ * pointed by its URI. The meta-data consists of the resource's MIME
+ * type; the applications that have registered a bookmark; the groups
+ * to which a bookmark belongs to; a visibility flag, used to set the
+ * bookmark as "private" to the applications and groups that has it
+ * registered; the URI and MIME type of an icon, to be used when
+ * displaying the bookmark inside a GUI.
+ *
+ * Here is an example of a bookmark file:
+ * [bookmarks.xbel](https://gitlab.gnome.org/GNOME/glib/-/blob/HEAD/glib/tests/bookmarks.xbel)
+ *
+ * A bookmark file might contain more than one bookmark; each bookmark
+ * is accessed through its URI.
+ *
+ * The important caveat of bookmark files is that when you add a new
+ * bookmark you must also add the application that is registering it, using
+ * g_bookmark_file_add_application() or g_bookmark_file_set_application_info().
+ * If a bookmark has no applications then it won't be dumped when creating
+ * the on disk representation, using g_bookmark_file_to_data() or
+ * g_bookmark_file_to_file().
+ *
+ * The #GBookmarkFile parser was added in GLib 2.12.
+ */
+
+
+/**
  * SECTION:ghostutils
  * @short_description: Internet hostname utilities
  *
@@ -6146,6 +6399,349 @@
  * ASCII-Compatible Encoding of any given Unicode name, which can be
  * used with non-IDN-aware applications and protocols. (For example,
  * "Παν語.org" maps to "xn--4wa8awb4637h.org".)
+ */
+
+
+/**
+ * SECTION:gkeyfile
+ * @title: Key-value file parser
+ * @short_description: parses .ini-like config files
+ *
+ * #GKeyFile lets you parse, edit or create files containing groups of
+ * key-value pairs, which we call "key files" for lack of a better name.
+ * Several freedesktop.org specifications use key files now, e.g the
+ * [Desktop Entry Specification](http://freedesktop.org/Standards/desktop-entry-spec)
+ * and the
+ * [Icon Theme Specification](http://freedesktop.org/Standards/icon-theme-spec).
+ *
+ * The syntax of key files is described in detail in the
+ * [Desktop Entry Specification](http://freedesktop.org/Standards/desktop-entry-spec),
+ * here is a quick summary: Key files
+ * consists of groups of key-value pairs, interspersed with comments.
+ *
+ * |[
+ * # this is just an example
+ * # there can be comments before the first group
+ *
+ * [First Group]
+ *
+ * Name=Key File Example\tthis value shows\nescaping
+ *
+ * # localized strings are stored in multiple key-value pairs
+ * Welcome=Hello
+ * Welcome[de]=Hallo
+ * Welcome[fr_FR]=Bonjour
+ * Welcome[it]=Ciao
+ * Welcome[be@latin]=Hello
+ *
+ * [Another Group]
+ *
+ * Numbers=2;20;-200;0
+ *
+ * Booleans=true;false;true;true
+ * ]|
+ *
+ * Lines beginning with a '#' and blank lines are considered comments.
+ *
+ * Groups are started by a header line containing the group name enclosed
+ * in '[' and ']', and ended implicitly by the start of the next group or
+ * the end of the file. Each key-value pair must be contained in a group.
+ *
+ * Key-value pairs generally have the form `key=value`, with the
+ * exception of localized strings, which have the form
+ * `key[locale]=value`, with a locale identifier of the
+ * form `lang_COUNTRY@MODIFIER` where `COUNTRY` and `MODIFIER`
+ * are optional.
+ * Space before and after the '=' character are ignored. Newline, tab,
+ * carriage return and backslash characters in value are escaped as \n,
+ * \t, \r, and \\\\, respectively. To preserve leading spaces in values,
+ * these can also be escaped as \s.
+ *
+ * Key files can store strings (possibly with localized variants), integers,
+ * booleans and lists of these. Lists are separated by a separator character,
+ * typically ';' or ','. To use the list separator character in a value in
+ * a list, it has to be escaped by prefixing it with a backslash.
+ *
+ * This syntax is obviously inspired by the .ini files commonly met
+ * on Windows, but there are some important differences:
+ *
+ * - .ini files use the ';' character to begin comments,
+ *   key files use the '#' character.
+ *
+ * - Key files do not allow for ungrouped keys meaning only
+ *   comments can precede the first group.
+ *
+ * - Key files are always encoded in UTF-8.
+ *
+ * - Key and Group names are case-sensitive. For example, a group called
+ *   [GROUP] is a different from [group].
+ *
+ * - .ini files don't have a strongly typed boolean entry type,
+ *    they only have GetProfileInt(). In key files, only
+ *    true and false (in lower case) are allowed.
+ *
+ * Note that in contrast to the
+ * [Desktop Entry Specification](http://freedesktop.org/Standards/desktop-entry-spec),
+ * groups in key files may contain the same
+ * key multiple times; the last entry wins. Key files may also contain
+ * multiple groups with the same name; they are merged together.
+ * Another difference is that keys and group names in key files are not
+ * restricted to ASCII characters.
+ *
+ * Here is an example of loading a key file and reading a value:
+ *
+ * |[<!-- language="C" -->
+ * g_autoptr(GError) error = NULL;
+ * g_autoptr(GKeyFile) key_file = g_key_file_new ();
+ *
+ * if (!g_key_file_load_from_file (key_file, "key-file.ini", flags, &error))
+ *   {
+ *     if (!g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
+ *       g_warning ("Error loading key file: %s", error->message);
+ *     return;
+ *   }
+ *
+ * g_autofree gchar *val = g_key_file_get_string (key_file, "Group Name", "SomeKey", &error);
+ * if (val == NULL &&
+ *     !g_error_matches (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
+ *   {
+ *     g_warning ("Error finding key in key file: %s", error->message);
+ *     return;
+ *   }
+ * else if (val == NULL)
+ *   {
+ *     // Fall back to a default value.
+ *     val = g_strdup ("default-value");
+ *   }
+ * ]|
+ *
+ * Here is an example of creating and saving a key file:
+ *
+ * |[<!-- language="C" -->
+ * g_autoptr(GKeyFile) key_file = g_key_file_new ();
+ * const gchar *val = …;
+ * g_autoptr(GError) error = NULL;
+ *
+ * g_key_file_set_string (key_file, "Group Name", "SomeKey", val);
+ *
+ * // Save as a file.
+ * if (!g_key_file_save_to_file (key_file, "key-file.ini", &error))
+ *   {
+ *     g_warning ("Error saving key file: %s", error->message);
+ *     return;
+ *   }
+ *
+ * // Or store to a GBytes for use elsewhere.
+ * gsize data_len;
+ * g_autofree guint8 *data = (guint8 *) g_key_file_to_data (key_file, &data_len, &error);
+ * if (data == NULL)
+ *   {
+ *     g_warning ("Error saving key file: %s", error->message);
+ *     return;
+ *   }
+ * g_autoptr(GBytes) bytes = g_bytes_new_take (g_steal_pointer (&data), data_len);
+ * ]|
+ */
+
+
+/**
+ * SECTION:goptioncontext
+ * @Short_description: parses commandline options
+ * @Title: Commandline option parser
+ *
+ * The GOption commandline parser is intended to be a simpler replacement
+ * for the popt library. It supports short and long commandline options,
+ * as shown in the following example:
+ *
+ * `testtreemodel -r 1 --max-size 20 --rand --display=:1.0 -vb -- file1 file2`
+ *
+ * The example demonstrates a number of features of the GOption
+ * commandline parser:
+ *
+ * - Options can be single letters, prefixed by a single dash.
+ *
+ * - Multiple short options can be grouped behind a single dash.
+ *
+ * - Long options are prefixed by two consecutive dashes.
+ *
+ * - Options can have an extra argument, which can be a number, a string or
+ *   a filename. For long options, the extra argument can be appended with
+ *   an equals sign after the option name, which is useful if the extra
+ *   argument starts with a dash, which would otherwise cause it to be
+ *   interpreted as another option.
+ *
+ * - Non-option arguments are returned to the application as rest arguments.
+ *
+ * - An argument consisting solely of two dashes turns off further parsing,
+ *   any remaining arguments (even those starting with a dash) are returned
+ *   to the application as rest arguments.
+ *
+ * Another important feature of GOption is that it can automatically
+ * generate nicely formatted help output. Unless it is explicitly turned
+ * off with g_option_context_set_help_enabled(), GOption will recognize
+ * the `--help`, `-?`, `--help-all` and `--help-groupname` options
+ * (where `groupname` is the name of a #GOptionGroup) and write a text
+ * similar to the one shown in the following example to stdout.
+ *
+ * |[
+ * Usage:
+ *   testtreemodel [OPTION...] - test tree model performance
+ *  
+ * Help Options:
+ *   -h, --help               Show help options
+ *   --help-all               Show all help options
+ *   --help-gtk               Show GTK Options
+ *  
+ * Application Options:
+ *   -r, --repeats=N          Average over N repetitions
+ *   -m, --max-size=M         Test up to 2^M items
+ *   --display=DISPLAY        X display to use
+ *   -v, --verbose            Be verbose
+ *   -b, --beep               Beep when done
+ *   --rand                   Randomize the data
+ * ]|
+ *
+ * GOption groups options in #GOptionGroups, which makes it easy to
+ * incorporate options from multiple sources. The intended use for this is
+ * to let applications collect option groups from the libraries it uses,
+ * add them to their #GOptionContext, and parse all options by a single call
+ * to g_option_context_parse(). See gtk_get_option_group() for an example.
+ *
+ * If an option is declared to be of type string or filename, GOption takes
+ * care of converting it to the right encoding; strings are returned in
+ * UTF-8, filenames are returned in the GLib filename encoding. Note that
+ * this only works if setlocale() has been called before
+ * g_option_context_parse().
+ *
+ * Here is a complete example of setting up GOption to parse the example
+ * commandline above and produce the example help output.
+ * |[<!-- language="C" -->
+ * static gint repeats = 2;
+ * static gint max_size = 8;
+ * static gboolean verbose = FALSE;
+ * static gboolean beep = FALSE;
+ * static gboolean randomize = FALSE;
+ *
+ * static GOptionEntry entries[] =
+ * {
+ *   { "repeats", 'r', 0, G_OPTION_ARG_INT, &repeats, "Average over N repetitions", "N" },
+ *   { "max-size", 'm', 0, G_OPTION_ARG_INT, &max_size, "Test up to 2^M items", "M" },
+ *   { "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose, "Be verbose", NULL },
+ *   { "beep", 'b', 0, G_OPTION_ARG_NONE, &beep, "Beep when done", NULL },
+ *   { "rand", 0, 0, G_OPTION_ARG_NONE, &randomize, "Randomize the data", NULL },
+ *   G_OPTION_ENTRY_NULL
+ * };
+ *
+ * int
+ * main (int argc, char *argv[])
+ * {
+ *   GError *error = NULL;
+ *   GOptionContext *context;
+ *
+ *   context = g_option_context_new ("- test tree model performance");
+ *   g_option_context_add_main_entries (context, entries, GETTEXT_PACKAGE);
+ *   g_option_context_add_group (context, gtk_get_option_group (TRUE));
+ *   if (!g_option_context_parse (context, &argc, &argv, &error))
+ *     {
+ *       g_print ("option parsing failed: %s\n", error->message);
+ *       exit (1);
+ *     }
+ *
+ *   ...
+ *
+ * }
+ * ]|
+ *
+ * On UNIX systems, the argv that is passed to main() has no particular
+ * encoding, even to the extent that different parts of it may have
+ * different encodings.  In general, normal arguments and flags will be
+ * in the current locale and filenames should be considered to be opaque
+ * byte strings.  Proper use of %G_OPTION_ARG_FILENAME vs
+ * %G_OPTION_ARG_STRING is therefore important.
+ *
+ * Note that on Windows, filenames do have an encoding, but using
+ * #GOptionContext with the argv as passed to main() will result in a
+ * program that can only accept commandline arguments with characters
+ * from the system codepage.  This can cause problems when attempting to
+ * deal with filenames containing Unicode characters that fall outside
+ * of the codepage.
+ *
+ * A solution to this is to use g_win32_get_command_line() and
+ * g_option_context_parse_strv() which will properly handle full Unicode
+ * filenames.  If you are using #GApplication, this is done
+ * automatically for you.
+ *
+ * The following example shows how you can use #GOptionContext directly
+ * in order to correctly deal with Unicode filenames on Windows:
+ *
+ * |[<!-- language="C" -->
+ * int
+ * main (int argc, char **argv)
+ * {
+ *   GError *error = NULL;
+ *   GOptionContext *context;
+ *   gchar **args;
+ *
+ * #ifdef G_OS_WIN32
+ *   args = g_win32_get_command_line ();
+ * #else
+ *   args = g_strdupv (argv);
+ * #endif
+ *
+ *   // set up context
+ *
+ *   if (!g_option_context_parse_strv (context, &args, &error))
+ *     {
+ *       // error happened
+ *     }
+ *
+ *   ...
+ *
+ *   g_strfreev (args);
+ *
+ *   ...
+ * }
+ * ]|
+ */
+
+
+/**
+ * SECTION:gpathbuf
+ * @Title: GPathBuf
+ * @Short_description: A mutable path builder
+ *
+ * `GPathBuf` is a helper type that allows you to easily build paths from
+ * individual elements, using the platform specific conventions for path
+ * separators.
+ *
+ * |[<!-- language="C" -->
+ * g_auto (GPathBuf) path;
+ *
+ * g_path_buf_init (&path);
+ *
+ * g_path_buf_push (&path, "usr");
+ * g_path_buf_push (&path, "bin");
+ * g_path_buf_push (&path, "echo");
+ *
+ * g_autofree char *echo = g_path_buf_to_path (&path);
+ * g_assert_cmpstr (echo, ==, "/usr/bin/echo");
+ * ]|
+ *
+ * You can also load a full path and then operate on its components:
+ *
+ * |[<!-- language="C" -->
+ * g_auto (GPathBuf) path;
+ *
+ * g_path_buf_init_from_path (&path, "/usr/bin/echo");
+ *
+ * g_path_buf_pop (&path);
+ * g_path_buf_push (&path, "sh");
+ *
+ * g_autofree char *sh = g_path_buf_to_path (&path);
+ * g_assert_cmpstr (sh, ==, "/usr/bin/sh");
+ * ]|
+ *
+ * `GPathBuf` is available since GLib 2.76.
  */
 
 
@@ -6198,18 +6794,6 @@
  * relevant when compiling a pattern if %G_REGEX_EXTENDED is set, and an
  * unescaped "#" outside a character class is encountered. This indicates
  * a comment that lasts until after the next newline.
- *
- * When setting the %G_REGEX_JAVASCRIPT_COMPAT flag, pattern syntax and pattern
- * matching is changed to be compatible with the way that regular expressions
- * work in JavaScript. More precisely, a lonely ']' character in the pattern
- * is a syntax error; the '\x' escape only allows 0 to 2 hexadecimal digits, and
- * you must use the '\u' escape sequence with 4 hex digits to specify a unicode
- * codepoint instead of '\x' or 'x{....}'. If '\x' or '\u' are not followed by
- * the specified number of hex digits, they match 'x' and 'u' literally; also
- * '\U' always matches 'U' instead of being an error in the pattern. Finally,
- * pattern matching is modified so that back references to an unset subpattern
- * group produces a match with the empty string instead of an error. See
- * pcreapi(3) for more information.
  *
  * Creating and manipulating the same #GRegex structure from different
  * threads is not a problem as #GRegex does not modify its internal
@@ -6973,146 +7557,6 @@
 
 
 /**
- * SECTION:keyfile
- * @title: Key-value file parser
- * @short_description: parses .ini-like config files
- *
- * #GKeyFile lets you parse, edit or create files containing groups of
- * key-value pairs, which we call "key files" for lack of a better name.
- * Several freedesktop.org specifications use key files now, e.g the
- * [Desktop Entry Specification](http://freedesktop.org/Standards/desktop-entry-spec)
- * and the
- * [Icon Theme Specification](http://freedesktop.org/Standards/icon-theme-spec).
- *
- * The syntax of key files is described in detail in the
- * [Desktop Entry Specification](http://freedesktop.org/Standards/desktop-entry-spec),
- * here is a quick summary: Key files
- * consists of groups of key-value pairs, interspersed with comments.
- *
- * |[
- * # this is just an example
- * # there can be comments before the first group
- *
- * [First Group]
- *
- * Name=Key File Example\tthis value shows\nescaping
- *
- * # localized strings are stored in multiple key-value pairs
- * Welcome=Hello
- * Welcome[de]=Hallo
- * Welcome[fr_FR]=Bonjour
- * Welcome[it]=Ciao
- * Welcome[be@latin]=Hello
- *
- * [Another Group]
- *
- * Numbers=2;20;-200;0
- *
- * Booleans=true;false;true;true
- * ]|
- *
- * Lines beginning with a '#' and blank lines are considered comments.
- *
- * Groups are started by a header line containing the group name enclosed
- * in '[' and ']', and ended implicitly by the start of the next group or
- * the end of the file. Each key-value pair must be contained in a group.
- *
- * Key-value pairs generally have the form `key=value`, with the
- * exception of localized strings, which have the form
- * `key[locale]=value`, with a locale identifier of the
- * form `lang_COUNTRY@MODIFIER` where `COUNTRY` and `MODIFIER`
- * are optional.
- * Space before and after the '=' character are ignored. Newline, tab,
- * carriage return and backslash characters in value are escaped as \n,
- * \t, \r, and \\\\, respectively. To preserve leading spaces in values,
- * these can also be escaped as \s.
- *
- * Key files can store strings (possibly with localized variants), integers,
- * booleans and lists of these. Lists are separated by a separator character,
- * typically ';' or ','. To use the list separator character in a value in
- * a list, it has to be escaped by prefixing it with a backslash.
- *
- * This syntax is obviously inspired by the .ini files commonly met
- * on Windows, but there are some important differences:
- *
- * - .ini files use the ';' character to begin comments,
- *   key files use the '#' character.
- *
- * - Key files do not allow for ungrouped keys meaning only
- *   comments can precede the first group.
- *
- * - Key files are always encoded in UTF-8.
- *
- * - Key and Group names are case-sensitive. For example, a group called
- *   [GROUP] is a different from [group].
- *
- * - .ini files don't have a strongly typed boolean entry type,
- *    they only have GetProfileInt(). In key files, only
- *    true and false (in lower case) are allowed.
- *
- * Note that in contrast to the
- * [Desktop Entry Specification](http://freedesktop.org/Standards/desktop-entry-spec),
- * groups in key files may contain the same
- * key multiple times; the last entry wins. Key files may also contain
- * multiple groups with the same name; they are merged together.
- * Another difference is that keys and group names in key files are not
- * restricted to ASCII characters.
- *
- * Here is an example of loading a key file and reading a value:
- * |[<!-- language="C" -->
- * g_autoptr(GError) error = NULL;
- * g_autoptr(GKeyFile) key_file = g_key_file_new ();
- *
- * if (!g_key_file_load_from_file (key_file, "key-file.ini", flags, &error))
- *   {
- *     if (!g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
- *       g_warning ("Error loading key file: %s", error->message);
- *     return;
- *   }
- *
- * g_autofree gchar *val = g_key_file_get_string (key_file, "Group Name", "SomeKey", &error);
- * if (val == NULL &&
- *     !g_error_matches (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
- *   {
- *     g_warning ("Error finding key in key file: %s", error->message);
- *     return;
- *   }
- * else if (val == NULL)
- *   {
- *     // Fall back to a default value.
- *     val = g_strdup ("default-value");
- *   }
- * ]|
- *
- * Here is an example of creating and saving a key file:
- * |[<!-- language="C" -->
- * g_autoptr(GKeyFile) key_file = g_key_file_new ();
- * const gchar *val = …;
- * g_autoptr(GError) error = NULL;
- *
- * g_key_file_set_string (key_file, "Group Name", "SomeKey", val);
- *
- * // Save as a file.
- * if (!g_key_file_save_to_file (key_file, "key-file.ini", &error))
- *   {
- *     g_warning ("Error saving key file: %s", error->message);
- *     return;
- *   }
- *
- * // Or store to a GBytes for use elsewhere.
- * gsize data_len;
- * g_autofree guint8 *data = (guint8 *) g_key_file_to_data (key_file, &data_len, &error);
- * if (data == NULL)
- *   {
- *     g_warning ("Error saving key file: %s", error->message);
- *     return;
- *   }
- * g_autoptr(GBytes) bytes = g_bytes_new_take (g_steal_pointer (&data), data_len);
- * ]|
- */
-
-
-/**
  * SECTION:linked_lists_double
  * @title: Doubly-Linked Lists
  * @short_description: linked lists that can be iterated over in both directions
@@ -7274,7 +7718,7 @@
  * @short_description: manages all available sources of events
  *
  * The main event loop manages all the available sources of events for
- * GLib and GTK+ applications. These events can come from any number of
+ * GLib and GTK applications. These events can come from any number of
  * different types of sources such as file descriptors (plain files,
  * pipes or sockets) and timeouts. New types of event sources can also
  * be added using g_source_attach().
@@ -7306,12 +7750,12 @@
  * exit the main loop, and g_main_loop_run() returns.
  *
  * It is possible to create new instances of #GMainLoop recursively.
- * This is often used in GTK+ applications when showing modal dialog
+ * This is often used in GTK applications when showing modal dialog
  * boxes. Note that event sources are associated with a particular
  * #GMainContext, and will be checked and dispatched for all main
  * loops associated with that GMainContext.
  *
- * GTK+ contains wrappers of some of these functions, e.g. gtk_main(),
+ * GTK contains wrappers of some of these functions, e.g. gtk_main(),
  * gtk_main_quit() and gtk_events_pending().
  *
  * ## Creating new source types
@@ -7444,6 +7888,11 @@
  * - Character references
  *
  * - Sections marked as CDATA
+ *
+ * ## An example parser # {#example}
+ *
+ * Here is an example for a markup parser:
+ * [markup-example.c](https://gitlab.gnome.org/GNOME/glib/-/blob/HEAD/glib/tests/markup-example.c)
  */
 
 
@@ -7484,37 +7933,18 @@
  * @short_description: efficient way to allocate groups of equal-sized
  *     chunks of memory
  *
- * Memory slices provide a space-efficient and multi-processing scalable
- * way to allocate equal-sized pieces of memory, just like the original
- * #GMemChunks (from GLib 2.8), while avoiding their excessive
- * memory-waste, scalability and performance problems.
+ * GSlice was a space-efficient and multi-processing scalable way to allocate
+ * equal sized pieces of memory. Since GLib 2.76, its implementation has been
+ * removed and it calls g_malloc() and g_free_sized(), because the performance
+ * of the system-default allocators has improved on all platforms since GSlice
+ * was written.
  *
- * To achieve these goals, the slice allocator uses a sophisticated,
- * layered design that has been inspired by Bonwick's slab allocator
- * ([Bonwick94](http://citeseer.ist.psu.edu/bonwick94slab.html)
- * Jeff Bonwick, The slab allocator: An object-caching kernel
- * memory allocator. USENIX 1994, and
- * [Bonwick01](http://citeseer.ist.psu.edu/bonwick01magazines.html)
- * Bonwick and Jonathan Adams, Magazines and vmem: Extending the
- * slab allocator to many cpu's and arbitrary resources. USENIX 2001)
+ * The GSlice APIs have not been deprecated, as they are widely in use and doing
+ * so would be very disruptive for little benefit.
  *
- * It uses posix_memalign() to optimize allocations of many equally-sized
- * chunks, and has per-thread free lists (the so-called magazine layer)
- * to quickly satisfy allocation requests of already known structure sizes.
- * This is accompanied by extra caching logic to keep freed memory around
- * for some time before returning it to the system. Memory that is unused
- * due to alignment constraints is used for cache colorization (random
- * distribution of chunk addresses) to improve CPU cache utilization. The
- * caching layer of the slice allocator adapts itself to high lock contention
- * to improve scalability.
- *
- * The slice allocator can allocate blocks as small as two pointers, and
- * unlike malloc(), it does not reserve extra space per block. For large block
- * sizes, g_slice_new() and g_slice_alloc() will automatically delegate to the
- * system malloc() implementation. For newly written code it is recommended
- * to use the new `g_slice` API instead of g_malloc() and
- * friends, as long as objects are not resized during their lifetime and the
- * object size used at allocation time is still available when freeing.
+ * New code should be written using g_new()/g_malloc() and g_free_sized() or
+ * g_free(). There is no particular benefit in porting existing code away from
+ * g_slice_new()/g_slice_free() unless it’s being rewritten anyway.
  *
  * Here is an example for using the slice allocator:
  * |[<!-- language="C" -->
@@ -7723,167 +8153,6 @@
  * supported (used for storage) by at least Intel, PPC and Sparc. See
  * [IEEE 754-2008](http://en.wikipedia.org/wiki/IEEE_float)
  * for more information about IEEE number formats.
- */
-
-
-/**
- * SECTION:option
- * @Short_description: parses commandline options
- * @Title: Commandline option parser
- *
- * The GOption commandline parser is intended to be a simpler replacement
- * for the popt library. It supports short and long commandline options,
- * as shown in the following example:
- *
- * `testtreemodel -r 1 --max-size 20 --rand --display=:1.0 -vb -- file1 file2`
- *
- * The example demonstrates a number of features of the GOption
- * commandline parser:
- *
- * - Options can be single letters, prefixed by a single dash.
- *
- * - Multiple short options can be grouped behind a single dash.
- *
- * - Long options are prefixed by two consecutive dashes.
- *
- * - Options can have an extra argument, which can be a number, a string or
- *   a filename. For long options, the extra argument can be appended with
- *   an equals sign after the option name, which is useful if the extra
- *   argument starts with a dash, which would otherwise cause it to be
- *   interpreted as another option.
- *
- * - Non-option arguments are returned to the application as rest arguments.
- *
- * - An argument consisting solely of two dashes turns off further parsing,
- *   any remaining arguments (even those starting with a dash) are returned
- *   to the application as rest arguments.
- *
- * Another important feature of GOption is that it can automatically
- * generate nicely formatted help output. Unless it is explicitly turned
- * off with g_option_context_set_help_enabled(), GOption will recognize
- * the `--help`, `-?`, `--help-all` and `--help-groupname` options
- * (where `groupname` is the name of a #GOptionGroup) and write a text
- * similar to the one shown in the following example to stdout.
- *
- * |[
- * Usage:
- *   testtreemodel [OPTION...] - test tree model performance
- *  
- * Help Options:
- *   -h, --help               Show help options
- *   --help-all               Show all help options
- *   --help-gtk               Show GTK+ Options
- *  
- * Application Options:
- *   -r, --repeats=N          Average over N repetitions
- *   -m, --max-size=M         Test up to 2^M items
- *   --display=DISPLAY        X display to use
- *   -v, --verbose            Be verbose
- *   -b, --beep               Beep when done
- *   --rand                   Randomize the data
- * ]|
- *
- * GOption groups options in #GOptionGroups, which makes it easy to
- * incorporate options from multiple sources. The intended use for this is
- * to let applications collect option groups from the libraries it uses,
- * add them to their #GOptionContext, and parse all options by a single call
- * to g_option_context_parse(). See gtk_get_option_group() for an example.
- *
- * If an option is declared to be of type string or filename, GOption takes
- * care of converting it to the right encoding; strings are returned in
- * UTF-8, filenames are returned in the GLib filename encoding. Note that
- * this only works if setlocale() has been called before
- * g_option_context_parse().
- *
- * Here is a complete example of setting up GOption to parse the example
- * commandline above and produce the example help output.
- * |[<!-- language="C" -->
- * static gint repeats = 2;
- * static gint max_size = 8;
- * static gboolean verbose = FALSE;
- * static gboolean beep = FALSE;
- * static gboolean randomize = FALSE;
- *
- * static GOptionEntry entries[] =
- * {
- *   { "repeats", 'r', 0, G_OPTION_ARG_INT, &repeats, "Average over N repetitions", "N" },
- *   { "max-size", 'm', 0, G_OPTION_ARG_INT, &max_size, "Test up to 2^M items", "M" },
- *   { "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose, "Be verbose", NULL },
- *   { "beep", 'b', 0, G_OPTION_ARG_NONE, &beep, "Beep when done", NULL },
- *   { "rand", 0, 0, G_OPTION_ARG_NONE, &randomize, "Randomize the data", NULL },
- *   G_OPTION_ENTRY_NULL
- * };
- *
- * int
- * main (int argc, char *argv[])
- * {
- *   GError *error = NULL;
- *   GOptionContext *context;
- *
- *   context = g_option_context_new ("- test tree model performance");
- *   g_option_context_add_main_entries (context, entries, GETTEXT_PACKAGE);
- *   g_option_context_add_group (context, gtk_get_option_group (TRUE));
- *   if (!g_option_context_parse (context, &argc, &argv, &error))
- *     {
- *       g_print ("option parsing failed: %s\n", error->message);
- *       exit (1);
- *     }
- *
- *   ...
- *
- * }
- * ]|
- *
- * On UNIX systems, the argv that is passed to main() has no particular
- * encoding, even to the extent that different parts of it may have
- * different encodings.  In general, normal arguments and flags will be
- * in the current locale and filenames should be considered to be opaque
- * byte strings.  Proper use of %G_OPTION_ARG_FILENAME vs
- * %G_OPTION_ARG_STRING is therefore important.
- *
- * Note that on Windows, filenames do have an encoding, but using
- * #GOptionContext with the argv as passed to main() will result in a
- * program that can only accept commandline arguments with characters
- * from the system codepage.  This can cause problems when attempting to
- * deal with filenames containing Unicode characters that fall outside
- * of the codepage.
- *
- * A solution to this is to use g_win32_get_command_line() and
- * g_option_context_parse_strv() which will properly handle full Unicode
- * filenames.  If you are using #GApplication, this is done
- * automatically for you.
- *
- * The following example shows how you can use #GOptionContext directly
- * in order to correctly deal with Unicode filenames on Windows:
- *
- * |[<!-- language="C" -->
- * int
- * main (int argc, char **argv)
- * {
- *   GError *error = NULL;
- *   GOptionContext *context;
- *   gchar **args;
- *
- * #ifdef G_OS_WIN32
- *   args = g_win32_get_command_line ();
- * #else
- *   args = g_strdupv (argv);
- * #endif
- *
- *   // set up context
- *
- *   if (!g_option_context_parse_strv (context, &args, &error))
- *     {
- *       // error happened
- *     }
- *
- *   ...
- *
- *   g_strfreev (args);
- *
- *   ...
- * }
- * ]|
  */
 
 
@@ -8499,10 +8768,14 @@
  * The API is designed to handle creation and registration of test suites
  * and test cases implicitly. A simple call like
  * |[<!-- language="C" -->
+ *   g_test_init (&argc, &argv, G_TEST_OPTION_ISOLATE_DIRS, NULL);
+ *
  *   g_test_add_func ("/misc/assertions", test_assertions);
  * ]|
  * creates a test suite called "misc" with a single test case named
  * "assertions", which consists of running the test_assertions function.
+ *
+ * g_test_init() should be called before calling any other test functions.
  *
  * In addition to the traditional g_assert_true(), the test framework provides
  * an extended set of assertions for comparisons: g_assert_cmpfloat(),
@@ -8580,7 +8853,7 @@
  * }
  * ]|
  *
- * ### Integrating GTest in your project
+ * ## Integrating GTest in your project
  *
  * If you are using the [Meson](http://mesonbuild.com) build system, you will
  * typically use the provided `test()` primitive to call the test binaries,
@@ -8938,7 +9211,7 @@
  * @title: Type Conversion Macros
  * @short_description: portably storing integers in pointer variables
  *
- * Many times GLib, GTK+, and other libraries allow you to pass "user
+ * Many times GLib, GTK, and other libraries allow you to pass "user
  * data" to a callback, in the form of a void pointer. From time to time
  * you want to pass an integer instead of a pointer. You could allocate
  * an integer, with something like:
@@ -9133,11 +9406,18 @@
  * }
  * ]|
  *
- * g_print(), g_printerr() and g_set_print_handler() are intended to be used for
+ * g_print() and g_printerr() are intended to be used for
  * output from command line applications, since they output to standard output
  * and standard error by default — whereas functions like g_message() and
  * g_log() may be redirected to special purpose message windows, files, or the
  * system journal.
+ *
+ * If the console encoding is not UTF-8 (as specified by g_get_console_charset())
+ * then these functions convert the message first. Any Unicode
+ * characters not defined by that charset are replaced by `'?'`. On Linux,
+ * setlocale() must be called early in main() to load the encoding. This behaviour
+ * can be changed by providing custom handlers to g_set_print_handler(),
+ * g_set_printerr_handler() and g_log_set_handler().
  */
 
 
@@ -9177,6 +9457,21 @@
  * GLib installation folder. The path is in the system codepage. We
  * have to use system codepage as bindtextdomain() doesn't have a
  * UTF-8 interface.
+ */
+
+
+/**
+ * ensure_cmd_environment:
+ *
+ * Workaround for an issue in the universal C Runtime library (UCRT). This adds
+ * a custom environment variable to this process's environment block that looks
+ * like the cmd.exe's shell-related environment variables, i.e the name starts
+ * with an equal sign character: '='. This is needed because the UCRT may crash
+ * if those environment variables are missing from the calling process's block.
+ *
+ * Reference:
+ *
+ * https://developercommunity.visualstudio.com/t/UCRT-Crash-in-_wspawne-functions/10262748
  */
 
 
@@ -9237,7 +9532,7 @@
  * the program is terminated.
  *
  * Aligned memory allocations returned by this function can only be
- * freed using g_aligned_free().
+ * freed using g_aligned_free_sized() or g_aligned_free().
  *
  * Returns: (transfer full): the allocated memory
  * Since: 2.72
@@ -9266,6 +9561,26 @@
  * Frees the memory allocated by g_aligned_alloc().
  *
  * Since: 2.72
+ */
+
+
+/**
+ * g_aligned_free_sized:
+ * @mem: (nullable): the memory to free
+ * @alignment: alignment of @mem
+ * @size: size of @mem, in bytes
+ *
+ * Frees the memory pointed to by @mem, assuming it is has the given @size and
+ * @alignment.
+ *
+ * If @mem is %NULL this is a no-op (and @size is ignored).
+ *
+ * It is an error if @size doesn’t match the size, or @alignment doesn’t match
+ * the alignment, passed when @mem was allocated. @size and @alignment are
+ * passed to this function to allow optimizations in the allocator. If you
+ * don’t know either of them, use g_aligned_free() instead.
+ *
+ * Since: 2.76
  */
 
 
@@ -9317,7 +9632,7 @@
  *
  * This example defines a comparison function and search an element in a #GArray:
  * |[<!-- language="C" -->
- * static gint*
+ * static gint
  * cmpint (gconstpointer a, gconstpointer b)
  * {
  *   const gint *_a = a;
@@ -9473,6 +9788,69 @@
  * Creates a new #GArray with a reference count of 1.
  *
  * Returns: the new #GArray
+ */
+
+
+/**
+ * g_array_new_take: (skip)
+ * @data: (array length=len) (transfer full) (nullable): an array of
+ *   elements of @element_size, or %NULL for an empty array
+ * @len: the number of elements in @data
+ * @clear: %TRUE if #GArray elements should be automatically cleared
+ *     to 0 when they are allocated
+ * @element_size: the size of each element in bytes
+ *
+ * Creates a new #GArray with @data as array data, @len as length and a
+ * reference count of 1.
+ *
+ * This avoids having to copy the data manually, when it can just be
+ * inherited.
+ * After this call, @data belongs to the #GArray and may no longer be
+ * modified by the caller. The memory of @data has to be dynamically
+ * allocated and will eventually be freed with g_free().
+ *
+ * In case the elements need to be cleared when the array is freed, use
+ * g_array_set_clear_func() to set a #GDestroyNotify function to perform
+ * such task.
+ *
+ * Do not use it if @len or @element_size are greater than %G_MAXUINT.
+ * #GArray stores the length of its data in #guint, which may be shorter
+ * than #gsize.
+ *
+ * Returns: (transfer full): A new #GArray
+ * Since: 2.76
+ */
+
+
+/**
+ * g_array_new_take_zero_terminated: (skip)
+ * @data: (array zero-terminated=1): an array of elements of @element_size
+ * @clear: %TRUE if #GArray elements should be automatically cleared
+ *     to 0 when they are allocated
+ * @element_size: the size of each element in bytes
+ *
+ * Creates a new #GArray with @data as array data, computing the length of it
+ * and setting the reference count to 1.
+ *
+ * This avoids having to copy the data manually, when it can just be
+ * inherited.
+ * After this call, @data belongs to the #GArray and may no longer be
+ * modified by the caller. The memory of @data has to be dynamically
+ * allocated and will eventually be freed with g_free().
+ *
+ * The length is calculated by iterating through @data until the first %NULL
+ * element is found.
+ *
+ * In case the elements need to be cleared when the array is freed, use
+ * g_array_set_clear_func() to set a #GDestroyNotify function to perform
+ * such task.
+ *
+ * Do not use it if @data length or @element_size are greater than %G_MAXUINT.
+ * #GArray stores the length of its data in #guint, which may be shorter
+ * than #gsize.
+ *
+ * Returns: (transfer full): A new #GArray
+ * Since: 2.76
  */
 
 
@@ -10717,16 +11095,18 @@
 /**
  * g_async_queue_push:
  * @queue: a #GAsyncQueue
- * @data: @data to push into the @queue
+ * @data: (not nullable): data to push onto the @queue
  *
- * Pushes the @data into the @queue. @data must not be %NULL.
+ * Pushes the @data into the @queue.
+ *
+ * The @data parameter must not be %NULL.
  */
 
 
 /**
  * g_async_queue_push_front:
  * @queue: a #GAsyncQueue
- * @item: data to push into the @queue
+ * @item: (not nullable): data to push into the @queue
  *
  * Pushes the @item into the @queue. @item must not be %NULL.
  * In contrast to g_async_queue_push(), this function
@@ -10740,7 +11120,7 @@
 /**
  * g_async_queue_push_front_unlocked:
  * @queue: a #GAsyncQueue
- * @item: data to push into the @queue
+ * @item: (not nullable): data to push into the @queue
  *
  * Pushes the @item into the @queue. @item must not be %NULL.
  * In contrast to g_async_queue_push_unlocked(), this function
@@ -10756,7 +11136,7 @@
 /**
  * g_async_queue_push_sorted:
  * @queue: a #GAsyncQueue
- * @data: the @data to push into the @queue
+ * @data: (not nullable): the @data to push into the @queue
  * @func: the #GCompareDataFunc is used to sort @queue
  * @user_data: user data passed to @func.
  *
@@ -10778,7 +11158,7 @@
 /**
  * g_async_queue_push_sorted_unlocked:
  * @queue: a #GAsyncQueue
- * @data: the @data to push into the @queue
+ * @data: the data to push into the @queue
  * @func: the #GCompareDataFunc is used to sort @queue
  * @user_data: user data passed to @func.
  *
@@ -10805,9 +11185,11 @@
 /**
  * g_async_queue_push_unlocked:
  * @queue: a #GAsyncQueue
- * @data: @data to push into the @queue
+ * @data: (not nullable): data to push onto the @queue
  *
- * Pushes the @data into the @queue. @data must not be %NULL.
+ * Pushes the @data into the @queue.
+ *
+ * The @data parameter must not be %NULL.
  *
  * This function must be called while holding the @queue's lock.
  */
@@ -10839,7 +11221,7 @@
 /**
  * g_async_queue_remove:
  * @queue: a #GAsyncQueue
- * @item: the data to remove from the @queue
+ * @item: (not nullable): the data to remove from the @queue
  *
  * Remove an item from the queue.
  *
@@ -10929,7 +11311,7 @@
  * and g_time_val_add() can be used.
  *
  * Returns: (nullable): data from the queue or %NULL, when no data is
- *     received before @end_time.
+ *   received before @end_time.
  * Deprecated: use g_async_queue_timeout_pop().
  */
 
@@ -10950,7 +11332,7 @@
  * This function must be called while holding the @queue's lock.
  *
  * Returns: (nullable): data from the queue or %NULL, when no data is
- *     received before @end_time.
+ *   received before @end_time.
  * Deprecated: use g_async_queue_timeout_pop_unlocked().
  */
 
@@ -10966,7 +11348,7 @@
  * If no data is received before the timeout, %NULL is returned.
  *
  * Returns: (nullable): data from the queue or %NULL, when no data is
- *     received before the timeout.
+ *   received before the timeout.
  */
 
 
@@ -10983,7 +11365,7 @@
  * This function must be called while holding the @queue's lock.
  *
  * Returns: (nullable): data from the queue or %NULL, when no data is
- *     received before the timeout.
+ *   received before the timeout.
  */
 
 
@@ -10995,7 +11377,7 @@
  * %NULL is returned.
  *
  * Returns: (nullable): data from the queue or %NULL, when no data is
- *     available immediately.
+ *   available immediately.
  */
 
 
@@ -11009,7 +11391,7 @@
  * This function must be called while holding the @queue's lock.
  *
  * Returns: (nullable): data from the queue or %NULL, when no data is
- *     available immediately.
+ *   available immediately.
  */
 
 
@@ -11761,6 +12143,60 @@
 
 
 /**
+ * g_autofd: (skip)
+ *
+ * Macro to add an attribute to a file descriptor variable to ensure
+ * automatic cleanup using g_clear_fd().
+ *
+ * This macro behaves like #g_autofree rather than g_autoptr(): it is
+ * an attribute supplied before the type name, rather than wrapping the
+ * type definition.
+ *
+ * Otherwise, this macro has similar constraints as g_autoptr(): it is
+ * only supported on GCC and clang, and the variable must be initialized
+ * (to either a valid file descriptor or a negative number).
+ *
+ * Using this macro is async-signal-safe if the constraints described above
+ * are met, so it can be used in a signal handler or after `fork()`.
+ *
+ * Any error from closing the file descriptor when it goes out of scope
+ * is ignored. Use g_clear_fd() if error-checking is required.
+ *
+ * |[
+ * gboolean
+ * operate_on_fds (GError **error)
+ * {
+ *   g_autofd int fd1 = open_a_fd (..., error);
+ *   g_autofd int fd2 = -1;
+ *
+ *   // it is safe to return early here, nothing will be closed
+ *   if (fd1 < 0)
+ *     return FALSE;
+ *
+ *   fd2 = open_a_fd (..., error);
+ *
+ *   // fd1 will be closed automatically if we return here
+ *   if (fd2 < 0)
+ *     return FALSE;
+ *
+ *   // fd1 and fd2 will be closed automatically if we return here
+ *   if (!do_something_useful (fd1, fd2, error))
+ *     return FALSE;
+ *
+ *   // fd2 will be closed automatically if we return here
+ *   if (!g_clear_fd (&fd1, error))
+ *     return FALSE;
+ *
+ *   // fd2 will be automatically closed here if still open
+ *   return TRUE;
+ * }
+ * ]|
+ *
+ * Since: 2.76
+ */
+
+
+/**
  * g_autofree:
  *
  * Macro to add an attribute to pointer variable to ensure automatic
@@ -12076,11 +12512,11 @@
  * string.
  *
  * Returns: (type filename): the name of the file without any leading
- *     directory components
+ *   directory components
  * Deprecated: 2.2: Use g_path_get_basename() instead, but notice
- *     that g_path_get_basename() allocates new memory for the
- *     returned string, unlike this function which returns a pointer
- *     into the argument.
+ *   that g_path_get_basename() allocates new memory for the
+ *   returned string, unlike this function which returns a pointer
+ *   into the argument.
  */
 
 
@@ -12239,6 +12675,18 @@
  * If no bookmark for @uri is found then it is created.
  *
  * Since: 2.12
+ */
+
+
+/**
+ * g_bookmark_file_copy:
+ * @bookmark: A #GBookmarkFile
+ *
+ * Deeply copies a @bookmark #GBookmarkFile object to a new one.
+ *
+ * Returns: (transfer full): the copy of @bookmark. Use
+ *   g_bookmark_free() when finished using it.
+ * Since: 2.76
  */
 
 
@@ -13092,7 +13540,7 @@
  * @...: remaining elements in path, terminated by %NULL
  *
  * Creates a filename from a series of elements using the correct
- * separator for filenames.
+ * separator for the current platform.
  *
  * On Unix, this function behaves identically to `g_build_path
  * (G_DIR_SEPARATOR_S, first_element, ....)`.
@@ -13107,8 +13555,10 @@
  * path. If the first element is a relative path, the result will
  * be a relative path.
  *
- * Returns: (type filename) (transfer full): a newly-allocated string that
- *     must be freed with g_free().
+ * If you are building a path programmatically you may want to use
+ * #GPathBuf instead.
+ *
+ * Returns: (type filename) (transfer full): the newly allocated path
  */
 
 
@@ -13117,11 +13567,16 @@
  * @first_element: (type filename): the first element in the path
  * @args: va_list of remaining elements in path
  *
- * Behaves exactly like g_build_filename(), but takes the path elements
- * as a va_list. This function is mainly meant for language bindings.
+ * Creates a filename from a list of elements using the correct
+ * separator for the current platform.
  *
- * Returns: (type filename) (transfer full): a newly-allocated string that
- *     must be freed with g_free().
+ * Behaves exactly like g_build_filename(), but takes the path elements
+ * as a va_list.
+ *
+ * This function is mainly meant for implementing other variadic arguments
+ * functions.
+ *
+ * Returns: (type filename) (transfer full): the newly allocated path
  * Since: 2.56
  */
 
@@ -13129,14 +13584,19 @@
 /**
  * g_build_filenamev:
  * @args: (array zero-terminated=1) (element-type filename): %NULL-terminated
- *     array of strings containing the path elements.
+ *   array of strings containing the path elements.
  *
- * Behaves exactly like g_build_filename(), but takes the path elements
- * as a string array, instead of varargs. This function is mainly
+ * Creates a filename from a vector of elements using the correct
+ * separator for the current platform.
+ *
+ * This function behaves exactly like g_build_filename(), but takes the path
+ * elements as a string array, instead of varargs. This function is mainly
  * meant for language bindings.
  *
- * Returns: (type filename) (transfer full): a newly-allocated string that
- *     must be freed with g_free().
+ * If you are building a path programmatically you may want to use
+ * #GPathBuf instead.
+ *
+ * Returns: (type filename) (transfer full): the newly allocated path
  * Since: 2.8
  */
 
@@ -13148,10 +13608,12 @@
  * @...: remaining elements in path, terminated by %NULL
  *
  * Creates a path from a series of elements using @separator as the
- * separator between elements. At the boundary between two elements,
- * any trailing occurrences of separator in the first element, or
- * leading occurrences of separator in the second element are removed
- * and exactly one copy of the separator is inserted.
+ * separator between elements.
+ *
+ * At the boundary between two elements, any trailing occurrences of
+ * separator in the first element, or leading occurrences of separator
+ * in the second element are removed and exactly one copy of the
+ * separator is inserted.
  *
  * Empty elements are ignored.
  *
@@ -13174,8 +13636,7 @@
  * copies of the separator, elements consisting only of copies
  * of the separator are ignored.
  *
- * Returns: (type filename) (transfer full): a newly-allocated string that
- *     must be freed with g_free().
+ * Returns: (type filename) (transfer full): the newly allocated path
  */
 
 
@@ -13183,11 +13644,12 @@
  * g_build_pathv:
  * @separator: a string used to separator the elements of the path.
  * @args: (array zero-terminated=1) (element-type filename): %NULL-terminated
- *     array of strings containing the path elements.
+ *   array of strings containing the path elements.
  *
  * Behaves exactly like g_build_path(), but takes the path elements
- * as a string array, instead of varargs. This function is mainly
- * meant for language bindings.
+ * as a string array, instead of variadic arguments.
+ *
+ * This function is mainly meant for language bindings.
  *
  * Returns: (type filename) (transfer full): a newly-allocated string that
  *     must be freed with g_free().
@@ -13256,8 +13718,10 @@
  * @data: (transfer full) (array length=len): byte data for the array
  * @len: length of @data
  *
- * Create byte array containing the data. The data will be owned by the array
- * and will be freed with g_free(), i.e. it could be allocated using g_strdup().
+ * Creates a byte array containing the @data.
+ * After this call, @data belongs to the #GByteArray and may no longer be
+ * modified by the caller. The memory of @data has to be dynamically
+ * allocated and will eventually be freed with g_free().
  *
  * Do not use it if @len is greater than %G_MAXUINT. #GByteArray
  * stores the length of its data in #guint, which may be shorter than
@@ -13594,11 +14058,9 @@
  *
  * Creates a new #GBytes from @data.
  *
- * After this call, @data belongs to the bytes and may no longer be
- * modified by the caller.  g_free() will be called on @data when the
- * bytes is no longer in use. Because of this @data must have been created by
- * a call to g_malloc(), g_malloc0() or g_realloc() or by one of the many
- * functions that wrap these calls (such as g_new(), g_strdup(), etc).
+ * After this call, @data belongs to the #GBytes and may no longer be
+ * modified by the caller. The memory of @data has to be dynamically
+ * allocated and will eventually be freed with g_free().
  *
  * For creating #GBytes with memory from other allocators, see
  * g_bytes_new_with_free_func().
@@ -13717,7 +14179,7 @@
  * No file system I/O is done.
  *
  * Returns: (type filename) (transfer full): a newly allocated string with the
- * canonical file path
+ *   canonical file path
  * Since: 2.58
  */
 
@@ -13960,6 +14422,14 @@
  *   mechanism, including `waitpid(pid, ...)` or a second child-watch
  *   source for the same @pid
  * * the application must not ignore `SIGCHLD`
+ * * Before 2.78, the application could not send a signal (`kill()`) to the
+ *   watched @pid in a race free manner. Since 2.78, you can do that while the
+ *   associated #GMainContext is acquired.
+ * * Before 2.78, even after destroying the #GSource, you could not
+ *   be sure that @pid wasn't already reaped. Hence, it was also not
+ *   safe to `kill()` or `waitpid()` on the process ID after the child watch
+ *   source was gone. Destroying the source before it fired made it
+ *   impossible to reliably reap the process.
  *
  * If any of those conditions are not met, this and related APIs will
  * not work correctly. This can often be diagnosed via a GLib warning
@@ -14005,6 +14475,69 @@
 
 
 /**
+ * g_clear_fd: (skip)
+ * @fd_ptr: (not optional) (inout) (transfer full): a pointer to a file descriptor
+ * @error: Used to return an error on failure
+ *
+ * If @fd_ptr points to a file descriptor, close it and return
+ * whether closing it was successful, like g_close().
+ * If @fd_ptr points to a negative number, return %TRUE without closing
+ * anything.
+ * In both cases, set @fd_ptr to `-1` before returning.
+ *
+ * Like g_close(), if closing the file descriptor fails, the error is
+ * stored in both %errno and @error. If this function succeeds,
+ * %errno is undefined.
+ *
+ * On POSIX platforms, this function is async-signal safe
+ * if @error is %NULL and @fd_ptr points to either a negative number or a
+ * valid open file descriptor.
+ * This makes it safe to call from a signal handler or a #GSpawnChildSetupFunc
+ * under those conditions.
+ * See [`signal(7)`](man:signal(7)) and
+ * [`signal-safety(7)`](man:signal-safety(7)) for more details.
+ *
+ * It is a programming error for @fd_ptr to point to a non-negative
+ * number that is not a valid file descriptor.
+ *
+ * A typical use of this function is to clean up a file descriptor at
+ * the end of its scope, whether it has been set successfully or not:
+ *
+ * |[
+ * gboolean
+ * operate_on_fd (GError **error)
+ * {
+ *   gboolean ret = FALSE;
+ *   int fd = -1;
+ *
+ *   fd = open_a_fd (error);
+ *
+ *   if (fd < 0)
+ *     goto out;
+ *
+ *   if (!do_something (fd, error))
+ *     goto out;
+ *
+ *   if (!g_clear_fd (&fd, error))
+ *     goto out;
+ *
+ *   ret = TRUE;
+ *
+ * out:
+ *   // OK to call even if fd was never opened or was already closed
+ *   g_clear_fd (&fd, NULL);
+ *   return ret;
+ * }
+ * ]|
+ *
+ * This function is also useful in conjunction with #g_autofd.
+ *
+ * Returns: %TRUE on success
+ * Since: 2.76
+ */
+
+
+/**
  * g_clear_handle_id: (skip)
  * @tag_ptr: (not nullable): a pointer to the handler ID
  * @clear_func: (not nullable): the function to call to clear the handler
@@ -14039,8 +14572,8 @@
 
 /**
  * g_clear_pointer: (skip)
- * @pp: (not nullable): a pointer to a variable, struct member etc. holding a
- *    pointer
+ * @pp: (nullable) (not optional) (inout) (transfer full): a pointer to a
+ *   variable, struct member etc. holding a pointer
  * @destroy: a function to which a gpointer can be passed, to destroy *@pp
  *
  * Clears a reference to a variable.
@@ -14080,13 +14613,23 @@
  * @fd: A file descriptor
  * @error: a #GError
  *
- * This wraps the close() call; in case of error, %errno will be
+ * This wraps the close() call. In case of error, %errno will be
  * preserved, but the error will also be stored as a #GError in @error.
+ * In case of success, %errno is undefined.
  *
  * Besides using #GError, there is another major reason to prefer this
  * function over the call provided by the system; on Unix, it will
  * attempt to correctly handle %EINTR, which has platform-specific
  * semantics.
+ *
+ * It is a bug to call this function with an invalid file descriptor.
+ *
+ * On POSIX platforms since GLib 2.76, this function is async-signal safe
+ * if (and only if) @error is %NULL and @fd is a valid open file descriptor.
+ * This makes it safe to call from a signal handler or a #GSpawnChildSetupFunc
+ * under those conditions.
+ * See [`signal(7)`](man:signal(7)) and
+ * [`signal-safety(7)`](man:signal-safety(7)) for more details.
  *
  * Returns: %TRUE on success, %FALSE if there was an error.
  * Since: 2.36
@@ -14577,8 +15120,8 @@
 /**
  * g_datalist_foreach:
  * @datalist: a datalist.
- * @func: (scope call): the function to call for each data element.
- * @user_data: (closure): user data to pass to the function.
+ * @func: (scope call) (closure user_data): the function to call for each data element.
+ * @user_data: user data to pass to the function.
  *
  * Calls the given function for each data element of the datalist. The
  * function is called with each data element's #GQuark id and data,
@@ -14622,8 +15165,9 @@
  * g_datalist_id_dup_data: (skip)
  * @datalist: location of a datalist
  * @key_id: the #GQuark identifying a data element
- * @dup_func: (nullable) (scope call): function to duplicate the old value
- * @user_data: (closure): passed as user_data to @dup_func
+ * @dup_func: (scope call) (closure user_data) (nullable): function to
+ *   duplicate the old value
+ * @user_data: passed as user_data to @dup_func
  *
  * This is a variant of g_datalist_id_get_data() which
  * returns a 'duplicate' of the value. @dup_func defines the
@@ -14858,8 +15402,8 @@
 /**
  * g_dataset_foreach:
  * @dataset_location: (not nullable): the location identifying the dataset.
- * @func: (scope call): the function to call for each data element.
- * @user_data: (closure): user data to pass to the function.
+ * @func: (scope call) (closure user_data): the function to call for each data element.
+ * @user_data: user data to pass to the function.
  *
  * Calls the given function for each data element which is associated
  * with the given location. Note that this function is NOT thread-safe.
@@ -15709,103 +16253,103 @@
  * Creates a newly allocated string representing the requested @format.
  *
  * The format strings understood by this function are a subset of the
- * strftime() format language as specified by C99.  The \%D, \%U and \%W
- * conversions are not supported, nor is the 'E' modifier.  The GNU
- * extensions \%k, \%l, \%s and \%P are supported, however, as are the
- * '0', '_' and '-' modifiers. The Python extension \%f is also supported.
+ * `strftime()` format language as specified by C99.  The `%D`, `%U` and `%W`
+ * conversions are not supported, nor is the `E` modifier.  The GNU
+ * extensions `%k`, `%l`, `%s` and `%P` are supported, however, as are the
+ * `0`, `_` and `-` modifiers. The Python extension `%f` is also supported.
  *
- * In contrast to strftime(), this function always produces a UTF-8
+ * In contrast to `strftime()`, this function always produces a UTF-8
  * string, regardless of the current locale.  Note that the rendering of
- * many formats is locale-dependent and may not match the strftime()
+ * many formats is locale-dependent and may not match the `strftime()`
  * output exactly.
  *
  * The following format specifiers are supported:
  *
- * - \%a: the abbreviated weekday name according to the current locale
- * - \%A: the full weekday name according to the current locale
- * - \%b: the abbreviated month name according to the current locale
- * - \%B: the full month name according to the current locale
- * - \%c: the preferred date and time representation for the current locale
- * - \%C: the century number (year/100) as a 2-digit integer (00-99)
- * - \%d: the day of the month as a decimal number (range 01 to 31)
- * - \%e: the day of the month as a decimal number (range 1 to 31);
- *   single digits are preceded by a figure space
- * - \%F: equivalent to `%Y-%m-%d` (the ISO 8601 date format)
- * - \%g: the last two digits of the ISO 8601 week-based year as a
- *   decimal number (00-99). This works well with \%V and \%u.
- * - \%G: the ISO 8601 week-based year as a decimal number. This works
- *   well with \%V and \%u.
- * - \%h: equivalent to \%b
- * - \%H: the hour as a decimal number using a 24-hour clock (range 00 to 23)
- * - \%I: the hour as a decimal number using a 12-hour clock (range 01 to 12)
- * - \%j: the day of the year as a decimal number (range 001 to 366)
- * - \%k: the hour (24-hour clock) as a decimal number (range 0 to 23);
- *   single digits are preceded by a figure space
- * - \%l: the hour (12-hour clock) as a decimal number (range 1 to 12);
- *   single digits are preceded by a figure space
- * - \%m: the month as a decimal number (range 01 to 12)
- * - \%M: the minute as a decimal number (range 00 to 59)
- * - \%f: the microsecond as a decimal number (range 000000 to 999999)
- * - \%p: either "AM" or "PM" according to the given time value, or the
+ * - `%a`: the abbreviated weekday name according to the current locale
+ * - `%A`: the full weekday name according to the current locale
+ * - `%b`: the abbreviated month name according to the current locale
+ * - `%B`: the full month name according to the current locale
+ * - `%c`: the preferred date and time representation for the current locale
+ * - `%C`: the century number (year/100) as a 2-digit integer (00-99)
+ * - `%d`: the day of the month as a decimal number (range 01 to 31)
+ * - `%e`: the day of the month as a decimal number (range 1 to 31);
+ *   single digits are preceded by a figure space (U+2007)
+ * - `%F`: equivalent to `%Y-%m-%d` (the ISO 8601 date format)
+ * - `%g`: the last two digits of the ISO 8601 week-based year as a
+ *   decimal number (00-99). This works well with `%V` and `%u`.
+ * - `%G`: the ISO 8601 week-based year as a decimal number. This works
+ *   well with `%V` and `%u`.
+ * - `%h`: equivalent to `%b`
+ * - `%H`: the hour as a decimal number using a 24-hour clock (range 00 to 23)
+ * - `%I`: the hour as a decimal number using a 12-hour clock (range 01 to 12)
+ * - `%j`: the day of the year as a decimal number (range 001 to 366)
+ * - `%k`: the hour (24-hour clock) as a decimal number (range 0 to 23);
+ *   single digits are preceded by a figure space (U+2007)
+ * - `%l`: the hour (12-hour clock) as a decimal number (range 1 to 12);
+ *   single digits are preceded by a figure space (U+2007)
+ * - `%m`: the month as a decimal number (range 01 to 12)
+ * - `%M`: the minute as a decimal number (range 00 to 59)
+ * - `%f`: the microsecond as a decimal number (range 000000 to 999999)
+ * - `%p`: either ‘AM’ or ‘PM’ according to the given time value, or the
  *   corresponding  strings for the current locale.  Noon is treated as
- *   "PM" and midnight as "AM". Use of this format specifier is discouraged, as
- *   many locales have no concept of AM/PM formatting. Use \%c or \%X instead.
- * - \%P: like \%p but lowercase: "am" or "pm" or a corresponding string for
+ *   ‘PM’ and midnight as ‘AM’. Use of this format specifier is discouraged, as
+ *   many locales have no concept of AM/PM formatting. Use `%c` or `%X` instead.
+ * - `%P`: like `%p` but lowercase: ‘am’ or ‘pm’ or a corresponding string for
  *   the current locale. Use of this format specifier is discouraged, as
- *   many locales have no concept of AM/PM formatting. Use \%c or \%X instead.
- * - \%r: the time in a.m. or p.m. notation. Use of this format specifier is
- *   discouraged, as many locales have no concept of AM/PM formatting. Use \%c
- *   or \%X instead.
- * - \%R: the time in 24-hour notation (\%H:\%M)
- * - \%s: the number of seconds since the Epoch, that is, since 1970-01-01
+ *   many locales have no concept of AM/PM formatting. Use `%c` or `%X` instead.
+ * - `%r`: the time in a.m. or p.m. notation. Use of this format specifier is
+ *   discouraged, as many locales have no concept of AM/PM formatting. Use `%c`
+ *   or `%X` instead.
+ * - `%R`: the time in 24-hour notation (`%H:%M`)
+ * - `%s`: the number of seconds since the Epoch, that is, since 1970-01-01
  *   00:00:00 UTC
- * - \%S: the second as a decimal number (range 00 to 60)
- * - \%t: a tab character
- * - \%T: the time in 24-hour notation with seconds (\%H:\%M:\%S)
- * - \%u: the ISO 8601 standard day of the week as a decimal, range 1 to 7,
- *    Monday being 1. This works well with \%G and \%V.
- * - \%V: the ISO 8601 standard week number of the current year as a decimal
+ * - `%S`: the second as a decimal number (range 00 to 60)
+ * - `%t`: a tab character
+ * - `%T`: the time in 24-hour notation with seconds (`%H:%M:%S`)
+ * - `%u`: the ISO 8601 standard day of the week as a decimal, range 1 to 7,
+ *    Monday being 1. This works well with `%G` and `%V`.
+ * - `%V`: the ISO 8601 standard week number of the current year as a decimal
  *   number, range 01 to 53, where week 1 is the first week that has at
  *   least 4 days in the new year. See g_date_time_get_week_of_year().
- *   This works well with \%G and \%u.
- * - \%w: the day of the week as a decimal, range 0 to 6, Sunday being 0.
- *   This is not the ISO 8601 standard format -- use \%u instead.
- * - \%x: the preferred date representation for the current locale without
+ *   This works well with `%G` and `%u`.
+ * - `%w`: the day of the week as a decimal, range 0 to 6, Sunday being 0.
+ *   This is not the ISO 8601 standard format — use `%u` instead.
+ * - `%x`: the preferred date representation for the current locale without
  *   the time
- * - \%X: the preferred time representation for the current locale without
+ * - `%X`: the preferred time representation for the current locale without
  *   the date
- * - \%y: the year as a decimal number without the century
- * - \%Y: the year as a decimal number including the century
- * - \%z: the time zone as an offset from UTC (+hhmm)
- * - \%:z: the time zone as an offset from UTC (+hh:mm).
- *   This is a gnulib strftime() extension. Since: 2.38
- * - \%::z: the time zone as an offset from UTC (+hh:mm:ss). This is a
- *   gnulib strftime() extension. Since: 2.38
- * - \%:::z: the time zone as an offset from UTC, with : to necessary
- *   precision (e.g., -04, +05:30). This is a gnulib strftime() extension. Since: 2.38
- * - \%Z: the time zone or name or abbreviation
- * - \%\%: a literal \% character
+ * - `%y`: the year as a decimal number without the century
+ * - `%Y`: the year as a decimal number including the century
+ * - `%z`: the time zone as an offset from UTC (`+hhmm`)
+ * - `%:z`: the time zone as an offset from UTC (`+hh:mm`).
+ *   This is a gnulib `strftime()` extension. Since: 2.38
+ * - `%::z`: the time zone as an offset from UTC (`+hh:mm:ss`). This is a
+ *   gnulib `strftime()` extension. Since: 2.38
+ * - `%:::z`: the time zone as an offset from UTC, with `:` to necessary
+ *   precision (e.g., `-04`, `+05:30`). This is a gnulib `strftime()` extension. Since: 2.38
+ * - `%Z`: the time zone or name or abbreviation
+ * - `%%`: a literal `%` character
  *
  * Some conversion specifications can be modified by preceding the
  * conversion specifier by one or more modifier characters. The
  * following modifiers are supported for many of the numeric
  * conversions:
  *
- * - O: Use alternative numeric symbols, if the current locale supports those.
- * - _: Pad a numeric result with spaces. This overrides the default padding
+ * - `O`: Use alternative numeric symbols, if the current locale supports those.
+ * - `_`: Pad a numeric result with spaces. This overrides the default padding
  *   for the specifier.
- * - -: Do not pad a numeric result. This overrides the default padding
+ * - `-`: Do not pad a numeric result. This overrides the default padding
  *   for the specifier.
- * - 0: Pad a numeric result with zeros. This overrides the default padding
+ * - `0`: Pad a numeric result with zeros. This overrides the default padding
  *   for the specifier.
  *
- * Additionally, when O is used with B, b, or h, it produces the alternative
+ * Additionally, when `O` is used with `B`, `b`, or `h`, it produces the alternative
  * form of a month name. The alternative form should be used when the month
  * name is used without a day number (e.g., standalone). It is required in
  * some languages (Baltic, Slavic, Greek, and more) due to their grammatical
- * rules. For other languages there is no difference. \%OB is a GNU and BSD
- * strftime() extension expected to be added to the future POSIX specification,
- * \%Ob and \%Oh are GNU strftime() extensions. Since: 2.56
+ * rules. For other languages there is no difference. `%OB` is a GNU and BSD
+ * `strftime()` extension expected to be added to the future POSIX specification,
+ * `%Ob` and `%Oh` are GNU `strftime()` extensions. Since: 2.56
  *
  * Returns: (transfer full) (nullable): a newly allocated string formatted to
  *    the requested format or %NULL in the case that there was an error (such
@@ -16627,12 +17171,12 @@
  * translations for the current locale.
  *
  * The advantage of using this function over dgettext() proper is that
- * libraries using this function (like GTK+) will not use translations
+ * libraries using this function (like GTK) will not use translations
  * if the application using the library does not have translations for
  * the current locale.  This results in a consistent English-only
  * interface instead of one having partial translations.  For this
  * feature to work, the call to textdomain() and setlocale() should
- * precede any g_dgettext() invocations.  For GTK+, it means calling
+ * precede any g_dgettext() invocations.  For GTK, it means calling
  * textdomain() before gtk_init or its variants.
  *
  * This function disables translations if and only if upon its first
@@ -16650,7 +17194,7 @@
  *
  * Note that this behavior may not be desired for example if an application
  * has its untranslated messages in a language other than English. In those
- * cases the application should call textdomain() after initializing GTK+.
+ * cases the application should call textdomain() after initializing GTK.
  *
  * Applications should normally not use this function directly,
  * but use the _() macro for translations.
@@ -16671,7 +17215,7 @@
 /**
  * g_dir_make_tmp:
  * @tmpl: (type filename) (nullable): Template for directory name,
- *     as in g_mkdtemp(), basename only, or %NULL for a default template
+ *   as in g_mkdtemp(), basename only, or %NULL for a default template
  * @error: return location for a #GError
  *
  * Creates a subdirectory in the preferred directory for temporary
@@ -16687,9 +17231,9 @@
  * modified, and might thus be a read-only literal string.
  *
  * Returns: (type filename) (transfer full): The actual name used. This string
- *     should be freed with g_free() when not needed any longer and is
- *     is in the GLib file name encoding. In case of errors, %NULL is
- *     returned and @error will be set.
+ *   should be freed with g_free() when not needed any longer and is
+ *   is in the GLib file name encoding. In case of errors, %NULL is
+ *   returned and @error will be set.
  * Since: 2.30
  */
 
@@ -17151,9 +17695,9 @@
 /**
  * g_file_open_tmp:
  * @tmpl: (type filename) (nullable): Template for file name, as in
- *     g_mkstemp(), basename only, or %NULL for a default template
+ *   g_mkstemp(), basename only, or %NULL for a default template
  * @name_used: (out) (type filename): location to store actual name used,
- *     or %NULL
+ *   or %NULL
  * @error: return location for a #GError
  *
  * Opens a file for writing in the preferred directory for temporary
@@ -17174,9 +17718,9 @@
  * name encoding.
  *
  * Returns: A file handle (as from open()) to the file opened for
- *     reading and writing. The file is opened in binary mode on platforms
- *     where there is a difference. The file handle should be closed with
- *     close(). In case of errors, -1 is returned and @error will be set.
+ *   reading and writing. The file is opened in binary mode on platforms
+ *   where there is a difference. The file handle should be closed with
+ *   close(). In case of errors, -1 is returned and @error will be set.
  */
 
 
@@ -17186,11 +17730,31 @@
  * @error: return location for a #GError
  *
  * Reads the contents of the symbolic link @filename like the POSIX
- * readlink() function.  The returned string is in the encoding used
- * for filenames. Use g_filename_to_utf8() to convert it to UTF-8.
+ * `readlink()` function.
+ *
+ * The returned string is in the encoding used for filenames. Use
+ * g_filename_to_utf8() to convert it to UTF-8.
+ *
+ * The returned string may also be a relative path. Use g_build_filename()
+ * to convert it to an absolute path:
+ *
+ * |[<!-- language="C" -->
+ * g_autoptr(GError) local_error = NULL;
+ * g_autofree gchar *link_target = g_file_read_link ("/etc/localtime", &local_error);
+ *
+ * if (local_error != NULL)
+ *   g_error ("Error reading link: %s", local_error->message);
+ *
+ * if (!g_path_is_absolute (link_target))
+ *   {
+ *     g_autofree gchar *absolute_link_target = g_build_filename ("/etc", link_target, NULL);
+ *     g_free (link_target);
+ *     link_target = g_steal_pointer (&absolute_link_target);
+ *   }
+ * ]|
  *
  * Returns: (type filename) (transfer full): A newly-allocated string with
- *     the contents of the symbolic link, or %NULL if an error occurred.
+ *   the contents of the symbolic link, or %NULL if an error occurred.
  * Since: 2.4
  */
 
@@ -17305,15 +17869,33 @@
  *
  * You should never use g_file_test() to test whether it is safe
  * to perform an operation, because there is always the possibility
- * of the condition changing before you actually perform the operation.
+ * of the condition changing before you actually perform the operation,
+ * see [TOCTOU](https://en.wikipedia.org/wiki/Time-of-check_to_time-of-use).
+ *
  * For example, you might think you could use %G_FILE_TEST_IS_SYMLINK
  * to know whether it is safe to write to a file without being
  * tricked into writing into a different location. It doesn't work!
+ *
  * |[<!-- language="C" -->
  *  // DON'T DO THIS
  *  if (!g_file_test (filename, G_FILE_TEST_IS_SYMLINK))
  *    {
  *      fd = g_open (filename, O_WRONLY);
+ *      // write to fd
+ *    }
+ *
+ *  // DO THIS INSTEAD
+ *  fd = g_open (filename, O_WRONLY | O_NOFOLLOW | O_CLOEXEC);
+ *  if (fd == -1)
+ *    {
+ *      // check error
+ *      if (errno == ELOOP)
+ *        // file is a symlink and can be ignored
+ *      else
+ *        // handle errors as before
+ *    }
+ *  else
+ *    {
  *      // write to fd
  *    }
  * ]|
@@ -17401,6 +17983,11 @@
  *
  * Converts an escaped ASCII-encoded URI to a local filename in the
  * encoding used for filenames.
+ *
+ * Since GLib 2.78, the query string and fragment can be present in the URI,
+ * but are not part of the resulting filename.
+ * We take inspiration from https://url.spec.whatwg.org/#file-state,
+ * but we don't support the entire standard.
  *
  * Returns: (type filename): a newly-allocated string holding
  *               the resulting filename, or %NULL on an error.
@@ -17492,6 +18079,34 @@
  * may contain embedded nul characters.
  *
  * Returns: (type utf8): The converted string, or %NULL on an error.
+ */
+
+
+/**
+ * g_find_program_for_path:
+ * @program: (type filename): a program name in the GLib file name encoding
+ * @path: (type filename) (nullable): the current dir where to search program
+ * @working_dir: (type filename) (nullable): the working dir where to search
+ *   program
+ *
+ * Locates the first executable named @program in @path, in the
+ * same way that execvp() would locate it. Returns an allocated string
+ * with the absolute path name (taking in account the @working_dir), or
+ * %NULL if the program is not found in @path. If @program is already an
+ * absolute path, returns a copy of @program if @program exists and is
+ * executable, and %NULL otherwise.
+ *
+ * On Windows, if @path is %NULL, it looks for the file in the same way as
+ * CreateProcess()  would. This means first in the directory where the
+ * executing program was loaded from, then in the current directory, then in
+ * the Windows 32-bit system directory, then in the Windows directory, and
+ * finally in the directories in the `PATH` environment variable. If
+ * the program is found, the return value contains the full name
+ * including the type suffix.
+ *
+ * Returns: (type filename) (transfer full) (nullable): a newly-allocated
+ *   string with the absolute path, or %NULL
+ * Since: 2.76
  */
 
 
@@ -17636,8 +18251,38 @@
  *
  * Frees the memory pointed to by @mem.
  *
+ * If you know the allocated size of @mem, calling g_free_sized() may be faster,
+ * depending on the libc implementation in use.
+ *
+ * Starting from GLib 2.78, this may happen automatically in case a GCC
+ * compatible compiler is used with some optimization level and the allocated
+ * size is known at compile time (see [documentation of
+ * `__builtin_object_size()`](https://gcc.gnu.org/onlinedocs/gcc/Object-Size-Checking.html)
+ * to understand its caveats).
+ *
  * If @mem is %NULL it simply returns, so there is no need to check @mem
  * against %NULL before calling this function.
+ */
+
+
+/**
+ * g_free_sized:
+ * @mem: (nullable): the memory to free
+ * @size: size of @mem, in bytes
+ *
+ * Frees the memory pointed to by @mem, assuming it is has the given @size.
+ *
+ * If @mem is %NULL this is a no-op (and @size is ignored).
+ *
+ * It is an error if @size doesn’t match the size passed when @mem was
+ * allocated. @size is passed to this function to allow optimizations in the
+ * allocator. If you don’t know the allocation size, use g_free() instead.
+ *
+ * In case a GCC compatible compiler is used, this function may be used
+ * automatically via g_free() if the allocated size is known at compile time,
+ * since GLib 2.78.
+ *
+ * Since: 2.76
  */
 
 
@@ -17713,7 +18358,8 @@
  *
  * On Linux, the character set is found by consulting nl_langinfo() if
  * available. If not, the environment variables `LC_ALL`, `LC_CTYPE`, `LANG`
- * and `CHARSET` are queried in order.
+ * and `CHARSET` are queried in order. nl_langinfo() returns the C locale if
+ * no locale has been loaded by setlocale().
  *
  * The return value is %TRUE if the locale's encoding is UTF-8, in that
  * case you can perhaps avoid calling g_convert().
@@ -18028,7 +18674,7 @@
  * in contrast to g_get_application_name().
  *
  * If you are using #GApplication the program name is set in
- * g_application_run(). In case of GDK or GTK+ it is set in
+ * g_application_run(). In case of GDK or GTK it is set in
  * gdk_init(), which is called by gtk_init() and the
  * #GtkApplication::startup handler. The program name is found by
  * taking the last component of @argv[0].
@@ -18545,6 +19191,25 @@
 
 
 /**
+ * g_hash_table_get_keys_as_ptr_array: (skip)
+ * @hash_table: a #GHashTable
+ *
+ * Retrieves every key inside @hash_table, as a #GPtrArray.
+ * The returned data is valid until changes to the hash release those keys.
+ *
+ * This iterates over every entry in the hash table to build its return value.
+ * To iterate over the entries in a #GHashTable more efficiently, use a
+ * #GHashTableIter.
+ *
+ * You should always unref the returned array with g_ptr_array_unref().
+ *
+ * Returns: (transfer container): a #GPtrArray containing each key from
+ * the table. Unref with with g_ptr_array_unref() when done.
+ * Since: 2.76
+ */
+
+
+/**
  * g_hash_table_get_values:
  * @hash_table: a #GHashTable
  *
@@ -18560,6 +19225,25 @@
  *     hash table and should not be modified or freed. Use g_list_free()
  *     when done using the list.
  * Since: 2.14
+ */
+
+
+/**
+ * g_hash_table_get_values_as_ptr_array: (skip)
+ * @hash_table: a #GHashTable
+ *
+ * Retrieves every value inside @hash_table, as a #GPtrArray.
+ * The returned data is valid until changes to the hash release those values.
+ *
+ * This iterates over every entry in the hash table to build its return value.
+ * To iterate over the entries in a #GHashTable more efficiently, use a
+ * #GHashTableIter.
+ *
+ * You should always unref the returned array with g_ptr_array_unref().
+ *
+ * Returns: (transfer container): a #GPtrArray containing each value from
+ * the table. Unref with with g_ptr_array_unref() when done.
+ * Since: 2.76
  */
 
 
@@ -18901,6 +19585,36 @@
 
 
 /**
+ * g_hash_table_steal_all_keys: (skip)
+ * @hash_table: a #GHashTable
+ *
+ * Removes all keys and their associated values from a #GHashTable
+ * without calling the key destroy functions, returning the keys
+ * as a #GPtrArray with the free func set to the @hash_table key
+ * destroy function.
+ *
+ * Returns: (transfer container): a #GPtrArray containing each key of
+ * the table. Unref with with g_ptr_array_unref() when done.
+ * Since: 2.76
+ */
+
+
+/**
+ * g_hash_table_steal_all_values: (skip)
+ * @hash_table: a #GHashTable
+ *
+ * Removes all keys and their associated values from a #GHashTable
+ * without calling the value destroy functions, returning the values
+ * as a #GPtrArray with the free func set to the @hash_table value
+ * destroy function.
+ *
+ * Returns: (transfer container): a #GPtrArray containing each value of
+ * the table. Unref with with g_ptr_array_unref() when done.
+ * Since: 2.76
+ */
+
+
+/**
  * g_hash_table_steal_extended:
  * @hash_table: a #GHashTable
  * @lookup_key: the key to look up
@@ -18915,10 +19629,16 @@
  *
  * If found, the stolen key and value are removed from the hash table without
  * calling the key and value destroy functions, and ownership is transferred to
- * the caller of this method; as with g_hash_table_steal().
+ * the caller of this method, as with g_hash_table_steal(). That is the case
+ * regardless whether @stolen_key or @stolen_value output parameters are
+ * requested.
  *
  * You can pass %NULL for @lookup_key, provided the hash and equal functions
  * of @hash_table are %NULL-safe.
+ *
+ * The dictionary implementation optimizes for having all values identical to
+ * their keys, for example by using g_hash_table_add(). When stealing both the
+ * key and the value from such a dictionary, the value will be %NULL.
  *
  * Returns: %TRUE if the key was found in the #GHashTable
  * Since: 2.58
@@ -19883,7 +20603,7 @@
 /**
  * g_io_channel_get_line_term:
  * @channel: a #GIOChannel
- * @length: a location to return the length of the line terminator
+ * @length: (out) (optional): a location to return the length of the line terminator
  *
  * This returns the string that #GIOChannel uses to determine
  * where in the file a line break occurs. A value of %NULL
@@ -22138,7 +22858,7 @@
  *                    | G_LOG_FLAG_RECURSION, my_log_handler, NULL);
  * ]|
  *
- * This example adds a log handler for all critical messages from GTK+:
+ * This example adds a log handler for all critical messages from GTK:
  *
  * |[<!-- language="C" -->
  * g_log_set_handler ("Gtk", G_LOG_LEVEL_CRITICAL | G_LOG_FLAG_FATAL
@@ -22227,6 +22947,12 @@
  * specification. It is suggested that custom keys are namespaced according to
  * the code which sets them. For example, custom keys from GLib all have a
  * `GLIB_` prefix.
+ *
+ * Note that keys that expect UTF-8 strings (specifically `"MESSAGE"` and
+ * `"GLIB_DOMAIN"`) must be passed as NUL-terminated UTF-8 strings until GLib
+ * version 2.74.1 because the default log handler did not consider the length of
+ * the `GLogField`. Starting with GLib 2.74.1 this is fixed and
+ * non-NUL-terminated UTF-8 strings can be passed with their correct length.
  *
  * The @log_domain will be converted into a `GLIB_DOMAIN` field. @log_level will
  * be converted into a
@@ -22598,7 +23324,8 @@
 
 /**
  * g_main_context_acquire:
- * @context: a #GMainContext
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  *
  * Tries to become the owner of the specified context.
  * If some other thread is the owner of the context,
@@ -22609,7 +23336,10 @@
  *
  * You must be the owner of a context before you
  * can call g_main_context_prepare(), g_main_context_query(),
- * g_main_context_check(), g_main_context_dispatch().
+ * g_main_context_check(), g_main_context_dispatch(), g_main_context_release().
+ *
+ * Since 2.76 @context can be %NULL to use the global-default
+ * main context.
  *
  * Returns: %TRUE if the operation succeeded, and
  *   this thread is now the owner of @context.
@@ -22618,7 +23348,8 @@
 
 /**
  * g_main_context_add_poll:
- * @context: (nullable): a #GMainContext (or %NULL for the default context)
+ * @context: (nullable): a #GMainContext (or %NULL for the global-default
+ *   main context)
  * @fd: a #GPollFD structure holding information about a file
  *      descriptor to watch.
  * @priority: the priority for this file descriptor which should be
@@ -22633,7 +23364,8 @@
 
 /**
  * g_main_context_check:
- * @context: a #GMainContext
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  * @max_priority: the maximum numerical priority of sources to check
  * @fds: (array length=n_fds): array of #GPollFD's that was passed to
  *       the last call to g_main_context_query()
@@ -22647,6 +23379,9 @@
  * You must have successfully acquired the context with
  * g_main_context_acquire() before you may call this function.
  *
+ * Since 2.76 @context can be %NULL to use the global-default
+ * main context.
+ *
  * Returns: %TRUE if some sources are ready to be dispatched.
  */
 
@@ -22654,29 +23389,34 @@
 /**
  * g_main_context_default:
  *
- * Returns the global default main context. This is the main context
+ * Returns the global-default main context. This is the main context
  * used for main loop functions when a main loop is not explicitly
  * specified, and corresponds to the "main" main loop. See also
  * g_main_context_get_thread_default().
  *
- * Returns: (transfer none): the global default main context.
+ * Returns: (transfer none): the global-default main context.
  */
 
 
 /**
  * g_main_context_dispatch:
- * @context: a #GMainContext
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  *
  * Dispatches all pending sources.
  *
  * You must have successfully acquired the context with
  * g_main_context_acquire() before you may call this function.
+ *
+ * Since 2.76 @context can be %NULL to use the global-default
+ * main context.
  */
 
 
 /**
  * g_main_context_find_source_by_funcs_user_data:
- * @context: (nullable): a #GMainContext (if %NULL, the default context will be used).
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used).
  * @funcs: the @source_funcs passed to g_source_new().
  * @user_data: the user data from the callback.
  *
@@ -22690,7 +23430,8 @@
 
 /**
  * g_main_context_find_source_by_id:
- * @context: (nullable): a #GMainContext (if %NULL, the default context will be used)
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  * @source_id: the source ID, as returned by g_source_get_id().
  *
  * Finds a #GSource given a pair of context and ID.
@@ -22712,7 +23453,8 @@
 
 /**
  * g_main_context_find_source_by_user_data:
- * @context: a #GMainContext
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  * @user_data: the user_data for the callback.
  *
  * Finds a source with the given user data for the callback.  If
@@ -22725,7 +23467,8 @@
 
 /**
  * g_main_context_get_poll_func:
- * @context: a #GMainContext
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  *
  * Gets the poll function set by g_main_context_set_poll_func().
  *
@@ -22749,21 +23492,22 @@
  * g_main_context_ref_thread_default() instead.
  *
  * Returns: (transfer none) (nullable): the thread-default #GMainContext, or
- * %NULL if the thread-default context is the global default context.
+ * %NULL if the thread-default context is the global-default main context.
  * Since: 2.22
  */
 
 
 /**
  * g_main_context_invoke:
- * @context: (nullable): a #GMainContext, or %NULL
+ * @context: (nullable): a #GMainContext, or %NULL for the global-default
+ *   main context
  * @function: function to call
  * @data: data to pass to @function
  *
  * Invokes a function in such a way that @context is owned during the
  * invocation of @function.
  *
- * If @context is %NULL then the global default main context — as
+ * If @context is %NULL then the global-default main context — as
  * returned by g_main_context_default() — is used.
  *
  * If @context is owned by the current thread, @function is called
@@ -22788,7 +23532,8 @@
 
 /**
  * g_main_context_invoke_full:
- * @context: (nullable): a #GMainContext, or %NULL
+ * @context: (nullable): a #GMainContext, or %NULL for the global-default
+ *   main context
  * @priority: the priority at which to run @function
  * @function: function to call
  * @data: data to pass to @function
@@ -22810,7 +23555,8 @@
 
 /**
  * g_main_context_is_owner:
- * @context: a #GMainContext
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  *
  * Determines whether this thread holds the (recursive)
  * ownership of this #GMainContext. This is useful to
@@ -22824,7 +23570,8 @@
 
 /**
  * g_main_context_iteration:
- * @context: (nullable): a #GMainContext (if %NULL, the default context will be used)
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  * @may_block: whether the call may block.
  *
  * Runs a single iteration for the given main loop. This involves
@@ -22867,7 +23614,8 @@
 
 /**
  * g_main_context_pending:
- * @context: (nullable): a #GMainContext (if %NULL, the default context will be used)
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  *
  * Checks if any sources have pending events for the given context.
  *
@@ -22877,7 +23625,8 @@
 
 /**
  * g_main_context_pop_thread_default:
- * @context: (nullable): a #GMainContext object, or %NULL
+ * @context: (nullable): a #GMainContext, or %NULL for the global-default
+ *   main context
  *
  * Pops @context off the thread-default context stack (verifying that
  * it was on the top of the stack).
@@ -22888,7 +23637,8 @@
 
 /**
  * g_main_context_prepare:
- * @context: a #GMainContext
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  * @priority: (out) (optional): location to store priority of highest priority
  *            source already ready.
  *
@@ -22905,14 +23655,15 @@
 
 /**
  * g_main_context_push_thread_default:
- * @context: (nullable): a #GMainContext, or %NULL for the global default context
+ * @context: (nullable): a #GMainContext, or %NULL for the global-default
+ *   main context
  *
  * Acquires @context and sets it as the thread-default context for the
  * current thread. This will cause certain asynchronous operations
  * (such as most [gio][gio]-based I/O) which are
  * started in this thread to run under @context and deliver their
  * results to its main loop, rather than running under the global
- * default context in the main thread. Note that calling this function
+ * default main context in the main thread. Note that calling this function
  * changes the context returned by g_main_context_get_thread_default(),
  * not the one returned by g_main_context_default(), so it does not affect
  * the context used by functions like g_idle_add().
@@ -22952,7 +23703,8 @@
 
 /**
  * g_main_context_query:
- * @context: a #GMainContext
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  * @max_priority: maximum priority source to check
  * @timeout_: (out): location to store timeout to be used in polling
  * @fds: (out caller-allocates) (array length=n_fds): location to
@@ -22975,7 +23727,7 @@
 
 /**
  * g_main_context_ref:
- * @context: a #GMainContext
+ * @context: (not nullable): a #GMainContext
  *
  * Increases the reference count on a #GMainContext object by one.
  *
@@ -22990,7 +23742,7 @@
  * g_main_context_get_thread_default(), but also adds a reference to
  * it with g_main_context_ref(). In addition, unlike
  * g_main_context_get_thread_default(), if the thread-default context
- * is the global default context, this will return that #GMainContext
+ * is the global-default context, this will return that #GMainContext
  * (with a ref added to it) rather than returning %NULL.
  *
  * Returns: (transfer full): the thread-default #GMainContext. Unref
@@ -23001,18 +23753,23 @@
 
 /**
  * g_main_context_release:
- * @context: a #GMainContext
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  *
  * Releases ownership of a context previously acquired by this thread
  * with g_main_context_acquire(). If the context was acquired multiple
  * times, the ownership will be released only when g_main_context_release()
  * is called as many times as it was acquired.
+ *
+ * You must have successfully acquired the context with
+ * g_main_context_acquire() before you may call this function.
  */
 
 
 /**
  * g_main_context_remove_poll:
- * @context: a #GMainContext
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  * @fd: a #GPollFD descriptor previously added with g_main_context_add_poll()
  *
  * Removes file descriptor from the set of file descriptors to be
@@ -23022,7 +23779,8 @@
 
 /**
  * g_main_context_set_poll_func:
- * @context: a #GMainContext
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  * @func: the function to call to poll all file descriptors
  *
  * Sets the function to use to handle polling of file descriptors. It
@@ -23037,7 +23795,7 @@
 
 /**
  * g_main_context_unref:
- * @context: a #GMainContext
+ * @context: (not nullable): a #GMainContext
  *
  * Decreases the reference count on a #GMainContext object by one. If
  * the result is zero, free the context and free all associated memory.
@@ -23046,7 +23804,8 @@
 
 /**
  * g_main_context_wait:
- * @context: a #GMainContext
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  * @cond: a condition variable
  * @mutex: a mutex, currently held
  *
@@ -23064,7 +23823,8 @@
 
 /**
  * g_main_context_wakeup:
- * @context: a #GMainContext
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  *
  * If @context is currently blocking in g_main_context_iteration()
  * waiting for a source to become ready, cause it to stop blocking
@@ -23112,7 +23872,7 @@
  *
  * Returns the depth of the stack of calls to
  * g_main_context_dispatch() on any #GMainContext in the current thread.
- *  That is, when called from the toplevel, it gives 0. When
+ * That is, when called from the toplevel, it gives 0. When
  * called from within a callback from g_main_context_iteration()
  * (or g_main_loop_run(), etc.) it returns 1. When called from within
  * a callback to a recursive call to g_main_context_iteration(),
@@ -23238,7 +23998,8 @@
 
 /**
  * g_main_loop_new:
- * @context: (nullable): a #GMainContext  (if %NULL, the default context will be used).
+ * @context: (nullable): a #GMainContext  (if %NULL, the global-default
+ *   main context will be used).
  * @is_running: set to %TRUE to indicate that the loop is running. This
  * is not very important since calling g_main_loop_run() will set this to
  * %TRUE anyway.
@@ -24374,8 +25135,8 @@
  * g_dir_make_tmp() instead.
  *
  * Returns: (nullable) (type filename): A pointer to @tmpl, which has been
- *     modified to hold the directory name.  In case of errors, %NULL is
- *     returned and %errno will be set.
+ *   modified to hold the directory name.  In case of errors, %NULL is
+ *   returned and %errno will be set.
  * Since: 2.30
  */
 
@@ -24402,8 +25163,8 @@
  * g_dir_make_tmp() instead.
  *
  * Returns: (nullable) (type filename): A pointer to @tmpl, which has been
- *     modified to hold the directory name. In case of errors, %NULL is
- *     returned, and %errno will be set.
+ *   modified to hold the directory name. In case of errors, %NULL is
+ *   returned, and %errno will be set.
  * Since: 2.30
  */
 
@@ -24424,10 +25185,10 @@
  * Most importantly, on Windows it should be in UTF-8.
  *
  * Returns: A file handle (as from open()) to the file
- *     opened for reading and writing. The file is opened in binary
- *     mode on platforms where there is a difference. The file handle
- *     should be closed with close(). In case of errors, -1 is
- *     returned and %errno will be set.
+ *   opened for reading and writing. The file is opened in binary
+ *   mode on platforms where there is a difference. The file handle
+ *   should be closed with close(). In case of errors, -1 is
+ *   returned and %errno will be set.
  */
 
 
@@ -24435,7 +25196,7 @@
  * g_mkstemp_full: (skip)
  * @tmpl: (type filename): template filename
  * @flags: flags to pass to an open() call in addition to O_EXCL
- *     and O_CREAT, which are passed automatically
+ *   and O_CREAT, which are passed automatically
  * @mode: permissions to create the temporary file with
  *
  * Opens a temporary file. See the mkstemp() documentation
@@ -24451,9 +25212,9 @@
  * on Windows it should be in UTF-8.
  *
  * Returns: A file handle (as from open()) to the file
- *     opened for reading and writing. The file handle should be
- *     closed with close(). In case of errors, -1 is returned
- *     and %errno will be set.
+ *   opened for reading and writing. The file handle should be
+ *   closed with close(). In case of errors, -1 is returned
+ *   and %errno will be set.
  * Since: 2.22
  */
 
@@ -25519,6 +26280,11 @@
  *
  * Creates a new #GOptionGroup.
  *
+ * @description is typically used to provide a title for the group. If so, it
+ * is recommended that it’s written in title case, and has a trailing colon so
+ * that it matches the style of built-in GLib group titles such as
+ * ‘Application Options:’.
+ *
  * Returns: a newly created option group. It should be added
  *   to a #GOptionContext or freed with g_option_group_unref().
  * Since: 2.6
@@ -25621,7 +26387,7 @@
  *
  * Parses a string containing debugging options
  * into a %guint containing bit flags. This is used
- * within GDK and GTK+ to parse the debug options passed on the
+ * within GDK and GTK to parse the debug options passed on the
  * command line or through environment variables.
  *
  * If @string is equal to "all", all flags are set. Any flags
@@ -25637,6 +26403,282 @@
 
 
 /**
+ * g_path_buf_clear:
+ * @buf: a path buffer
+ *
+ * Clears the contents of the path buffer.
+ *
+ * This function should be use to free the resources in a stack-allocated
+ * `GPathBuf` initialized using g_path_buf_init() or
+ * g_path_buf_init_from_path().
+ *
+ * Since: 2.76
+ */
+
+
+/**
+ * g_path_buf_clear_to_path:
+ * @buf: a path buffer
+ *
+ * Clears the contents of the path buffer and returns the built path.
+ *
+ * This function returns `NULL` if the `GPathBuf` is empty.
+ *
+ * See also: g_path_buf_to_path()
+ *
+ * Returns: (transfer full) (nullable) (type filename): the built path
+ * Since: 2.76
+ */
+
+
+/**
+ * g_path_buf_copy:
+ * @buf: (not nullable): a path buffer
+ *
+ * Copies the contents of a path buffer into a new `GPathBuf`.
+ *
+ * Returns: (transfer full): the newly allocated path buffer
+ * Since: 2.76
+ */
+
+
+/**
+ * g_path_buf_equal:
+ * @v1: (not nullable): a path buffer to compare
+ * @v2: (not nullable): a path buffer to compare
+ *
+ * Compares two path buffers for equality and returns `TRUE`
+ * if they are equal.
+ *
+ * The path inside the paths buffers are not going to be normalized,
+ * so `X/Y/Z/A/..`, `X/./Y/Z` and `X/Y/Z` are not going to be considered
+ * equal.
+ *
+ * This function can be passed to g_hash_table_new() as the
+ * `key_equal_func` parameter.
+ *
+ * Returns: `TRUE` if the two path buffers are equal,
+ *   and `FALSE` otherwise
+ * Since: 2.76
+ */
+
+
+/**
+ * g_path_buf_free:
+ * @buf: (transfer full) (not nullable): a path buffer
+ *
+ * Frees a `GPathBuf` allocated by g_path_buf_new().
+ *
+ * Since: 2.76
+ */
+
+
+/**
+ * g_path_buf_free_to_path:
+ * @buf: (transfer full) (not nullable): a path buffer
+ *
+ * Frees a `GPathBuf` allocated by g_path_buf_new(), and
+ * returns the path inside the buffer.
+ *
+ * This function returns `NULL` if the `GPathBuf` is empty.
+ *
+ * See also: g_path_buf_to_path()
+ *
+ * Returns: (transfer full) (nullable) (type filename): the path
+ * Since: 2.76
+ */
+
+
+/**
+ * g_path_buf_init:
+ * @buf: a path buffer
+ *
+ * Initializes a `GPathBuf` instance.
+ *
+ * Returns: (transfer none): the initialized path builder
+ * Since: 2.76
+ */
+
+
+/**
+ * g_path_buf_init_from_path:
+ * @buf: a path buffer
+ * @path: (type filename) (nullable): a file system path
+ *
+ * Initializes a `GPathBuf` instance with the given path.
+ *
+ * Returns: (transfer none): the initialized path builder
+ * Since: 2.76
+ */
+
+
+/**
+ * g_path_buf_new:
+ *
+ * Allocates a new `GPathBuf`.
+ *
+ * Returns: (transfer full): the newly allocated path buffer
+ * Since: 2.76
+ */
+
+
+/**
+ * g_path_buf_new_from_path:
+ * @path: (type filename) (nullable): the path used to initialize the buffer
+ *
+ * Allocates a new `GPathBuf` with the given @path.
+ *
+ * Returns: (transfer full): the newly allocated path buffer
+ * Since: 2.76
+ */
+
+
+/**
+ * g_path_buf_pop:
+ * @buf: a path buffer
+ *
+ * Removes the last element of the path buffer.
+ *
+ * If there is only one element in the path buffer (for example, `/` on
+ * Unix-like operating systems or the drive on Windows systems), it will
+ * not be removed and %FALSE will be returned instead.
+ *
+ * |[<!-- language="C" -->
+ * GPathBuf buf, cmp;
+ *
+ * g_path_buf_init_from_path (&buf, "/bin/sh");
+ *
+ * g_path_buf_pop (&buf);
+ * g_path_buf_init_from_path (&cmp, "/bin");
+ * g_assert_true (g_path_buf_equal (&buf, &cmp));
+ * g_path_buf_clear (&cmp);
+ *
+ * g_path_buf_pop (&buf);
+ * g_path_buf_init_from_path (&cmp, "/");
+ * g_assert_true (g_path_buf_equal (&buf, &cmp));
+ * g_path_buf_clear (&cmp);
+ *
+ * g_path_buf_clear (&buf);
+ * ]|
+ *
+ * Returns: `TRUE` if the buffer was modified and `FALSE` otherwise
+ * Since: 2.76
+ */
+
+
+/**
+ * g_path_buf_push:
+ * @buf: a path buffer
+ * @path: (type filename): a path
+ *
+ * Extends the given path buffer with @path.
+ *
+ * If @path is absolute, it replaces the current path.
+ *
+ * If @path contains a directory separator, the buffer is extended by
+ * as many elements the path provides.
+ *
+ * On Windows, both forward slashes and backslashes are treated as
+ * directory separators. On other platforms, %G_DIR_SEPARATOR_S is the
+ * only directory separator.
+ *
+ * |[<!-- language="C" -->
+ * GPathBuf buf, cmp;
+ *
+ * g_path_buf_init_from_path (&buf, "/tmp");
+ * g_path_buf_push (&buf, ".X11-unix/X0");
+ * g_path_buf_init_from_path (&cmp, "/tmp/.X11-unix/X0");
+ * g_assert_true (g_path_buf_equal (&buf, &cmp));
+ * g_path_buf_clear (&cmp);
+ *
+ * g_path_buf_push (&buf, "/etc/locale.conf");
+ * g_path_buf_init_from_path (&cmp, "/etc/locale.conf");
+ * g_assert_true (g_path_buf_equal (&buf, &cmp));
+ * g_path_buf_clear (&cmp);
+ *
+ * g_path_buf_clear (&buf);
+ * ]|
+ *
+ * Returns: (transfer none): the same pointer to @buf, for convenience
+ * Since: 2.76
+ */
+
+
+/**
+ * g_path_buf_set_extension:
+ * @buf: a path buffer
+ * @extension: (type filename) (nullable): the file extension
+ *
+ * Adds an extension to the file name in the path buffer.
+ *
+ * If @extension is `NULL`, the extension will be unset.
+ *
+ * If the path buffer does not have a file name set, this function returns
+ * `FALSE` and leaves the path buffer unmodified.
+ *
+ * Returns: `TRUE` if the extension was replaced, and `FALSE` otherwise
+ * Since: 2.76
+ */
+
+
+/**
+ * g_path_buf_set_filename:
+ * @buf: a path buffer
+ * @file_name: (type filename) (not nullable): the file name in the path
+ *
+ * Sets the file name of the path.
+ *
+ * If the path buffer is empty, the filename is left unset and this
+ * function returns `FALSE`.
+ *
+ * If the path buffer only contains the root element (on Unix-like operating
+ * systems) or the drive (on Windows), this is the equivalent of pushing
+ * the new @file_name.
+ *
+ * If the path buffer contains a path, this is the equivalent of
+ * popping the path buffer and pushing @file_name, creating a
+ * sibling of the original path.
+ *
+ * |[<!-- language="C" -->
+ * GPathBuf buf, cmp;
+ *
+ * g_path_buf_init_from_path (&buf, "/");
+ *
+ * g_path_buf_set_filename (&buf, "bar");
+ * g_path_buf_init_from_path (&cmp, "/bar");
+ * g_assert_true (g_path_buf_equal (&buf, &cmp));
+ * g_path_buf_clear (&cmp);
+ *
+ * g_path_buf_set_filename (&buf, "baz.txt");
+ * g_path_buf_init_from_path (&cmp, "/baz.txt");
+ * g_assert_true (g_path_buf_equal (&buf, &cmp);
+ * g_path_buf_clear (&cmp);
+ *
+ * g_path_buf_clear (&buf);
+ * ]|
+ *
+ * Returns: `TRUE` if the file name was replaced, and `FALSE` otherwise
+ * Since: 2.76
+ */
+
+
+/**
+ * g_path_buf_to_path:
+ * @buf: a path buffer
+ *
+ * Retrieves the built path from the path buffer.
+ *
+ * On Windows, the result contains backslashes as directory separators,
+ * even if forward slashes were used in input.
+ *
+ * If the path buffer is empty, this function returns `NULL`.
+ *
+ * Returns: (transfer full) (type filename) (nullable): the path
+ * Since: 2.76
+ */
+
+
+/**
  * g_path_get_basename:
  * @file_name: (type filename): the name of the file
  *
@@ -25648,7 +26690,7 @@
  * separator is returned. If @file_name is empty, it gets ".".
  *
  * Returns: (type filename) (transfer full): a newly allocated string
- *    containing the last component of the filename
+ *   containing the last component of the filename
  */
 
 
@@ -25979,7 +27021,7 @@
  * @...: the parameters to insert into the format string
  *
  * Outputs a formatted message via the print handler.
- * The default print handler simply outputs the message to stdout, without
+ * The default print handler outputs the encoded message to stdout, without
  * appending a trailing new-line character. Typically, @format should end with
  * its own new-line character.
  *
@@ -25997,7 +27039,7 @@
  * @...: the parameters to insert into the format string
  *
  * Outputs a formatted message via the error message handler.
- * The default handler simply outputs the message to stderr, without appending
+ * The default handler outputs the encoded message to stderr, without appending
  * a trailing new-line character. Typically, @format should end with its own
  * new-line character.
  *
@@ -26333,6 +27375,67 @@
 
 
 /**
+ * g_ptr_array_new_from_array: (skip)
+ * @data: (array length=len) (transfer none) (nullable): an array of pointers,
+ * or %NULL for an empty array
+ * @len: the number of pointers in @data
+ * @copy_func: (nullable): a copy function used to copy every element in the
+ *   array or %NULL.
+ * @copy_func_user_data: user data passed to @copy_func, or %NULL
+ * @element_free_func: (nullable): a function to free elements on @array
+ *   destruction or %NULL
+ *
+ * Creates a new #GPtrArray, copying @len pointers from @data, and setting
+ * the array’s reference count to 1.
+ *
+ * This avoids having to manually add each element one by one.
+ *
+ * If @copy_func is provided, then it is used to copy each element before
+ * adding them to the new array. If it is %NULL then the pointers are copied
+ * directly.
+ *
+ * It also sets @element_free_func for freeing each element when the array is
+ * destroyed either via g_ptr_array_unref(), when g_ptr_array_free() is called
+ * with @free_segment set to %TRUE or when removing elements.
+ *
+ * Do not use it if @len is greater than %G_MAXUINT. #GPtrArray
+ * stores the length of its data in #guint, which may be shorter than
+ * #gsize.
+ *
+ * Returns: (transfer full): A new #GPtrArray
+ * Since: 2.76
+ */
+
+
+/**
+ * g_ptr_array_new_from_null_terminated_array: (skip)
+ * @data: (array zero-terminated=1) (transfer none) (nullable): an array of
+ *   pointers, %NULL terminated; or %NULL for an empty array
+ * @copy_func: (nullable): a copy function used to copy every element in the
+ *   array or %NULL.
+ * @copy_func_user_data: user data passed to @copy_func, or %NULL
+ * @element_free_func: (nullable): a function to free elements on @array
+ *   destruction or %NULL
+ *
+ * Creates a new #GPtrArray copying the pointers from @data after having
+ * computed the length of it and with a reference count of 1.
+ * This avoids having to manually add each element one by one.
+ * If @copy_func is provided, then it is used to copy the data in the new
+ * array.
+ * It also set @element_free_func for freeing each element when the array is
+ * destroyed either via g_ptr_array_unref(), when g_ptr_array_free() is called
+ * with @free_segment set to %TRUE or when removing elements.
+ *
+ * Do not use it if the @data has more than %G_MAXUINT elements. #GPtrArray
+ * stores the length of its data in #guint, which may be shorter than
+ * #gsize.
+ *
+ * Returns: (transfer full): A new #GPtrArray
+ * Since: 2.76
+ */
+
+
+/**
  * g_ptr_array_new_full:
  * @reserved_size: number of pointers preallocated
  * @element_free_func: (nullable): A function to free elements with
@@ -26379,6 +27482,66 @@
  *
  * Returns: (transfer full): A new #GPtrArray
  * Since: 2.74
+ */
+
+
+/**
+ * g_ptr_array_new_take: (skip)
+ * @data: (array length=len) (transfer full) (nullable): an array of pointers,
+ *    or %NULL for an empty array
+ * @len: the number of pointers in @data
+ * @element_free_func: (nullable): A function to free elements on @array
+ *   destruction or %NULL
+ *
+ * Creates a new #GPtrArray with @data as pointers, @len as length and a
+ * reference count of 1.
+ *
+ * This avoids having to copy such data manually.
+ * After this call, @data belongs to the #GPtrArray and may no longer be
+ * modified by the caller. The memory of @data has to be dynamically
+ * allocated and will eventually be freed with g_free().
+ *
+ * It also sets @element_free_func for freeing each element when the array is
+ * destroyed either via g_ptr_array_unref(), when g_ptr_array_free() is called
+ * with @free_segment set to %TRUE or when removing elements.
+ *
+ * Do not use it if @len is greater than %G_MAXUINT. #GPtrArray
+ * stores the length of its data in #guint, which may be shorter than
+ * #gsize.
+ *
+ * Returns: (transfer full): A new #GPtrArray
+ * Since: 2.76
+ */
+
+
+/**
+ * g_ptr_array_new_take_null_terminated: (skip)
+ * @data: (array zero-terminated=1) (transfer full) (nullable): an array
+ *  of pointers, %NULL terminated, or %NULL for an empty array
+ * @element_free_func: (nullable): a function to free elements on @array
+ *   destruction or %NULL
+ *
+ * Creates a new #GPtrArray with @data as pointers, computing the length of it
+ * and setting the reference count to 1.
+ *
+ * This avoids having to copy such data manually.
+ * After this call, @data belongs to the #GPtrArray and may no longer be
+ * modified by the caller. The memory of @data has to be dynamically
+ * allocated and will eventually be freed with g_free().
+ *
+ * The length is calculated by iterating through @data until the first %NULL
+ * element is found.
+ *
+ * It also sets @element_free_func for freeing each element when the array is
+ * destroyed either via g_ptr_array_unref(), when g_ptr_array_free() is called
+ * with @free_segment set to %TRUE or when removing elements.
+ *
+ * Do not use it if the @data length is greater than %G_MAXUINT. #GPtrArray
+ * stores the length of its data in #guint, which may be shorter than
+ * #gsize.
+ *
+ * Returns: (transfer full): A new #GPtrArray
+ * Since: 2.76
  */
 
 
@@ -26539,12 +27702,15 @@
  *
  * Sorts the array, using @compare_func which should be a qsort()-style
  * comparison function (returns less than zero for first arg is less
- * than second arg, zero for equal, greater than zero if irst arg is
+ * than second arg, zero for equal, greater than zero if first arg is
  * greater than second arg).
  *
  * Note that the comparison function for g_ptr_array_sort() doesn't
  * take the pointers from the array as arguments, it takes pointers to
- * the pointers in the array. Here is a full example of usage:
+ * the pointers in the array.
+ *
+ * Use g_ptr_array_sort_values() if you want to use normal
+ * #GCompareFuncs, otherwise here is a full example of use:
  *
  * |[<!-- language="C" -->
  * typedef struct
@@ -26576,6 +27742,37 @@
 
 
 /**
+ * g_ptr_array_sort_values:
+ * @array: a #GPtrArray
+ * @compare_func: a #GCompareFunc comparison function
+ *
+ * Sorts the array, using @compare_func which should be a qsort()-style
+ * comparison function (returns less than zero for first arg is less
+ * than second arg, zero for equal, greater than zero if first arg is
+ * greater than second arg).
+ *
+ * This is guaranteed to be a stable sort.
+ *
+ * Since: 2.76
+ */
+
+
+/**
+ * g_ptr_array_sort_values_with_data:
+ * @array: a #GPtrArray
+ * @compare_func: a #GCompareDataFunc comparison function
+ * @user_data: data to pass to @compare_func
+ *
+ * Like g_ptr_array_sort_values(), but the comparison function has an extra
+ * user data argument.
+ *
+ * This is guaranteed to be a stable sort.
+ *
+ * Since: 2.76
+ */
+
+
+/**
  * g_ptr_array_sort_with_data:
  * @array: a #GPtrArray
  * @compare_func: comparison function
@@ -26586,7 +27783,10 @@
  *
  * Note that the comparison function for g_ptr_array_sort_with_data()
  * doesn't take the pointers from the array as arguments, it takes
- * pointers to the pointers in the array. Here is a full example of use:
+ * pointers to the pointers in the array.
+ *
+ * Use g_ptr_array_sort_values_with_data() if you want to use normal
+ * #GCompareDataFuncs, otherwise here is a full example of use:
  *
  * |[<!-- language="C" -->
  * typedef enum { SORT_NAME, SORT_SIZE } SortMode;
@@ -26770,7 +27970,7 @@
  * with statically allocated strings in the main program, but not with
  * statically allocated memory in dynamically loaded modules, if you
  * expect to ever unload the module again (e.g. do not use this
- * function in GTK+ theme engines).
+ * function in GTK theme engines).
  *
  * This function must not be used before library constructors have finished
  * running. In particular, this means it cannot be used to initialize global
@@ -27997,7 +29197,7 @@
 
 /**
  * g_regex_escape_string:
- * @string: (array length=length): the string to escape
+ * @string: the string to escape
  * @length: the length of @string, in bytes, or -1 if @string is nul-terminated
  *
  * Escapes the special characters used for regular expressions
@@ -29830,7 +31030,7 @@
  * in contrast to g_set_application_name().
  *
  * If you are using #GApplication the program name is set in
- * g_application_run(). In case of GDK or GTK+ it is set in
+ * g_application_run(). In case of GDK or GTK it is set in
  * gdk_init(), which is called by gtk_init() and the
  * #GtkApplication::startup handler. The program name is found by
  * taking the last component of @argv[0].
@@ -29843,33 +31043,51 @@
 
 /**
  * g_set_print_handler:
- * @func: the new print handler
+ * @func: (nullable): the new print handler or %NULL to
+ *   reset to the default
  *
- * Sets the print handler.
+ * Sets the print handler to @func, or resets it to the
+ * default GLib handler if %NULL.
  *
  * Any messages passed to g_print() will be output via
- * the new handler. The default handler simply outputs
- * the message to stdout. By providing your own handler
- * you can redirect the output, to a GTK+ widget or a
+ * the new handler. The default handler outputs
+ * the encoded message to stdout. By providing your own handler
+ * you can redirect the output, to a GTK widget or a
  * log file for example.
  *
- * Returns: the old print handler
+ * Since 2.76 this functions always returns a valid
+ * #GPrintFunc, and never returns %NULL. If no custom
+ * print handler was set, it will return the GLib
+ * default print handler and that can be re-used to
+ * decorate its output and/or to write to stderr
+ * in all platforms. Before GLib 2.76, this was %NULL.
+ *
+ * Returns: (not nullable): the old print handler
  */
 
 
 /**
  * g_set_printerr_handler:
- * @func: the new error message handler
+ * @func: (nullable): he new error message handler or %NULL
+ *  to reset to the default
  *
- * Sets the handler for printing error messages.
+ * Sets the handler for printing error messages to @func,
+ * or resets it to the default GLib handler if %NULL.
  *
  * Any messages passed to g_printerr() will be output via
- * the new handler. The default handler simply outputs the
+ * the new handler. The default handler outputs the encoded
  * message to stderr. By providing your own handler you can
- * redirect the output, to a GTK+ widget or a log file for
+ * redirect the output, to a GTK widget or a log file for
  * example.
  *
- * Returns: the old error message handler
+ * Since 2.76 this functions always returns a valid
+ * #GPrintFunc, and never returns %NULL. If no custom error
+ * print handler was set, it will return the GLib default
+ * error print handler and that can be re-used to decorate
+ * its output and/or to write to stderr in all platforms.
+ * Before GLib 2.76, this was %NULL.
+ *
+ * Returns: (not nullable): the old error message handler
  */
 
 
@@ -30032,19 +31250,15 @@
  * g_slice_alloc:
  * @block_size: the number of bytes to allocate
  *
- * Allocates a block of memory from the slice allocator.
+ * Allocates a block of memory from the libc allocator.
  *
  * The block address handed out can be expected to be aligned
- * to at least `1 * sizeof (void*)`, though in general slices
- * are `2 * sizeof (void*)` bytes aligned; if a `malloc()`
- * fallback implementation is used instead, the alignment may
- * be reduced in a libc dependent fashion.
+ * to at least `1 * sizeof (void*)`.
  *
- * Note that the underlying slice allocation mechanism can
- * be changed with the [`G_SLICE=always-malloc`][G_SLICE]
- * environment variable.
+ * Since GLib 2.76 this always uses the system malloc() implementation
+ * internally.
  *
- * Returns: a pointer to the allocated memory block, which will
+ * Returns: (nullable): a pointer to the allocated memory block, which will
  *   be %NULL if and only if @mem_size is 0
  * Since: 2.10
  */
@@ -30055,12 +31269,13 @@
  * @block_size: the number of bytes to allocate
  *
  * Allocates a block of memory via g_slice_alloc() and initializes
- * the returned memory to 0. Note that the underlying slice allocation
- * mechanism can be changed with the [`G_SLICE=always-malloc`][G_SLICE]
- * environment variable.
+ * the returned memory to 0.
  *
- * Returns: a pointer to the allocated block, which will be %NULL if and only
- *    if @mem_size is 0
+ * Since GLib 2.76 this always uses the system malloc() implementation
+ * internally.
+ *
+ * Returns: (nullable): a pointer to the allocated block, which will be %NULL
+ *    if and only if @mem_size is 0
  * Since: 2.10
  */
 
@@ -30075,8 +31290,11 @@
  *
  * @mem_block must be non-%NULL if @block_size is non-zero.
  *
- * Returns: a pointer to the allocated memory block, which will be %NULL if and
- *    only if @mem_size is 0
+ * Since GLib 2.76 this always uses the system malloc() implementation
+ * internally.
+ *
+ * Returns: (nullable): a pointer to the allocated memory block,
+ *    which will be %NULL if and only if @mem_size is 0
  * Since: 2.14
  */
 
@@ -30092,11 +31310,11 @@
  * It calls g_slice_copy() with `sizeof (@type)`
  * and casts the returned pointer to a pointer of the given type,
  * avoiding a type cast in the source code.
- * Note that the underlying slice allocation mechanism can
- * be changed with the [`G_SLICE=always-malloc`][G_SLICE]
- * environment variable.
  *
  * This can never return %NULL.
+ *
+ * Since GLib 2.76 this always uses the system malloc() implementation
+ * internally.
  *
  * Returns: (not nullable): a pointer to the allocated block, cast to a pointer
  *    to @type
@@ -30107,7 +31325,7 @@
 /**
  * g_slice_free:
  * @type: the type of the block to free, typically a structure name
- * @mem: a pointer to the block to free
+ * @mem: (nullable): a pointer to the block to free
  *
  * A convenience macro to free a block of memory that has
  * been allocated from the slice allocator.
@@ -30115,10 +31333,11 @@
  * It calls g_slice_free1() using `sizeof (type)`
  * as the block size.
  * Note that the exact release behaviour can be changed with the
- * [`G_DEBUG=gc-friendly`][G_DEBUG] environment variable, also see
- * [`G_SLICE`][G_SLICE] for related debugging options.
+ * [`G_DEBUG=gc-friendly`][G_DEBUG] environment variable.
  *
  * If @mem is %NULL, this macro does nothing.
+ *
+ * Since GLib 2.76 this always uses the system free() implementation internally.
  *
  * Since: 2.10
  */
@@ -30127,7 +31346,7 @@
 /**
  * g_slice_free1:
  * @block_size: the size of the block
- * @mem_block: a pointer to the block to free
+ * @mem_block: (nullable): a pointer to the block to free
  *
  * Frees a block of memory.
  *
@@ -30135,9 +31354,12 @@
  * g_slice_alloc0() and the @block_size has to match the size
  * specified upon allocation. Note that the exact release behaviour
  * can be changed with the [`G_DEBUG=gc-friendly`][G_DEBUG] environment
- * variable, also see [`G_SLICE`][G_SLICE] for related debugging options.
+ * variable.
  *
  * If @mem_block is %NULL, this function does nothing.
+ *
+ * Since GLib 2.76 this always uses the system free_sized() implementation
+ * internally.
  *
  * Since: 2.10
  */
@@ -30146,7 +31368,7 @@
 /**
  * g_slice_free_chain:
  * @type: the type of the @mem_chain blocks
- * @mem_chain: a pointer to the first block of the chain
+ * @mem_chain: (nullable): a pointer to the first block of the chain
  * @next: the field name of the next pointer in @type
  *
  * Frees a linked list of memory blocks of structure type @type.
@@ -30156,10 +31378,11 @@
  * a @next pointer (similar to #GSList). The name of the
  * @next field in @type is passed as third argument.
  * Note that the exact release behaviour can be changed with the
- * [`G_DEBUG=gc-friendly`][G_DEBUG] environment variable, also see
- * [`G_SLICE`][G_SLICE] for related debugging options.
+ * [`G_DEBUG=gc-friendly`][G_DEBUG] environment variable.
  *
  * If @mem_chain is %NULL, this function does nothing.
+ *
+ * Since GLib 2.76 this always uses the system free() implementation internally.
  *
  * Since: 2.10
  */
@@ -30168,7 +31391,7 @@
 /**
  * g_slice_free_chain_with_offset:
  * @block_size: the size of the blocks
- * @mem_chain: a pointer to the first block of the chain
+ * @mem_chain: (nullable): a pointer to the first block of the chain
  * @next_offset: the offset of the @next field in the blocks
  *
  * Frees a linked list of memory blocks of structure type @type.
@@ -30178,10 +31401,12 @@
  * @next pointer (similar to #GSList). The offset of the @next
  * field in each block is passed as third argument.
  * Note that the exact release behaviour can be changed with the
- * [`G_DEBUG=gc-friendly`][G_DEBUG] environment variable, also see
- * [`G_SLICE`][G_SLICE] for related debugging options.
+ * [`G_DEBUG=gc-friendly`][G_DEBUG] environment variable.
  *
  * If @mem_chain is %NULL, this function does nothing.
+ *
+ * Since GLib 2.76 this always uses the system free_sized() implementation
+ * internally.
  *
  * Since: 2.10
  */
@@ -30196,12 +31421,13 @@
  *
  * It calls g_slice_alloc() with `sizeof (@type)` and casts the
  * returned pointer to a pointer of the given type, avoiding a type
- * cast in the source code. Note that the underlying slice allocation
- * mechanism can be changed with the [`G_SLICE=always-malloc`][G_SLICE]
- * environment variable.
+ * cast in the source code.
  *
  * This can never return %NULL as the minimum allocation size from
  * `sizeof (@type)` is 1 byte.
+ *
+ * Since GLib 2.76 this always uses the system malloc() implementation
+ * internally.
  *
  * Returns: (not nullable): a pointer to the allocated block, cast to a pointer
  *    to @type
@@ -30219,12 +31445,12 @@
  * It calls g_slice_alloc0() with `sizeof (@type)`
  * and casts the returned pointer to a pointer of the given type,
  * avoiding a type cast in the source code.
- * Note that the underlying slice allocation mechanism can
- * be changed with the [`G_SLICE=always-malloc`][G_SLICE]
- * environment variable.
  *
  * This can never return %NULL as the minimum allocation size from
  * `sizeof (@type)` is 1 byte.
+ *
+ * Since GLib 2.76 this always uses the system malloc() implementation
+ * internally.
  *
  * Returns: (not nullable): a pointer to the allocated block, cast to a pointer
  *    to @type
@@ -30822,7 +32048,8 @@
 /**
  * g_source_attach:
  * @source: a #GSource
- * @context: (nullable): a #GMainContext (if %NULL, the default context will be used)
+ * @context: (nullable): a #GMainContext (if %NULL, the global-default
+ *   main context will be used)
  *
  * Adds a #GSource to a @context so that it will be executed within
  * that context. Remove it by calling g_source_destroy().
@@ -31340,7 +32567,7 @@
  *
  * The source name should describe in a human-readable way
  * what the source does. For example, "X11 event queue"
- * or "GTK+ repaint idle handler" or whatever it is.
+ * or "GTK repaint idle handler" or whatever it is.
  *
  * It is permitted to call this function multiple times, but is not
  * recommended due to the potential performance impact.  For example,
@@ -31481,8 +32708,9 @@
  * @envp: (array zero-terminated=1) (element-type filename) (nullable):
  *     child's environment, or %NULL to inherit parent's
  * @flags: flags from #GSpawnFlags
- * @child_setup: (scope async) (nullable): function to run in the child just before exec()
- * @user_data: (closure): user data for @child_setup
+ * @child_setup: (scope async) (closure user_data) (nullable): function to run
+ *     in the child just before `exec()`
+ * @user_data: user data for @child_setup
  * @child_pid: (out) (optional): return location for child process reference, or %NULL
  * @error: return location for error
  *
@@ -31514,8 +32742,9 @@
  *   it must be non-empty and %NULL-terminated
  * @envp: (array zero-terminated=1) (nullable): child's environment, or %NULL to inherit parent's, in the GLib file name encoding
  * @flags: flags from #GSpawnFlags
- * @child_setup: (scope async) (nullable): function to run in the child just before exec()
- * @user_data: (closure): user data for @child_setup
+ * @child_setup: (scope async) (closure user_data) (nullable): function to run
+ *   in the child just before `exec()`
+ * @user_data: user data for @child_setup
  * @child_pid: (out) (optional): return location for child process ID, or %NULL
  * @stdin_fd: file descriptor to use for child's stdin, or `-1`
  * @stdout_fd: file descriptor to use for child's stdout, or `-1`
@@ -31542,8 +32771,9 @@
  *     child's environment, or %NULL to inherit parent's, in the GLib file
  *     name encoding
  * @flags: flags from #GSpawnFlags
- * @child_setup: (scope async) (nullable): function to run in the child just before exec()
- * @user_data: (closure): user data for @child_setup
+ * @child_setup: (scope async) (closure user_data) (nullable): function to run
+ *     in the child just before `exec()`
+ * @user_data: user data for @child_setup
  * @child_pid: (out) (optional): return location for child process ID, or %NULL
  * @standard_input: (out) (optional): return location for file descriptor to write to child's stdin, or %NULL
  * @standard_output: (out) (optional): return location for file descriptor to read child's stdout, or %NULL
@@ -31567,8 +32797,9 @@
  *     child's environment, or %NULL to inherit parent's, in the GLib file
  *     name encoding
  * @flags: flags from #GSpawnFlags
- * @child_setup: (scope async) (nullable): function to run in the child just before `exec()`
- * @user_data: (closure): user data for @child_setup
+ * @child_setup: (scope async) (closure user_data) (nullable): function to run
+ *     in the child just before `exec()`
+ * @user_data: user data for @child_setup
  * @stdin_fd: file descriptor to use for child's stdin, or `-1`
  * @stdout_fd: file descriptor to use for child's stdout, or `-1`
  * @stderr_fd: file descriptor to use for child's stderr, or `-1`
@@ -31937,8 +33168,9 @@
  * @envp: (array zero-terminated=1) (element-type filename) (nullable):
  *     child's environment, or %NULL to inherit parent's
  * @flags: flags from #GSpawnFlags
- * @child_setup: (scope async) (nullable): function to run in the child just before exec()
- * @user_data: (closure): user data for @child_setup
+ * @child_setup: (scope call) (closure user_data) (nullable): function to run
+ *     in the child just before `exec()`
+ * @user_data: user data for @child_setup
  * @standard_output: (out) (array zero-terminated=1) (element-type guint8) (optional): return location for child output, or %NULL
  * @standard_error: (out) (array zero-terminated=1) (element-type guint8) (optional): return location for child error messages, or %NULL
  * @wait_status: (out) (optional): return location for child wait status, as returned by waitpid(), or %NULL
@@ -32046,6 +33278,8 @@
  * [`signal-safety(7)`](man:signal-safety(7))), making it safe to call from a
  * signal handler or a #GSpawnChildSetupFunc.
  *
+ * This function preserves the value of `errno`.
+ *
  * Returns: the value that @fd_ptr previously had
  * Since: 2.70
  */
@@ -32056,12 +33290,12 @@
  * @dest: destination buffer.
  * @src: source string.
  *
- * Copies a nul-terminated string into the dest buffer, include the
- * trailing nul, and return a pointer to the trailing nul byte.
- * This is useful for concatenating multiple strings together
- * without having to repeatedly scan for the end.
+ * Copies a nul-terminated string into the destination buffer, including
+ * the trailing nul byte, and returns a pointer to the trailing nul byte
+ * in `dest`.  The return value is useful for concatenating multiple
+ * strings without having to repeatedly scan for the end.
  *
- * Returns: a pointer to trailing nul byte.
+ * Returns: a pointer to the trailing nul byte in `dest`.
  */
 
 
@@ -32820,8 +34054,25 @@
  * it's %FALSE, the caller gains ownership of the buffer and must
  * free it after use with g_free().
  *
+ * Instead of passing %FALSE to this function, consider using
+ * g_string_free_and_steal().
+ *
  * Returns: (nullable): the character data of @string
  *          (i.e. %NULL if @free_segment is %TRUE)
+ */
+
+
+/**
+ * g_string_free_and_steal:
+ * @string: (transfer full): a #GString
+ *
+ * Frees the memory allocated for the #GString.
+ *
+ * The caller gains ownership of the buffer and
+ * must free it after use with g_free().
+ *
+ * Returns: (transfer full): the character data of @string
+ * Since: 2.76
  */
 
 
@@ -32940,6 +34191,23 @@
  * bytes.
  *
  * Returns: (transfer full): a new #GString
+ */
+
+
+/**
+ * g_string_new_take: (constructor)
+ * @init: (nullable) (transfer full): initial text used as the string.
+ *     Ownership of the string is transferred to the #GString.
+ *     Passing %NULL creates an empty string.
+ *
+ * Creates a new #GString, initialized with the given string.
+ *
+ * After this call, @init belongs to the #GString and may no longer be
+ * modified by the caller. The memory of @data has to be dynamically
+ * allocated and will eventually be freed with g_free().
+ *
+ * Returns: (transfer full): the new #GString
+ * Since: 2.78
  */
 
 
@@ -33403,8 +34671,8 @@
  * to represent empty elements, you'll need to check for the empty string
  * before calling g_strsplit().
  *
- * Returns: a newly-allocated %NULL-terminated array of strings. Use
- *    g_strfreev() to free it.
+ * Returns: (transfer full): a newly-allocated %NULL-terminated array of
+ *    strings. Use g_strfreev() to free it.
  */
 
 
@@ -33439,8 +34707,8 @@
  * Note that this function works on bytes not characters, so it can't be used
  * to delimit UTF-8 strings for anything but ASCII characters.
  *
- * Returns: a newly-allocated %NULL-terminated array of strings. Use
- *    g_strfreev() to free it.
+ * Returns: (transfer full): a newly-allocated %NULL-terminated array of
+ *    strings. Use g_strfreev() to free it.
  * Since: 2.4
  */
 
@@ -33454,7 +34722,7 @@
  *
  * Searches the string @haystack for the first occurrence
  * of the string @needle, limiting the length of the search
- * to @haystack_len.
+ * to @haystack_len or a nul terminator byte (whichever is reached first).
  *
  * Returns: a pointer to the found occurrence, or
  *    %NULL if not found.
@@ -33839,6 +35107,19 @@
 
 
 /**
+ * g_test_disable_crash_reporting:
+ *
+ * Attempt to disable system crash reporting infrastructure.
+ *
+ * This function should be called before exercising code paths that are
+ * expected or intended to crash, to avoid wasting resources in system-wide
+ * crash collection infrastructure such as systemd-coredump or abrt.
+ *
+ * Since: 2.78
+ */
+
+
+/**
  * g_test_expect_message:
  * @log_domain: (nullable): the log domain of the message
  * @log_level: the log level of the message
@@ -33990,6 +35271,8 @@
  *
  * This function returns a valid string only within a test function.
  *
+ * Note that this is a test path, not a file system path.
+ *
  * Returns: the test path for the test currently being run
  * Since: 2.68
  */
@@ -34047,6 +35330,8 @@
  * Initialize the GLib testing framework, e.g. by seeding the
  * test random number generator, the name for g_get_prgname()
  * and parsing test related command line args.
+ *
+ * This should be called before calling any other `g_test_*()` functions.
  *
  * So far, the following arguments are understood:
  *
@@ -34714,8 +35999,9 @@
  * Returns: %TRUE for the forked child and %FALSE for the executing parent process.
  * Since: 2.16
  * Deprecated: This function is implemented only on Unix platforms,
- * and is not always reliable due to problems inherent in
- * fork-without-exec. Use g_test_trap_subprocess() instead.
+ * is not always reliable due to problems inherent in fork-without-exec
+ * and doesn't set close-on-exec flag on its file descriptors.
+ * Use g_test_trap_subprocess() instead.
  */
 
 
@@ -34775,6 +36061,11 @@
  * If your `main ()` needs to behave differently in
  * the subprocess, you can call g_test_subprocess() (after calling
  * g_test_init()) to see whether you are in a subprocess.
+ *
+ * Internally, this function tracks the child process using
+ * g_child_watch_source_new(), so your process must not ignore `SIGCHLD`, and
+ * must not attempt to watch or wait for the child process via another
+ * mechanism.
  *
  * The following example tests that calling
  * `my_object_new(1000000)` will abort with an error
@@ -35052,6 +36343,15 @@
  * since their threads are never considered idle and returned to the
  * global pool.
  *
+ * Note that the threads used by exclusive thread pools will all inherit the
+ * scheduler settings of the current thread while the threads used by
+ * non-exclusive thread pools will inherit the scheduler settings from the
+ * first thread that created such a thread pool.
+ *
+ * At least one thread will be spawned when this function is called, either to
+ * create the @max_threads exclusive threads, or to preserve the scheduler
+ * settings of the current thread for future spawns.
+ *
  * @error can be %NULL to ignore errors, or non-%NULL to report
  * errors. An error can only occur when @exclusive is set to %TRUE
  * and not all @max_threads threads could be created.
@@ -35078,6 +36378,9 @@
  * but allowing @item_free_func to be specified to free the data passed
  * to g_thread_pool_push() in the case that the #GThreadPool is stopped
  * and freed before all tasks have been executed.
+ *
+ * @item_free_func will *not* be called on items successfully passed to @func.
+ * @func is responsible for freeing the items passed to it.
  *
  * Returns: (transfer full): the new #GThreadPool
  * Since: 2.70
@@ -35394,7 +36697,7 @@
  * g_time_zone_adjust_time:
  * @tz: a #GTimeZone
  * @type: the #GTimeType of @time_
- * @time_: a pointer to a number of seconds since January 1, 1970
+ * @time_: (inout): a pointer to a number of seconds since January 1, 1970
  *
  * Finds an interval within @tz that corresponds to the given @time_,
  * possibly adjusting @time_ if required to fit into an interval.
@@ -35877,6 +37180,19 @@
 
 
 /**
+ * g_timeout_add_seconds_once:
+ * @interval: the time after which the function will be called, in seconds
+ * @function: function to call
+ * @data: data to pass to @function
+ *
+ * This function behaves like g_timeout_add_once() but with a range in seconds.
+ *
+ * Returns: the ID (greater than 0) of the event source
+ * Since: 2.78
+ */
+
+
+/**
  * g_timeout_source_new:
  * @interval: the timeout interval in milliseconds.
  *
@@ -36150,7 +37466,8 @@
  * result in a O(n log(n)) operation where most of the other operations
  * are O(log(n)).
  *
- * Returns: (transfer none): the inserted (or set) node.
+ * Returns: (transfer none) (nullable): the inserted (or set) node or %NULL
+ * if insertion would overflow the tree node counter.
  * Since: 2.68
  */
 
@@ -36271,6 +37588,11 @@
  * Gets the number of nodes in a #GTree.
  *
  * Returns: the number of nodes in @tree
+ *
+ * The node counter value type is really a #guint,
+ * but it is returned as a #gint due to backward
+ * compatibility issues (can be cast back to #guint to
+ * support its full range of values).
  */
 
 
@@ -36416,7 +37738,8 @@
  * The tree is automatically 'balanced' as new key/value pairs are added,
  * so that the distance from the root to every leaf is as small as possible.
  *
- * Returns: (transfer none): the inserted (or set) node.
+ * Returns: (transfer none) (nullable): the inserted (or set) node or %NULL
+ * if insertion would overflow the tree node counter.
  * Since: 2.68
  */
 
@@ -36611,7 +37934,7 @@
 
 /**
  * g_ucs4_to_utf16:
- * @str: a UCS-4 encoded string
+ * @str: (array length=len) (element-type gunichar): a UCS-4 encoded string
  * @len: the maximum length (number of characters) of @str to use.
  *     If @len < 0, then the string is nul-terminated.
  * @items_read: (out) (optional): location to store number of
@@ -36635,7 +37958,7 @@
 
 /**
  * g_ucs4_to_utf8:
- * @str: a UCS-4 encoded string
+ * @str: (array length=len) (element-type gunichar): a UCS-4 encoded string
  * @len: the maximum length (number of characters) of @str to use.
  *     If @len < 0, then the string is nul-terminated.
  * @items_read: (out) (optional): location to store number of
@@ -36865,7 +38188,7 @@
 /**
  * g_unichar_get_mirror_char:
  * @ch: a Unicode character
- * @mirrored_ch: location to store the mirrored character
+ * @mirrored_ch: (out): location to store the mirrored character
  *
  * In Unicode, some characters are "mirrored". This means that their
  * images are mirrored horizontally in text that is laid out from right
@@ -37228,7 +38551,7 @@
 
 /**
  * g_unicode_canonical_ordering:
- * @string: a UCS-4 encoded string.
+ * @string: (array length=len) (element-type gunichar): a UCS-4 encoded string.
  * @len: the maximum length of @string to use.
  *
  * Computes the canonical ordering of a string in-place.
@@ -37330,12 +38653,15 @@
 /**
  * g_unix_fd_source_new:
  * @fd: a file descriptor
- * @condition: IO conditions to watch for on @fd
+ * @condition: I/O conditions to watch for on @fd
  *
- * Creates a #GSource to watch for a particular IO condition on a file
+ * Creates a #GSource to watch for a particular I/O condition on a file
  * descriptor.
  *
- * The source will never close the fd -- you must do it yourself.
+ * The source will never close the @fd — you must do it yourself.
+ *
+ * Any callback attached to the returned #GSource must have type
+ * #GUnixFDSourceFunc.
  *
  * Returns: the newly created #GSource
  * Since: 2.36
@@ -37373,12 +38699,20 @@
  *
  * Similar to the UNIX pipe() call, but on modern systems like Linux
  * uses the pipe2() system call, which atomically creates a pipe with
- * the configured flags. The only supported flag currently is
- * %FD_CLOEXEC. If for example you want to configure %O_NONBLOCK, that
- * must still be done separately with fcntl().
+ * the configured flags.
  *
- * This function does not take %O_CLOEXEC, it takes %FD_CLOEXEC as if
- * for fcntl(); these are different on Linux/glibc.
+ * As of GLib 2.78, the supported flags are `O_CLOEXEC`/`FD_CLOEXEC` (see below)
+ * and `O_NONBLOCK`. Prior to GLib 2.78, only `FD_CLOEXEC` was supported — if
+ * you wanted to configure `O_NONBLOCK` then that had to be done separately with
+ * `fcntl()`.
+ *
+ * It is a programmer error to call this function with unsupported flags, and a
+ * critical warning will be raised.
+ *
+ * As of GLib 2.78, it is preferred to pass `O_CLOEXEC` in, rather than
+ * `FD_CLOEXEC`, as that matches the underlying `pipe()` API more closely. Prior
+ * to 2.78, only `FD_CLOEXEC` was supported. Support for `FD_CLOEXEC` may be
+ * deprecated and removed in future.
  *
  * Returns: %TRUE on success, %FALSE if not (and errno will be set).
  * Since: 2.30
@@ -37793,7 +39127,7 @@
  *
  * When @host is present, @path must either be empty or begin with a slash (`/`)
  * character. When @host is not present, @path cannot begin with two slash
- *    characters (`//`). See
+ * characters (`//`). See
  * [RFC 3986, section 3](https://tools.ietf.org/html/rfc3986#section-3).
  *
  * See also g_uri_join_with_user(), which allows specifying the
@@ -38326,7 +39660,7 @@
 
 /**
  * g_utf16_to_ucs4:
- * @str: a UTF-16 encoded string
+ * @str: (array length=len) (element-type guint16): a UTF-16 encoded string
  * @len: the maximum length (number of #gunichar2) of @str to use.
  *     If @len < 0, then the string is nul-terminated.
  * @items_read: (out) (optional): location to store number of
@@ -38351,7 +39685,7 @@
 
 /**
  * g_utf16_to_utf8:
- * @str: a UTF-16 encoded string
+ * @str: (array length=len) (element-type guint16): a UTF-16 encoded string
  * @len: the maximum length (number of #gunichar2) of @str to use.
  *     If @len < 0, then the string is nul-terminated.
  * @items_read: (out) (optional): location to store number of
@@ -38875,6 +40209,22 @@
 
 
 /**
+ * g_utf8_truncate_middle:
+ * @string: (transfer none): a nul-terminated UTF-8 encoded string
+ * @truncate_length: the new size of @string, in characters, including the ellipsis character
+ *
+ * Cuts off the middle of the string, preserving half of @truncate_length
+ * characters at the beginning and half at the end.
+ *
+ * If @string is already short enough, this returns a copy of @string.
+ * If @truncate_length is `0`, an empty string is returned.
+ *
+ * Returns: (transfer full): a newly-allocated copy of @string ellipsized in the middle
+ * Since: 2.78
+ */
+
+
+/**
  * g_utf8_validate:
  * @str: (array length=max_len) (element-type guint8): a pointer to character data
  * @max_len: max bytes to validate, or -1 to go until NUL
@@ -38891,7 +40241,7 @@
  * Note that g_utf8_validate() returns %FALSE if @max_len is
  * positive and any of the @max_len bytes are nul.
  *
- * Returns %TRUE if all of @str was valid. Many GLib and GTK+
+ * Returns %TRUE if all of @str was valid. Many GLib and GTK
  * routines require valid UTF-8 as input; so data read from a file
  * or the network should be checked with g_utf8_validate() before
  * doing anything else with it.
@@ -39274,7 +40624,13 @@
  * contain multi-byte numeric data.  That include strings, booleans,
  * bytes and containers containing only these things (recursively).
  *
+ * While this function can safely handle untrusted, non-normal data, it is
+ * recommended to check whether the input is in normal form beforehand, using
+ * g_variant_is_normal_form(), and to reject non-normal inputs if your
+ * application can be strict about what inputs it rejects.
+ *
  * The returned value is always in normal form and is marked as trusted.
+ * A full, not floating, reference is returned.
  *
  * Returns: (transfer full): the byteswapped form of @value
  * Since: 2.24
@@ -39469,7 +40825,8 @@
  *
  * This function is a wrapper around g_variant_dict_lookup_value() and
  * g_variant_get().  In the case that %NULL would have been returned,
- * this function returns %FALSE.  Otherwise, it unpacks the returned
+ * this function returns %FALSE and does not modify the values of the arguments
+ * passed in to @....  Otherwise, it unpacks the returned
  * value and returns %TRUE.
  *
  * @format_string determines the C types that are used for unpacking the
@@ -40028,7 +41385,9 @@
  * marked as trusted and a new reference to it is returned.
  *
  * If @value is found not to be in normal form then a new trusted
- * #GVariant is created with the same value as @value.
+ * #GVariant is created with the same value as @value. The non-normal parts of
+ * @value will be replaced with default values which are guaranteed to be in
+ * normal form.
  *
  * It makes sense to call this function if you've received #GVariant
  * data from untrusted sources and you want to ensure your serialized
@@ -40683,6 +42042,31 @@
 
 
 /**
+ * g_variant_maybe_get_child_value:
+ * @value: a container #GVariant
+ * @index_: the index of the child to fetch
+ *
+ * Reads a child item out of a container #GVariant instance, if it is in normal
+ * form. If it is not in normal form, return %NULL.
+ *
+ * This function behaves the same as g_variant_get_child_value(), except that it
+ * returns %NULL if the child is not in normal form. g_variant_get_child_value()
+ * would instead return a new default value of the correct type.
+ *
+ * This is intended to be used internally to avoid unnecessary #GVariant
+ * allocations.
+ *
+ * The returned value is never floating.  You should free it with
+ * g_variant_unref() when you're done with it.
+ *
+ * This function is O(1).
+ *
+ * Returns: (transfer full): the child at the specified index
+ * Since: 2.74
+ */
+
+
+/**
  * g_variant_n_children:
  * @value: a container #GVariant
  *
@@ -41015,8 +42399,8 @@
  * g_variant_new_object_path:
  * @object_path: a normal C nul-terminated string
  *
- * Creates a D-Bus object path #GVariant with the contents of @string.
- * @string must be a valid D-Bus object path.  Use
+ * Creates a D-Bus object path #GVariant with the contents of @object_path.
+ * @object_path must be a valid D-Bus object path.  Use
  * g_variant_is_object_path() if you're not sure.
  *
  * Returns: (transfer none): a floating reference to a new object path #GVariant instance
@@ -41184,8 +42568,9 @@
  * @string must be valid UTF-8, and must not be %NULL. To encode
  * potentially-%NULL strings, use this with g_variant_new_maybe().
  *
- * This function consumes @string.  g_free() will be called on @string
- * when it is no longer required.
+ * After this call, @string belongs to the #GVariant and may no longer be
+ * modified by the caller. The memory of @data has to be dynamically
+ * allocated and will eventually be freed with g_free().
  *
  * You must not modify or access @string in any other way after passing
  * it to this function.  It is even possible that @string is immediately
@@ -42678,49 +44063,72 @@
 /**
  * gchar:
  *
- * Corresponds to the standard C char type.
+ * Equivalent to the standard C `char` type.
+ *
+ * This type only exists for symmetry with `guchar`.
+ * The standard C `char` type should be preferred in new code.
  */
 
 
 /**
  * gconstpointer:
  *
- * An untyped pointer to constant data.
+ * An untyped pointer to constant data, exactly equivalent to `const void *`.
+ *
  * The data pointed to should not be changed.
  *
  * This is typically used in function prototypes to indicate
  * that the data pointed to will not be altered by the function.
+ *
+ * The standard C `const void *` type should usually be preferred in
+ * new code, but `gconstpointer` can be used in contexts where a type name
+ * must be a single word.
  */
 
 
 /**
  * gdouble:
  *
- * Corresponds to the standard C double type.
- * Values of this type can range from -%G_MAXDOUBLE to %G_MAXDOUBLE.
+ * Equivalent to the standard C `double` type.
+ *
+ * Values of this type can range from `-DBL_MAX` to `DBL_MAX`,
+ * or equivalently from -%G_MAXDOUBLE to %G_MAXDOUBLE.
  */
 
 
 /**
  * gfloat:
  *
- * Corresponds to the standard C float type.
- * Values of this type can range from -%G_MAXFLOAT to %G_MAXFLOAT.
+ * Equivalent to the standard C `float` type.
+ *
+ * Values of this type can range from `-FLT_MAX` to `FLT_MAX`,
+ * or equivalently from -%G_MAXFLOAT to %G_MAXFLOAT.
  */
 
 
 /**
  * gint:
  *
- * Corresponds to the standard C int type.
- * Values of this type can range from %G_MININT to %G_MAXINT.
+ * Equivalent to the standard C `int` type.
+ *
+ * Values of this type can range from `INT_MIN` to `INT_MAX`,
+ * or equivalently from %G_MININT to %G_MAXINT.
+ *
+ * This type only exists for symmetry with `guint`.
+ * The standard C `int` type should be preferred in new code.
  */
 
 
 /**
  * gint16:
  *
- * A signed integer guaranteed to be 16 bits on all platforms.
+ * A signed integer guaranteed to be 16 bits on all platforms,
+ * similar to the standard C `int16_t`.
+ *
+ * The `int16_t` type should be preferred in new code, unless
+ * consistency with pre-existing APIs requires use of `gint16`
+ * (see #gsize for more details).
+ *
  * Values of this type can range from %G_MININT16 (= -32,768) to
  * %G_MAXINT16 (= 32,767).
  *
@@ -42733,31 +44141,64 @@
  * gint32:
  *
  * A signed integer guaranteed to be 32 bits on all platforms.
+ *
+ * The `int32_t` type should be preferred in new code, unless
+ * consistency with pre-existing APIs requires use of `gint16`
+ * (see #gsize for more details).
+ *
  * Values of this type can range from %G_MININT32 (= -2,147,483,648)
  * to %G_MAXINT32 (= 2,147,483,647).
  *
  * To print or scan values of this type, use
  * %G_GINT32_MODIFIER and/or %G_GINT32_FORMAT.
+ *
+ * Note that on platforms with more than one 32-bit standard integer type,
+ * `gint32` and `int32_t` are not necessarily implemented by the same
+ * 32-bit integer type.
+ * For example, on an ILP32 platform where `int` and `long` are both 32-bit,
+ * it might be the case that one of these types is `int` and the other
+ * is `long`.
+ * See #gsize for more details of what this implies.
  */
 
 
 /**
  * gint64:
  *
- * A signed integer guaranteed to be 64 bits on all platforms.
+ * A signed integer guaranteed to be 64 bits on all platforms,
+ * similar to the standard C `int64_t`.
+ *
+ * The `int64_t` type should be preferred in new code, unless
+ * consistency with pre-existing APIs requires use of `gint64`
+ * (see #gsize for more details).
+ *
  * Values of this type can range from %G_MININT64
  * (= -9,223,372,036,854,775,808) to %G_MAXINT64
  * (= 9,223,372,036,854,775,807).
  *
  * To print or scan values of this type, use
  * %G_GINT64_MODIFIER and/or %G_GINT64_FORMAT.
+ *
+ * Note that on platforms with more than one 64-bit standard integer type,
+ * `gint64` and `int64_t` are not necessarily implemented by the same
+ * 64-bit integer type.
+ * For example, on a platform where both `long` and `long long` are 64-bit,
+ * it might be the case that one of those types is used for `gint64`
+ * and the other is used for `int64_t`.
+ * See #gsize for more details of what this implies.
  */
 
 
 /**
  * gint8:
  *
- * A signed integer guaranteed to be 8 bits on all platforms.
+ * A signed integer guaranteed to be 8 bits on all platforms,
+ * similar to the standard C `int8_t`.
+ *
+ * The `int8_t` type should be preferred in new code, unless
+ * consistency with pre-existing APIs requires use of `gint8`
+ * (see #gsize for more details).
+ *
  * Values of this type can range from %G_MININT8 (= -128) to
  * %G_MAXINT8 (= 127).
  */
@@ -42768,6 +44209,14 @@
  *
  * Corresponds to the C99 type intptr_t,
  * a signed integer type that can hold any pointer.
+ *
+ * The standard `intptr_t` type should be preferred in new code, unless
+ * consistency with pre-existing APIs requires `gintptr`.
+ * Note that `intptr_t` and `gintptr` might be implemented by different
+ * standard integer types of the same size. See #gsize for more details.
+ *
+ * #gintptr is not guaranteed to be the same type or the same size as #gssize,
+ * even though they are the same on many CPU architectures.
  *
  * To print or scan values of this type, use
  * %G_GINTPTR_MODIFIER and/or %G_GINTPTR_FORMAT.
@@ -42909,8 +44358,13 @@
 /**
  * glong:
  *
- * Corresponds to the standard C long type.
- * Values of this type can range from %G_MINLONG to %G_MAXLONG.
+ * Equivalent to the standard C `long` type.
+ *
+ * Values of this type can range from `LONG_MIN` to `LONG_MAX`,
+ * or equivalently %G_MINLONG to %G_MAXLONG.
+ *
+ * This type only exists for symmetry with `gulong`.
+ * The standard C `long` type should be preferred in new code.
  */
 
 
@@ -42920,12 +44374,17 @@
  * A signed integer type that is used for file offsets,
  * corresponding to the POSIX type `off_t` as if compiling with
  * `_FILE_OFFSET_BITS` set to 64. #goffset is always 64 bits wide, even on
- * 32-bit architectures.
+ * 32-bit architectures, and even if `off_t` is only 32 bits.
  * Values of this type can range from %G_MINOFFSET to
  * %G_MAXOFFSET.
  *
  * To print or scan values of this type, use
  * %G_GOFFSET_MODIFIER and/or %G_GOFFSET_FORMAT.
+ *
+ * On platforms with more than one 64-bit standard integer type,
+ * even if `off_t` is also 64 bits in size, `goffset` and `off_t` are not
+ * necessarily implemented by the same 64-bit integer type.
+ * See #gsize for more details of what this implies.
  *
  * Since: 2.14
  */
@@ -42934,8 +44393,13 @@
 /**
  * gpointer:
  *
- * An untyped pointer.
- * #gpointer looks better and is easier to use than void*.
+ * An untyped pointer, exactly equivalent to `void *`.
+ *
+ * The standard C `void *` type should usually be preferred in
+ * new code, but `gpointer` can be used in contexts where a type name
+ * must be a single word, such as in the g_type_name() of %G_TYPE_POINTER
+ * or when generating a family of function names for multiple types
+ * using macros.
  */
 
 
@@ -42961,23 +44425,62 @@
 /**
  * gshort:
  *
- * Corresponds to the standard C short type.
- * Values of this type can range from %G_MINSHORT to %G_MAXSHORT.
+ * Equivalent to the standard C `short` type.
+ *
+ * Values of this type can range from `SHRT_MIN` to `SHRT_MAX`,
+ * or equivalently %G_MINSHORT to %G_MAXSHORT.
+ *
+ * This type only exists for symmetry with `gushort`.
+ * The standard C `short` type should be preferred in new code.
  */
 
 
 /**
  * gsize:
  *
- * An unsigned integer type of the result of the sizeof operator,
- * corresponding to the size_t type defined in C99.
- * This type is wide enough to hold the numeric value of a pointer,
- * so it is usually 32 bit wide on a 32-bit platform and 64 bit wide
+ * An unsigned integer type of the result of the `sizeof` operator,
+ * corresponding to the `size_t` type defined in C99.
+ *
+ * The standard `size_t` type should be preferred in new code, unless
+ * consistency with pre-existing APIs requires `gsize`
+ * (see below for more details).
+ *
+ * `gsize` is usually 32 bit wide on a 32-bit platform and 64 bit wide
  * on a 64-bit platform. Values of this type can range from 0 to
  * %G_MAXSIZE.
  *
+ * This type is wide enough to hold the size of the largest possible
+ * memory allocation, but is not guaranteed to be wide enough to hold
+ * the numeric value of a pointer: on platforms that use tagged pointers,
+ * such as [CHERI](https://cheri-cpu.org/), pointers can be numerically
+ * larger than the size of the address space.
+ * If the numeric value of a pointer needs to be stored in an integer
+ * without information loss, use the standard C types `intptr_t` or
+ * `uintptr_t`, or the similar GLib types #gintptr or #guintptr.
+ *
  * To print or scan values of this type, use
  * %G_GSIZE_MODIFIER and/or %G_GSIZE_FORMAT.
+ *
+ * Note that on platforms where more than one standard integer type is
+ * the same size, `size_t` and `gsize` are always the same size but are
+ * not necessarily implemented by the same standard integer type.
+ * For example, on an ILP32 platform where `int`, `long` and pointers
+ * are all 32-bit, `size_t` might be `unsigned long` while `gsize`
+ * might be `unsigned int`.
+ * This can result in compiler warnings or unexpected C++ name-mangling
+ * if the two types are used inconsistently.
+ *
+ * As a result, changing a type from `gsize` to `size_t` in existing APIs
+ * might be an incompatible API or ABI change, especially if C++
+ * is involved. The safe option is to leave existing APIs using the same type
+ * that they have historically used, and only use the standard C types in
+ * new APIs.
+ *
+ * Similar considerations apply to all the fixed-size types
+ * (#gint8, #guint8, #gint16, #guint16, #gint32, #guint32, #gint64,
+ * #guint64 and #goffset), as well as #gintptr and #guintptr.
+ * Types that are 32 bits or larger are particularly likely to be
+ * affected by this.
  */
 
 
@@ -42985,9 +44488,22 @@
  * gssize:
  *
  * A signed variant of #gsize, corresponding to the
- * ssize_t defined on most platforms.
+ * `ssize_t` defined in POSIX or the similar `SSIZE_T` in Windows.
+ *
+ * In new platform-specific code, consider using `ssize_t` or `SSIZE_T`
+ * directly.
+ *
  * Values of this type can range from %G_MINSSIZE
  * to %G_MAXSSIZE.
+ *
+ * Note that on platforms where `ssize_t` is implemented, `ssize_t` and
+ * `gssize` might be implemented by different standard integer types
+ * of the same size. Similarly, on Windows, `SSIZE_T` and `gssize`
+ * might be implemented by different standard integer types of the same
+ * size. See #gsize for more details.
+ *
+ * This type is also not guaranteed to be the same as standard C
+ * `ptrdiff_t`, although they are the same on many platforms.
  *
  * To print or scan values of this type, use
  * %G_GSSIZE_MODIFIER and/or %G_GSSIZE_FORMAT.
@@ -42997,22 +44513,42 @@
 /**
  * guchar:
  *
- * Corresponds to the standard C unsigned char type.
+ * Equivalent to the standard C `unsigned char` type.
+ *
+ * The standard C `unsigned char` type should usually be preferred in
+ * new code, but `guchar` can be used in contexts where a type name
+ * must be a single word, such as in the g_type_name() of %G_TYPE_UCHAR
+ * or when generating a family of function names for multiple types
+ * using macros.
  */
 
 
 /**
  * guint:
  *
- * Corresponds to the standard C unsigned int type.
- * Values of this type can range from 0 to %G_MAXUINT.
+ * Equivalent to the standard C `unsigned int` type.
+ *
+ * Values of this type can range from 0 to `UINT_MAX`,
+ * or equivalently 0 to %G_MAXUINT.
+ *
+ * The standard C `unsigned int` type should usually be preferred in
+ * new code, but `guint` can be used in contexts where a type name
+ * must be a single word, such as in the g_type_name() of %G_TYPE_UINT
+ * or when generating a family of function names for multiple types
+ * using macros.
  */
 
 
 /**
  * guint16:
  *
- * An unsigned integer guaranteed to be 16 bits on all platforms.
+ * An unsigned integer guaranteed to be 16 bits on all platforms,
+ * similar to the standard C `uint16_t`.
+ *
+ * The `uint16_t` type should be preferred in new code, unless
+ * consistency with pre-existing APIs requires use of `guint16`
+ * (see #gsize for more details).
+ *
  * Values of this type can range from 0 to %G_MAXUINT16 (= 65,535).
  *
  * To print or scan values of this type, use
@@ -43023,30 +44559,58 @@
 /**
  * guint32:
  *
- * An unsigned integer guaranteed to be 32 bits on all platforms.
+ * An unsigned integer guaranteed to be 32 bits on all platforms,
+ * similar to the standard C `uint32_t`.
+ *
+ * The `uint32_t` type should be preferred in new code, unless
+ * consistency with pre-existing APIs requires use of `guint32`
+ * (see #gsize for more details).
+ *
  * Values of this type can range from 0 to %G_MAXUINT32 (= 4,294,967,295).
  *
  * To print or scan values of this type, use
  * %G_GINT32_MODIFIER and/or %G_GUINT32_FORMAT.
+ *
+ * Note that on platforms with more than one 32-bit standard integer type,
+ * `guint32` and `uint32_t` are not necessarily implemented by the same
+ * 32-bit integer type.
+ * See #gsize for more details of what this implies.
  */
 
 
 /**
  * guint64:
  *
- * An unsigned integer guaranteed to be 64-bits on all platforms.
+ * An unsigned integer guaranteed to be 64-bits on all platforms,
+ * similar to the standard C `uint64_t` type.
+ *
+ * The `uint64_t` type should be preferred in new code, unless
+ * consistency with pre-existing APIs requires use of `guint64`
+ * (see #gsize for more details).
+ *
  * Values of this type can range from 0 to %G_MAXUINT64
  * (= 18,446,744,073,709,551,615).
  *
  * To print or scan values of this type, use
  * %G_GINT64_MODIFIER and/or %G_GUINT64_FORMAT.
+ *
+ * Note that on platforms with more than one 64-bit standard integer type,
+ * `guint64` and `uint64_t` are not necessarily implemented by the same
+ * 64-bit integer type.
+ * See #gsize for more details of what this implies.
  */
 
 
 /**
  * guint8:
  *
- * An unsigned integer guaranteed to be 8 bits on all platforms.
+ * An unsigned integer guaranteed to be 8 bits on all platforms,
+ * similar to the standard C `uint8_t`.
+ *
+ * The `uint8_t` type should be preferred in new code, unless
+ * consistency with pre-existing APIs requires use of `guint8`
+ * (see #gsize for more details).
+ *
  * Values of this type can range from 0 to %G_MAXUINT8 (= 255).
  */
 
@@ -43056,6 +44620,14 @@
  *
  * Corresponds to the C99 type uintptr_t,
  * an unsigned integer type that can hold any pointer.
+ *
+ * The standard `uintptr_t` type should be preferred in new code, unless
+ * consistency with pre-existing APIs requires `guintptr`.
+ * Note that `uintptr_t` and `guintptr` might be implemented by different
+ * standard integer types of the same size. See #gsize for more details.
+ *
+ * #guintptr is not guaranteed to be the same type or the same size as #gsize,
+ * even though they are the same on many CPU architectures.
  *
  * To print or scan values of this type, use
  * %G_GINTPTR_MODIFIER and/or %G_GUINTPTR_FORMAT.
@@ -43067,16 +44639,30 @@
 /**
  * gulong:
  *
- * Corresponds to the standard C unsigned long type.
+ * Equivalent to the standard C `unsigned long` type.
+ *
  * Values of this type can range from 0 to %G_MAXULONG.
+ *
+ * The standard C `unsigned long` type should usually be preferred in
+ * new code, but `gulong` can be used in contexts where a type name
+ * must be a single word, such as in the g_type_name() of %G_TYPE_ULONG
+ * or when generating a family of function names for multiple types
+ * using macros.
  */
 
 
 /**
  * gushort:
  *
- * Corresponds to the standard C unsigned short type.
- * Values of this type can range from 0 to %G_MAXUSHORT.
+ * Equivalent to the standard C `unsigned short` type.
+ *
+ * Values of this type can range from 0 to `USHRT_MAX`,
+ * or equivalently from 0 to %G_MAXUSHORT.
+ *
+ * The standard C `unsigned short` type should usually be preferred in
+ * new code, but `gushort` can be used in contexts where a type name
+ * must be a single word, such as when generating a family of function
+ * names for multiple types using macros.
  */
 
 

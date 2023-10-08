@@ -322,11 +322,16 @@ struct _GIrNodeStruct
 
   gboolean deprecated;
   gboolean disguised;
+  gboolean opaque;
+  gboolean pointer;
   gboolean is_gtype_struct;
   gboolean foreign;
 
   gchar *gtype_name;
   gchar *gtype_init;
+
+  gchar *copy_func;
+  gchar *free_func;
 
   gint alignment;
   gint size;
@@ -345,6 +350,9 @@ struct _GIrNodeUnion
 
   gchar *gtype_name;
   gchar *gtype_init;
+
+  gchar *copy_func;
+  gchar *free_func;
 
   gint alignment;
   gint size;

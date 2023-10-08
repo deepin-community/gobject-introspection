@@ -1205,6 +1205,19 @@ gi_marshalling_tests_array_fixed_int_in (const gint *ints)
 }
 
 /**
+ * gi_marshalling_tests_array_fixed_caller_allocated_out:
+ * @ints: (out caller-allocates) (array fixed-size=4):
+ */
+void
+gi_marshalling_tests_array_fixed_caller_allocated_out (gint *ints)
+{
+  ints[0] = -1;
+  ints[1] = 0;
+  ints[2] = 1;
+  ints[3] = 2;
+}
+
+/**
  * gi_marshalling_tests_array_fixed_short_in:
  * @shorts: (array fixed-size=4):
  */
@@ -1249,6 +1262,23 @@ gi_marshalling_tests_array_fixed_out_struct (GIMarshallingTestsSimpleStruct **st
     }
 
   *structs = values;
+}
+
+/**
+ * gi_marshalling_tests_array_fixed_caller_allocated_struct_out:
+ * @structs: (out caller-allocates) (array fixed-size=4):
+ */
+void
+gi_marshalling_tests_array_fixed_caller_allocated_struct_out (GIMarshallingTestsSimpleStruct *structs)
+{
+    structs[0].long_ = -2;
+    structs[0].int8 = -1;
+    structs[1].long_ = 1;
+    structs[1].int8 = 2;
+    structs[2].long_ = 3;
+    structs[2].int8 = 4;
+    structs[3].long_ = 5;
+    structs[3].int8 = 6;
 }
 
 /**
@@ -1826,7 +1856,8 @@ gi_marshalling_tests_array_gvariant_container_in (GVariant **variants)
   g_assert (variants[2] == NULL);
 
   container = g_new0 (GVariant *, 3);
-  container[0] = variants[0];
+  /* This is a floating reference, so it's fine for transfer container */
+  container[0] = g_variant_new_int32 (g_variant_get_int32 (variants[0]));
   container[1] = variants[1];
   g_free (variants);
 
@@ -1850,12 +1881,18 @@ gi_marshalling_tests_array_gvariant_full_in (GVariant **variants)
   g_assert (variants[2] == NULL);
 
   /* To catch different behaviors we reconstruct one variant from scratch,
-   * while leaving the other untouched. Both approaches are legal with full
+   * while taking the refernce of the other. Both approaches are legal with full
    * transfer in and out */
   container = g_new0 (GVariant *, 3);
-  container[0] = g_variant_new_int32 (g_variant_get_int32 (variants[0]));
+  container[0] = g_variant_ref_sink (
+    g_variant_new_int32 (g_variant_get_int32 (variants[0])));
   g_variant_unref (variants[0]);
-  container[1] = variants[1];
+
+  /* In case the variant is floating, we want to transform it into a full
+   * reference, so that's fully owned by the container like if the case
+   * above, otherwise we just steal it since it has already a strong reference.
+   */
+  container[1] = g_variant_take_ref (variants[1]);
   g_free (variants);
 
   return container;
@@ -1981,11 +2018,13 @@ gi_marshalling_tests_garray_boxed_struct_full_return (void)
   gint i;
 
   array = g_array_new (TRUE, TRUE, sizeof (GIMarshallingTestsBoxedStruct));
+  g_array_set_size (array, 3);
   for (i = 0; i < 3; i++)
     {
-      GIMarshallingTestsBoxedStruct *new_struct = gi_marshalling_tests_boxed_struct_new ();
+      GIMarshallingTestsBoxedStruct *new_struct;
+      new_struct = &g_array_index (array, GIMarshallingTestsBoxedStruct, i);
+      memset (new_struct, 0, sizeof (GIMarshallingTestsSimpleStruct));
       new_struct->long_ = long_values[i];
-      g_array_append_val (array, *new_struct);
     }
 
   return array;
@@ -3562,6 +3601,28 @@ gi_marshalling_tests_return_gvalue_flat_array (void)
 }
 
 /**
+ * gi_marshalling_tests_return_gvalue_zero_terminated_array:
+ *
+ * Returns: (array zero-terminated) (transfer full): a flat GValue array
+ */
+GValue *
+gi_marshalling_tests_return_gvalue_zero_terminated_array (void)
+{
+  GValue *array = g_new0 (GValue, 4);
+
+  g_value_init (&array[0], G_TYPE_INT);
+  g_value_set_int (&array[0], 42);
+
+  g_value_init (&array[1], G_TYPE_STRING);
+  g_value_set_static_string (&array[1], "42");
+
+  g_value_init (&array[2], G_TYPE_BOOLEAN);
+  g_value_set_boolean (&array[2], TRUE);
+
+  return array;
+}
+
+/**
  * gi_marshalling_tests_gvalue_round_trip:
  * @value: The first GValue
  *
@@ -4024,6 +4085,7 @@ gi_marshalling_tests_boxed_struct_copy (GIMarshallingTestsBoxedStruct *struct_)
 
   *new_struct = *struct_;
   new_struct->string_ = g_strdup (struct_->string_);
+  new_struct->g_strv = g_strdupv (struct_->g_strv);
 
   return new_struct;
 }
@@ -4034,6 +4096,7 @@ gi_marshalling_tests_boxed_struct_free (GIMarshallingTestsBoxedStruct *struct_)
   if (struct_ != NULL)
     {
       g_free (struct_->string_);
+      g_clear_pointer (&struct_->g_strv, g_strfreev);
       g_slice_free (GIMarshallingTestsBoxedStruct, struct_);
     }
 }
@@ -4213,6 +4276,156 @@ gi_marshalling_tests_union_method (GIMarshallingTestsUnion *union_)
   g_assert_cmpint (union_->long_, ==, 42);
 }
 
+/**
+ * gi_marshalling_tests_structured_union_new:
+ * @type: Type of #GIMarshallingTestsStructuredUnion to create
+ */
+GIMarshallingTestsStructuredUnion *
+gi_marshalling_tests_structured_union_new (GIMarshallingTestsStructuredUnionType type)
+{
+  GIMarshallingTestsStructuredUnion *new_union;
+
+  new_union = g_new0 (GIMarshallingTestsStructuredUnion, 1);
+  new_union->type = type;
+
+  switch (type)
+    {
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_NONE:
+      break;
+
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_SIMPLE_STRUCT:
+      new_union->simple_struct.parent.long_ = 6;
+      new_union->simple_struct.parent.int8 = 7;
+      break;
+
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_NESTED_STRUCT:
+      new_union->nested_struct.parent.simple_struct.long_ = 6;
+      new_union->nested_struct.parent.simple_struct.int8 = 7;
+      break;
+
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_BOXED_STRUCT:
+      new_union->boxed_struct.parent.long_ = 42;
+      new_union->boxed_struct.parent.string_ = g_strdup ("hello");
+      new_union->boxed_struct.parent.g_strv = g_new0 (gchar *, 4);
+      new_union->boxed_struct.parent.g_strv[0] = g_strdup ("0");
+      new_union->boxed_struct.parent.g_strv[1] = g_strdup ("1");
+      new_union->boxed_struct.parent.g_strv[2] = g_strdup ("2");
+      new_union->boxed_struct.parent.g_strv[3] = NULL;
+      break;
+
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_BOXED_STRUCT_PTR:
+      new_union->boxed_struct_ptr.parent = g_boxed_copy (
+        gi_marshalling_tests_boxed_struct_get_type(),
+        gi_marshalling_tests_boxed_struct_returnv ());
+      break;
+
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_POINTER_STRUCT:
+      new_union->pointer_struct.parent.long_ = 42;
+      break;
+
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_SINGLE_UNION:
+      new_union->single_union.parent.union_.long_ = 42;
+      break;
+
+    default:
+      g_free (new_union);
+      g_return_val_if_reached (NULL);
+    }
+
+  return new_union;
+}
+
+static GIMarshallingTestsStructuredUnion *
+gi_marshalling_tests_structured_union_copy (GIMarshallingTestsStructuredUnion *union_)
+{
+  GIMarshallingTestsStructuredUnion *new_union;
+
+  new_union = g_new (GIMarshallingTestsStructuredUnion, 1);
+  *new_union = *union_;
+
+  switch (union_->type)
+    {
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_BOXED_STRUCT:
+      new_union->boxed_struct.parent.string_ = g_strdup (union_->boxed_struct.parent.string_);
+      if (union_->boxed_struct.parent.g_strv)
+        {
+          guint length = g_strv_length (union_->boxed_struct.parent.g_strv);
+          guint i;
+
+          new_union->boxed_struct.parent.g_strv = g_new0 (gchar *, length + 1);
+          for (i = 0; i < length; i++)
+              new_union->boxed_struct.parent.g_strv[i] = g_strdup (union_->boxed_struct.parent.g_strv[i]);
+          new_union->boxed_struct.parent.g_strv[i] = NULL;
+        }
+      break;
+
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_BOXED_STRUCT_PTR:
+      new_union->boxed_struct_ptr.parent = g_boxed_copy (
+        gi_marshalling_tests_boxed_struct_get_type(), union_->boxed_struct_ptr.parent);
+      break;
+
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_NONE:
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_SINGLE_UNION:
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_POINTER_STRUCT:
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_SIMPLE_STRUCT:
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_NESTED_STRUCT:
+      break;
+
+    default:
+      g_return_val_if_reached (new_union);
+    }
+
+  return new_union;
+}
+
+static void
+gi_marshalling_tests_structured_union_free (GIMarshallingTestsStructuredUnion *union_)
+{
+  switch (union_->type)
+    {
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_BOXED_STRUCT:
+      g_free (union_->boxed_struct.parent.string_);
+      g_strfreev (union_->boxed_struct.parent.g_strv);
+      break;
+
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_BOXED_STRUCT_PTR:
+      g_boxed_free (gi_marshalling_tests_boxed_struct_get_type(), union_->boxed_struct_ptr.parent);
+      break;
+
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_NONE:
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_SINGLE_UNION:
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_POINTER_STRUCT:
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_SIMPLE_STRUCT:
+    case GI_MARSHALLING_TESTS_STRUCTURED_UNION_TYPE_NESTED_STRUCT:
+      break;
+
+    default:
+      g_assert_not_reached ();
+    }
+
+  g_free (union_);
+}
+
+GType gi_marshalling_tests_structured_union_get_type (void)
+{
+    static GType type = 0;
+
+  if (type == 0)
+    {
+      type = g_boxed_type_register_static ("GIMarshallingTestsStructuredUnion",
+                                           (GBoxedCopyFunc)
+                                           gi_marshalling_tests_structured_union_copy,
+                                           (GBoxedFreeFunc) gi_marshalling_tests_structured_union_free);
+    }
+
+  return type;
+}
+
+GIMarshallingTestsStructuredUnionType
+gi_marshalling_tests_structured_union_type (GIMarshallingTestsStructuredUnion *structured_union)
+{
+    return structured_union->type;
+}
 
 
 enum
@@ -5587,6 +5800,7 @@ gi_marshalling_tests_properties_object_finalize (GObject *obj)
   g_clear_pointer (&self->some_string, g_free);
   g_clear_pointer (&self->some_strv, g_strfreev);
   g_clear_pointer (&self->some_boxed_struct, gi_marshalling_tests_boxed_struct_free);
+  g_clear_pointer (&self->some_byte_array, g_byte_array_unref);
   g_clear_pointer (&self->some_variant, g_variant_unref);
   g_clear_pointer (&self->some_boxed_glist, g_list_free);
   g_clear_object (&self->some_object);
@@ -5974,6 +6188,30 @@ gi_marshalling_tests_signals_object_class_init (GIMarshallingTestsSignalsObjectC
                 G_TYPE_PTR_ARRAY);
 
   /**
+   * GIMarshallingTestsSignalsObject::some-boxed-gptrarray-utf8-container:
+   * @self:
+   * @arg: (element-type utf8) (transfer container):
+   */
+  g_signal_new ("some-boxed-gptrarray-utf8-container",
+                G_TYPE_FROM_CLASS (klass),
+                G_SIGNAL_RUN_LAST,
+                0, NULL, NULL, NULL,
+                G_TYPE_NONE, 1,
+                G_TYPE_PTR_ARRAY);
+
+  /**
+   * GIMarshallingTestsSignalsObject::some-boxed-gptrarray-utf8-full:
+   * @self:
+   * @arg: (element-type utf8) (transfer full):
+   */
+  g_signal_new ("some-boxed-gptrarray-utf8-full",
+                G_TYPE_FROM_CLASS (klass),
+                G_SIGNAL_RUN_LAST,
+                0, NULL, NULL, NULL,
+                G_TYPE_NONE, 1,
+                G_TYPE_PTR_ARRAY);
+
+  /**
    * GIMarshallingTestsSignalsObject::some-boxed-gptrarray-boxed-struct:
    * @self:
    * @arg: (element-type GIMarshallingTestsBoxedStruct):
@@ -5984,6 +6222,89 @@ gi_marshalling_tests_signals_object_class_init (GIMarshallingTestsSignalsObjectC
                 0, NULL, NULL, NULL,
                 G_TYPE_NONE, 1,
                 G_TYPE_PTR_ARRAY);
+
+  /**
+   * GIMarshallingTestsSignalsObject::some-boxed-gptrarray-boxed-struct-container:
+   * @self:
+   * @arg: (element-type GIMarshallingTestsBoxedStruct) (transfer container):
+   */
+  g_signal_new ("some-boxed-gptrarray-boxed-struct-container",
+                G_TYPE_FROM_CLASS (klass),
+                G_SIGNAL_RUN_LAST,
+                0, NULL, NULL, NULL,
+                G_TYPE_NONE, 1,
+                G_TYPE_PTR_ARRAY);
+  /**
+   * GIMarshallingTestsSignalsObject::some-boxed-gptrarray-boxed-struct-full:
+   * @self:
+   * @arg: (element-type GIMarshallingTestsBoxedStruct) (transfer full):
+   */
+  g_signal_new ("some-boxed-gptrarray-boxed-struct-full",
+                G_TYPE_FROM_CLASS (klass),
+                G_SIGNAL_RUN_LAST,
+                0, NULL, NULL, NULL,
+                G_TYPE_NONE, 1,
+                G_TYPE_PTR_ARRAY);
+
+  /**
+   * GIMarshallingTestsSignalsObject::some-hash-table-utf8-int:
+   * @self:
+   * @arg: (type GHashTable) (element-type utf8 int):
+   */
+  g_signal_new ("some-hash-table-utf8-int",
+                G_TYPE_FROM_CLASS (klass),
+                G_SIGNAL_RUN_LAST,
+                0, NULL, NULL, NULL,
+                G_TYPE_NONE, 1,
+                G_TYPE_HASH_TABLE);
+
+  /**
+   * GIMarshallingTestsSignalsObject::some-hash-table-utf8-int-container:
+   * @self:
+   * @arg: (type GHashTable) (element-type utf8 int) (transfer container):
+   */
+  g_signal_new ("some-hash-table-utf8-int-container",
+                G_TYPE_FROM_CLASS (klass),
+                G_SIGNAL_RUN_LAST,
+                0, NULL, NULL, NULL,
+                G_TYPE_NONE, 1,
+                G_TYPE_HASH_TABLE);
+
+  /**
+   * GIMarshallingTestsSignalsObject::some-hash-table-utf8-int-full:
+   * @self:
+   * @arg: (type GHashTable) (element-type utf8 int) (transfer full):
+   */
+  g_signal_new ("some-hash-table-utf8-int-full",
+                G_TYPE_FROM_CLASS (klass),
+                G_SIGNAL_RUN_LAST,
+                0, NULL, NULL, NULL,
+                G_TYPE_NONE, 1,
+                G_TYPE_HASH_TABLE);
+
+  /**
+   * GIMarshallingTestsSignalsObject::some-boxed-struct:
+   * @self:
+   * @arg:
+   */
+  g_signal_new ("some-boxed-struct",
+                G_TYPE_FROM_CLASS (klass),
+                G_SIGNAL_RUN_LAST,
+                0, NULL, NULL, NULL,
+                G_TYPE_NONE, 1,
+                gi_marshalling_tests_boxed_struct_get_type ());
+
+  /**
+   * GIMarshallingTestsSignalsObject::some-boxed-struct-full:
+   * @self:
+   * @arg: (transfer full):
+   */
+  g_signal_new ("some-boxed-struct-full",
+                G_TYPE_FROM_CLASS (klass),
+                G_SIGNAL_RUN_LAST,
+                0, NULL, NULL, NULL,
+                G_TYPE_NONE, 1,
+                gi_marshalling_tests_boxed_struct_get_type ());
 }
 
 GIMarshallingTestsSignalsObject *
@@ -5997,10 +6318,24 @@ gi_marshalling_tests_signals_object_emit_boxed_gptrarray_utf8 (GIMarshallingTest
 {
   GPtrArray *ptrarray;
 
-  ptrarray = gi_marshalling_tests_gptrarray_utf8_full_return ();
+  ptrarray = gi_marshalling_tests_gptrarray_utf8_container_return ();
   g_signal_emit_by_name (object, "some-boxed-gptrarray-utf8",
                          ptrarray);
   g_ptr_array_unref (ptrarray);
+}
+
+void
+gi_marshalling_tests_signals_object_emit_boxed_gptrarray_utf8_container (GIMarshallingTestsSignalsObject *object)
+{
+  g_signal_emit_by_name (object, "some-boxed-gptrarray-utf8-container",
+                         gi_marshalling_tests_gptrarray_utf8_container_return ());
+}
+
+void
+gi_marshalling_tests_signals_object_emit_boxed_gptrarray_utf8_full (GIMarshallingTestsSignalsObject *object)
+{
+  g_signal_emit_by_name (object, "some-boxed-gptrarray-utf8-full",
+                         gi_marshalling_tests_gptrarray_utf8_full_return ());
 }
 
 void
@@ -6011,5 +6346,92 @@ gi_marshalling_tests_signals_object_emit_boxed_gptrarray_boxed_struct (GIMarshal
   ptrarray = gi_marshalling_tests_gptrarray_boxed_struct_full_return ();
   g_signal_emit_by_name (object, "some-boxed-gptrarray-boxed-struct",
                          ptrarray);
+  g_ptr_array_set_free_func (ptrarray, (GDestroyNotify) gi_marshalling_tests_boxed_struct_free);
   g_ptr_array_unref (ptrarray);
+}
+
+void
+gi_marshalling_tests_signals_object_emit_boxed_gptrarray_boxed_struct_container (GIMarshallingTestsSignalsObject *object)
+{
+  GPtrArray *ptrarray;
+
+  ptrarray = gi_marshalling_tests_gptrarray_boxed_struct_full_return ();
+  g_ptr_array_set_free_func (ptrarray, (GDestroyNotify) gi_marshalling_tests_boxed_struct_free);
+  g_signal_emit_by_name (object, "some-boxed-gptrarray-boxed-struct-container",
+                         g_steal_pointer (&ptrarray));
+}
+
+void
+gi_marshalling_tests_signals_object_emit_boxed_gptrarray_boxed_struct_full (GIMarshallingTestsSignalsObject *object)
+{
+  g_signal_emit_by_name (object, "some-boxed-gptrarray-boxed-struct-full",
+                         gi_marshalling_tests_gptrarray_boxed_struct_full_return ());
+}
+
+void
+gi_marshalling_tests_signals_object_emit_hash_table_utf8_int (GIMarshallingTestsSignalsObject *object)
+{
+  GHashTable *hash_table;
+
+  hash_table = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  g_hash_table_insert (hash_table, g_strdup ("-1"), GINT_TO_POINTER (1));
+  g_hash_table_insert (hash_table, g_strdup ("0"), GINT_TO_POINTER (0));
+  g_hash_table_insert (hash_table, g_strdup ("1"), GINT_TO_POINTER (-1));
+  g_hash_table_insert (hash_table, g_strdup ("2"), GINT_TO_POINTER (-2));
+
+  g_signal_emit_by_name (object, "some-hash-table-utf8-int", hash_table);
+  g_hash_table_unref (hash_table);
+}
+
+void
+gi_marshalling_tests_signals_object_emit_hash_table_utf8_int_container (GIMarshallingTestsSignalsObject *object)
+{
+  GHashTable *hash_table;
+
+  hash_table = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  g_hash_table_insert (hash_table, g_strdup ("-1"), GINT_TO_POINTER (1));
+  g_hash_table_insert (hash_table, g_strdup ("0"), GINT_TO_POINTER (0));
+  g_hash_table_insert (hash_table, g_strdup ("1"), GINT_TO_POINTER (-1));
+  g_hash_table_insert (hash_table, g_strdup ("2"), GINT_TO_POINTER (-2));
+
+  g_signal_emit_by_name (object, "some-hash-table-utf8-int-container",
+                         g_steal_pointer (&hash_table));
+}
+
+void
+gi_marshalling_tests_signals_object_emit_hash_table_utf8_int_full (GIMarshallingTestsSignalsObject *object)
+{
+  GHashTable *hash_table;
+
+  hash_table = g_hash_table_new (g_str_hash, g_str_equal);
+  g_hash_table_insert (hash_table, g_strdup ("-1"), GINT_TO_POINTER (1));
+  g_hash_table_insert (hash_table, g_strdup ("0"), GINT_TO_POINTER (0));
+  g_hash_table_insert (hash_table, g_strdup ("1"), GINT_TO_POINTER (-1));
+  g_hash_table_insert (hash_table, g_strdup ("2"), GINT_TO_POINTER (-2));
+
+  g_signal_emit_by_name (object, "some-hash-table-utf8-int-full",
+                         g_steal_pointer (&hash_table));
+}
+
+void
+gi_marshalling_tests_signals_object_emit_boxed_struct (GIMarshallingTestsSignalsObject *object)
+{
+  GIMarshallingTestsBoxedStruct *boxed = gi_marshalling_tests_boxed_struct_new ();
+  boxed->long_ = 99;
+  boxed->string_ = g_strdup ("a string");
+  boxed->g_strv = g_strdupv ((GStrv) (const char*[]) {"foo", "bar", "baz", NULL });
+
+  g_signal_emit_by_name (object, "some-boxed-struct", boxed);
+  g_clear_pointer (&boxed, gi_marshalling_tests_boxed_struct_free);
+}
+
+void
+gi_marshalling_tests_signals_object_emit_boxed_struct_full (GIMarshallingTestsSignalsObject *object)
+{
+  GIMarshallingTestsBoxedStruct *boxed = gi_marshalling_tests_boxed_struct_new ();
+
+  boxed->long_ = 99;
+  boxed->string_ = g_strdup ("a string");
+  boxed->g_strv = g_strdupv ((GStrv) (const char*[]) {"foo", "bar", "baz", NULL });
+  g_signal_emit_by_name (object, "some-boxed-struct-full", g_steal_pointer (&boxed));
 }
