@@ -516,7 +516,7 @@
  *   g_value_set_boxed (value, mystruct);
  *   // [... your code ....]
  *   g_value_unset (value);
- *   g_value_free (value);
+ *   g_free (value);
  * }
  * ]|
  */
@@ -617,6 +617,20 @@
  * be at least three characters long. There is no upper length limit. The first
  * character must be a letter (a–z or A–Z) or an underscore (‘_’). Subsequent
  * characters can be letters, numbers or any of ‘-_+’.
+ *
+ * # Runtime Debugging
+ *
+ * When `G_ENABLE_DEBUG` is defined during compilation, the GObject library
+ * supports an environment variable `GOBJECT_DEBUG` that can be set to a
+ * combination of flags to trigger debugging messages about
+ * object bookkeeping and signal emissions during runtime.
+ *
+ * The currently supported flags are:
+ *  - `objects`: Tracks all #GObject instances in a global hash table called
+ *    `debug_objects_ht`, and prints the still-alive objects on exit.
+ *  - `instance-count`: Tracks the number of instances of every #GType and makes
+ *    it available via the g_type_get_instance_count() function.
+ *  - `signals`: Currently unused.
  */
 
 
@@ -723,7 +737,7 @@
  * @see_also: #GParamSpecObject, g_param_spec_object()
  *
  * GObject is the fundamental type providing the common attributes and
- * methods for all object types in GTK+, Pango and other libraries
+ * methods for all object types in GTK, Pango and other libraries
  * based on GObject.  The GObject class provides methods for object
  * construction and destruction, property access methods, and signal
  * support.  Signals are described in detail [here][gobject-Signals].
@@ -2088,7 +2102,7 @@
  *
  * @destroy_data will be called as a finalize notifier on the #GClosure.
  *
- * Returns: (transfer none): a floating reference to a new #GCClosure
+ * Returns: (transfer floating): a floating reference to a new #GCClosure
  */
 
 
@@ -2133,7 +2147,7 @@
  *
  * @destroy_data will be called as a finalize notifier on the #GClosure.
  *
- * Returns: (transfer none): a floating reference to a new #GCClosure
+ * Returns: (transfer floating): a floating reference to a new #GCClosure
  */
 
 
@@ -2322,7 +2336,7 @@
  * }
  * ]|
  *
- * Returns: (transfer none): a floating reference to a new #GClosure
+ * Returns: (transfer floating): a floating reference to a new #GClosure
  */
 
 
@@ -3331,7 +3345,7 @@
  * @object_type: the type id of the #GObject subtype to instantiate
  * @first_property_name: the name of the first property
  * @...: the value of the first property, followed optionally by more
- *  name/value pairs, followed by %NULL
+ *   name/value pairs, followed by %NULL
  *
  * Creates a new instance of a #GObject subtype and sets its properties.
  *
@@ -3341,22 +3355,22 @@
  * per g_type_create_instance().
  *
  * Note that in C, small integer types in variable argument lists are promoted
- * up to #gint or #guint as appropriate, and read back accordingly. #gint is 32
- * bits on every platform on which GLib is currently supported. This means that
- * you can use C expressions of type #gint with g_object_new() and properties of
- * type #gint or #guint or smaller. Specifically, you can use integer literals
+ * up to `gint` or `guint` as appropriate, and read back accordingly. `gint` is
+ * 32 bits on every platform on which GLib is currently supported. This means that
+ * you can use C expressions of type `gint` with g_object_new() and properties of
+ * type `gint` or `guint` or smaller. Specifically, you can use integer literals
  * with these property types.
  *
- * When using property types of #gint64 or #guint64, you must ensure that the
+ * When using property types of `gint64` or `guint64`, you must ensure that the
  * value that you provide is 64 bit. This means that you should use a cast or
  * make use of the %G_GINT64_CONSTANT or %G_GUINT64_CONSTANT macros.
  *
- * Similarly, #gfloat is promoted to #gdouble, so you must ensure that the value
- * you provide is a #gdouble, even for a property of type #gfloat.
+ * Similarly, `gfloat` is promoted to `gdouble`, so you must ensure that the value
+ * you provide is a `gdouble`, even for a property of type `gfloat`.
  *
  * Since GLib 2.72, all #GObjects are guaranteed to be aligned to at least the
- * alignment of the largest basic GLib type (typically this is #guint64 or
- * #gdouble). If you need larger alignment for an element in a #GObject, you
+ * alignment of the largest basic GLib type (typically this is `guint64` or
+ * `gdouble`). If you need larger alignment for an element in a #GObject, you
  * should allocate it on the heap (aligned), or arrange for your #GObject to be
  * appropriately padded.
  *
@@ -4842,6 +4856,9 @@
  *
  * Connects a closure to a signal for a particular object.
  *
+ * If @closure is a floating reference (see g_closure_sink()), this function
+ * takes ownership of @closure.
+ *
  * Returns: the handler ID (always greater than 0 for successful connections)
  */
 
@@ -4856,6 +4873,9 @@
  *  default handler of the signal.
  *
  * Connects a closure to a signal for a particular object.
+ *
+ * If @closure is a floating reference (see g_closure_sink()), this function
+ * takes ownership of @closure.
  *
  * Returns: the handler ID (always greater than 0 for successful connections)
  */
@@ -5252,12 +5272,18 @@
  * @data: (nullable) (closure closure): The closure data of the handlers' closures.
  *
  * Blocks all handlers on an instance that match a certain selection criteria.
- * The criteria mask is passed as an OR-ed combination of #GSignalMatchType
- * flags, and the criteria values are passed as arguments.
- * Passing at least one of the %G_SIGNAL_MATCH_CLOSURE, %G_SIGNAL_MATCH_FUNC
+ *
+ * The criteria mask is passed as a combination of #GSignalMatchType flags, and
+ * the criteria values are passed as arguments. A handler must match on all
+ * flags set in @mask to be blocked (i.e. the match is conjunctive).
+ *
+ * Passing at least one of the %G_SIGNAL_MATCH_ID, %G_SIGNAL_MATCH_CLOSURE,
+ * %G_SIGNAL_MATCH_FUNC
  * or %G_SIGNAL_MATCH_DATA match flags is required for successful matches.
  * If no handlers were found, 0 is returned, the number of blocked handlers
  * otherwise.
+ *
+ * Support for %G_SIGNAL_MATCH_ID was added in GLib 2.78.
  *
  * Returns: The number of handlers that matched.
  */
@@ -5285,13 +5311,19 @@
  * @data: (nullable) (closure closure): The closure data of the handlers' closures.
  *
  * Disconnects all handlers on an instance that match a certain
- * selection criteria. The criteria mask is passed as an OR-ed
- * combination of #GSignalMatchType flags, and the criteria values are
- * passed as arguments.  Passing at least one of the
- * %G_SIGNAL_MATCH_CLOSURE, %G_SIGNAL_MATCH_FUNC or
+ * selection criteria.
+ *
+ * The criteria mask is passed as a combination of #GSignalMatchType flags, and
+ * the criteria values are passed as arguments. A handler must match on all
+ * flags set in @mask to be disconnected (i.e. the match is conjunctive).
+ *
+ * Passing at least one of the %G_SIGNAL_MATCH_ID, %G_SIGNAL_MATCH_CLOSURE,
+ * %G_SIGNAL_MATCH_FUNC or
  * %G_SIGNAL_MATCH_DATA match flags is required for successful
  * matches.  If no handlers were found, 0 is returned, the number of
  * disconnected handlers otherwise.
+ *
+ * Support for %G_SIGNAL_MATCH_ID was added in GLib 2.78.
  *
  * Returns: The number of handlers that matched.
  */
@@ -5309,13 +5341,20 @@
  * @data: (nullable) (closure closure): The closure data of the handlers' closures.
  *
  * Unblocks all handlers on an instance that match a certain selection
- * criteria. The criteria mask is passed as an OR-ed combination of
- * #GSignalMatchType flags, and the criteria values are passed as arguments.
- * Passing at least one of the %G_SIGNAL_MATCH_CLOSURE, %G_SIGNAL_MATCH_FUNC
+ * criteria.
+ *
+ * The criteria mask is passed as a combination of #GSignalMatchType flags, and
+ * the criteria values are passed as arguments. A handler must match on all
+ * flags set in @mask to be unblocked (i.e. the match is conjunctive).
+ *
+ * Passing at least one of the %G_SIGNAL_MATCH_ID, %G_SIGNAL_MATCH_CLOSURE,
+ * %G_SIGNAL_MATCH_FUNC
  * or %G_SIGNAL_MATCH_DATA match flags is required for successful matches.
  * If no handlers were found, 0 is returned, the number of unblocked handlers
  * otherwise. The match criteria should not apply to any handlers that are
  * not currently blocked.
+ *
+ * Support for %G_SIGNAL_MATCH_ID was added in GLib 2.78.
  *
  * Returns: The number of handlers that matched.
  */
@@ -5694,7 +5733,7 @@
  * @struct_offset in the class structure of the interface or classed type
  * identified by @itype.
  *
- * Returns: (transfer none): a floating reference to a new #GCClosure
+ * Returns: (transfer floating): a floating reference to a new #GCClosure
  */
 
 
@@ -6187,8 +6226,8 @@
  *
  * Returns the number of instances allocated of the particular type;
  * this is only available if GLib is built with debugging support and
- * the instance_count debug flag is set (by setting the GOBJECT_DEBUG
- * variable to include instance-count).
+ * the `instance-count` debug flag is set (by setting the `GOBJECT_DEBUG`
+ * variable to include `instance-count`).
  *
  * Returns: the number of instances allocated of the given type;
  *   if instance counts are not available, returns 0.
@@ -6257,7 +6296,7 @@
  * flags.  Since GLib 2.36, the type system is initialised automatically
  * and this function does nothing.
  *
- * If you need to enable debugging features, use the GOBJECT_DEBUG
+ * If you need to enable debugging features, use the `GOBJECT_DEBUG`
  * environment variable.
  *
  * Deprecated: 2.36: the type system is now initialised automatically
@@ -6522,7 +6561,7 @@
  * other validly registered type ID, but randomized type IDs should
  * not be passed in and will most likely lead to a crash.
  *
- * Returns: static type name or %NULL
+ * Returns: (nullable): static type name or %NULL
  */
 
 
@@ -6618,11 +6657,15 @@
  *     filled in with constant values upon success
  *
  * Queries the type system for information about a specific type.
+ *
  * This function will fill in a user-provided structure to hold
  * type-specific information. If an invalid #GType is passed in, the
  * @type member of the #GTypeQuery is 0. All members filled into the
  * #GTypeQuery structure should be considered constant and have to be
  * left untouched.
+ *
+ * Since GLib 2.78, this function allows queries on dynamic types. Previously
+ * it only supported static types.
  */
 
 
@@ -6899,7 +6942,7 @@
  * g_boxed_free(), e.g. like: g_boxed_free (G_VALUE_TYPE (@value),
  * return_value);
  *
- * Returns: boxed contents of @value
+ * Returns: (transfer full) (nullable): boxed contents of @value
  */
 
 
@@ -6911,7 +6954,7 @@
  * its reference count. If the contents of the #GValue are %NULL, then
  * %NULL will be returned.
  *
- * Returns: (type GObject.Object) (transfer full): object content of @value,
+ * Returns: (type GObject.Object) (transfer full) (nullable): object content of @value,
  *          should be unreferenced when no longer needed.
  */
 
@@ -6934,7 +6977,7 @@
  *
  * Get a copy the contents of a %G_TYPE_STRING #GValue.
  *
- * Returns: a newly allocated copy of the string content of @value
+ * Returns: (nullable) (transfer full): a newly allocated copy of the string content of @value
  */
 
 
@@ -6978,7 +7021,7 @@
  *
  * Get the contents of a %G_TYPE_BOXED derived #GValue.
  *
- * Returns: (transfer none): boxed contents of @value
+ * Returns: (transfer none) (nullable): boxed contents of @value
  */
 
 
@@ -7083,7 +7126,7 @@
  *
  * Get the contents of a %G_TYPE_OBJECT derived #GValue.
  *
- * Returns: (type GObject.Object) (transfer none): object contents of @value
+ * Returns: (type GObject.Object) (transfer none) (nullable): object contents of @value
  */
 
 
@@ -7124,7 +7167,7 @@
  *
  * Get the contents of a %G_TYPE_STRING #GValue.
  *
- * Returns: string content of @value
+ * Returns: (nullable) (transfer none): string content of @value
  */
 
 
@@ -7590,7 +7633,7 @@
 /**
  * g_value_take_string:
  * @value: a valid #GValue of type %G_TYPE_STRING
- * @v_string: (nullable): string to take ownership of
+ * @v_string: (nullable) (transfer full): string to take ownership of
  *
  * Sets the contents of a %G_TYPE_STRING #GValue to @v_string.
  *

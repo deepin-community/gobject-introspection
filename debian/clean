@@ -1,2 +1,3 @@
 debian/extra-substvars
 debian/libgirepository-1.0-1.symbols
+giscanner/__pycache__/

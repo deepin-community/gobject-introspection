@@ -185,6 +185,32 @@ typedef enum {
   BLOB_TYPE_UNION
 } GTypelibBlobType;
 
+
+#if defined (G_CAN_INLINE) && defined (G_ALWAYS_INLINE)
+
+G_ALWAYS_INLINE
+inline gboolean
+_blob_is_registered_type (GTypelibBlobType blob_type)
+{
+  switch (blob_type)
+    {
+      case BLOB_TYPE_STRUCT:
+      case BLOB_TYPE_UNION:
+      case BLOB_TYPE_ENUM:
+      case BLOB_TYPE_FLAGS:
+      case BLOB_TYPE_OBJECT:
+      case BLOB_TYPE_INTERFACE:
+        return TRUE;
+      default:
+        return FALSE;
+    }
+}
+
+#define BLOB_IS_REGISTERED_TYPE(blob) \
+  _blob_is_registered_type ((GTypelibBlobType) (blob)->blob_type)
+
+#else
+
 #define BLOB_IS_REGISTERED_TYPE(blob)               \
         ((blob)->blob_type == BLOB_TYPE_STRUCT ||   \
          (blob)->blob_type == BLOB_TYPE_UNION  ||   \
@@ -192,6 +218,8 @@ typedef enum {
          (blob)->blob_type == BLOB_TYPE_FLAGS  ||   \
          (blob)->blob_type == BLOB_TYPE_OBJECT ||   \
          (blob)->blob_type == BLOB_TYPE_INTERFACE)
+
+#endif /* defined (G_CAN_INLINE) && defined (G_ALWAYS_INLINE) */
 
 /**
  * Header:
@@ -792,8 +820,10 @@ typedef struct {
  * @size: The size of the struct in bytes.
  * @n_fields: TODO
  * @n_methods: TODO
- * @reserved2: Reserved for future use.
- * @reserved3: Reserved for future use.
+ * @copy_func: String pointing to a function which can be called to copy
+ *   the contents of this struct type
+ * @free_func: String pointing to a function which can be called to free
+ *   the contents of this struct type
  *
  * TODO
  */
@@ -817,8 +847,8 @@ typedef struct {
   guint16   n_fields;
   guint16   n_methods;
 
-  guint32   reserved2;
-  guint32   reserved3;
+  guint32   copy_func;
+  guint32   free_func;
 } StructBlob;
 
 /**
@@ -835,8 +865,10 @@ typedef struct {
  * @size: TODO
  * @n_fields: Length of the arrays
  * @n_functions: TODO
- * @reserved2: Reserved for future use.
- * @reserved3: Reserved for future use.
+ * @copy_func: String pointing to a function which can be called to copy
+ *   the contents of this union type
+ * @free_func: String pointing to a function which can be called to free
+ *   the contents of this union type
  * @discriminator_offset: Offset from the beginning of the union where the
  *   discriminator of a discriminated union is located. The value 0xFFFF
  *   indicates that the discriminator offset is unknown.
@@ -861,8 +893,8 @@ typedef struct {
   guint16      n_fields;
   guint16      n_functions;
 
-  guint32      reserved2;
-  guint32      reserved3;
+  guint32      copy_func;
+  guint32      free_func;
 
   gint32       discriminator_offset;
   SimpleTypeBlob discriminator_type;

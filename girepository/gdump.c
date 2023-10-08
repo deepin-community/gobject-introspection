@@ -119,6 +119,76 @@ invoke_error_quark (GModule *self, const char *symbol, GError **error)
   return sym ();
 }
 
+static char *
+value_transform_to_string (const GValue *value)
+{
+  GValue tmp = G_VALUE_INIT;
+  char *s = NULL;
+
+  g_value_init (&tmp, G_TYPE_STRING);
+
+  if (g_value_transform (value, &tmp))
+    {
+      const char *str = g_value_get_string (&tmp);
+
+      if (str != NULL)
+        s = g_strescape (str, NULL);
+    }
+
+  g_value_unset (&tmp);
+
+  return s;
+}
+
+/* A simpler version of g_strdup_value_contents(), but with stable
+ * output and less complex semantics
+ */
+static char *
+value_to_string (const GValue *value)
+{
+  if (value == NULL)
+    return NULL;
+
+  if (G_VALUE_HOLDS_STRING (value))
+    {
+      const char *s = g_value_get_string (value);
+
+      if (s == NULL)
+        return g_strdup ("NULL");
+
+      return g_strescape (s, NULL);
+    }
+  else
+    {
+      GType value_type = G_VALUE_TYPE (value);
+
+      switch (G_TYPE_FUNDAMENTAL (value_type))
+        {
+        case G_TYPE_BOXED:
+          if (g_value_get_boxed (value) == NULL)
+            return NULL;
+          else
+            return value_transform_to_string (value);
+          break;
+
+        case G_TYPE_OBJECT:
+          if (g_value_get_object (value) == NULL)
+            return NULL;
+          else
+            return value_transform_to_string (value);
+          break;
+
+        case G_TYPE_POINTER:
+          return NULL;
+
+        default:
+          return value_transform_to_string (value);
+        }
+    }
+
+  return NULL;
+}
+
 static void
 dump_properties (GType type, GOutputStream *out)
 {
@@ -147,9 +217,28 @@ dump_properties (GType type, GOutputStream *out)
       if (prop->owner_type != type)
 	continue;
 
-      escaped_printf (out, "    <property name=\"%s\" type=\"%s\" flags=\"%d\"/>\n",
-		      prop->name, g_type_name (prop->value_type), prop->flags);
+      const GValue *v = g_param_spec_get_default_value (prop);
+      char *default_value = value_to_string (v);
+
+      if (v != NULL && default_value != NULL)
+        {
+          escaped_printf (out, "    <property name=\"%s\" type=\"%s\" flags=\"%d\" default-value=\"%s\"/>\n",
+                          prop->name,
+                          g_type_name (prop->value_type),
+                          prop->flags,
+                          default_value);
+        }
+      else
+        {
+          escaped_printf (out, "    <property name=\"%s\" type=\"%s\" flags=\"%d\"/>\n",
+                          prop->name,
+                          g_type_name (prop->value_type),
+                          prop->flags);
+        }
+
+      g_free (default_value);
     }
+
   g_free (props);
 }
 
@@ -505,6 +594,7 @@ g_irepository_dump (const char *arg, GError **error)
   if (output == NULL)
     {
       g_input_stream_close (G_INPUT_STREAM (input), NULL, NULL);
+      g_object_unref (input);
       return FALSE;
     }
 
@@ -579,17 +669,15 @@ g_irepository_dump (const char *arg, GError **error)
   goutput_write (G_OUTPUT_STREAM (output), "</dump>\n");
 
   {
-    GError **ioerror;
     /* Avoid overwriting an earlier set error */
-    if (caught_error)
-      ioerror = NULL;
-    else
-      ioerror = error;
-    if (!g_input_stream_close (G_INPUT_STREAM (in), NULL, ioerror))
-      return FALSE;
-    if (!g_output_stream_close (G_OUTPUT_STREAM (output), NULL, ioerror))
-      return FALSE;
+    caught_error |= !g_input_stream_close (G_INPUT_STREAM (in), NULL,
+                                           caught_error ? NULL : error);
+    caught_error |= !g_output_stream_close (G_OUTPUT_STREAM (output), NULL,
+                                            caught_error ? NULL : error);
   }
+
+  g_object_unref (in);
+  g_object_unref (output);
 
   return !caught_error;
 }

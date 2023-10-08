@@ -1,3 +1,113 @@
+gobject-introspection (1.78.1-1) unstable; urgency=medium
+
+  * New upstream release
+  * Drop undefined-behaviour patch: applied in new release
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Mon, 18 Sep 2023 09:35:06 -0400
+
+gobject-introspection (1.78.0-1) unstable; urgency=medium
+
+  * Team upload
+
+  [ Simon McVittie ]
+  * New upstream release
+  * d/watch: Update the corresponding GLib version.
+    gir/*.c were actually generated from a commit slightly before 2.77.3,
+    but I've verified that the result of regenerating them from the 2.78.0
+    stable release is identical, so either one is equally valid.
+  * Build-depend on corresponding GLib version
+  * d/p/gdump-Fix-leaked-io-streams.patch:
+    Drop patch, applied upstream
+  * d/p/Revert-tests-scanner-add-some-tests-for-defines.patch:
+    Drop patch for #1032959, which no longer applies and is superseded
+    by the one below
+  * d/p/regress-Don-t-provoke-undefined-behaviour.patch:
+    Avoid exercising undefined behaviour that caused the tests to fail
+    on some compilers and architectures (#1032959)
+  * d/clean: Clean up giscanner/__pycache__/ (Closes: #1044875)
+
+  [ Amin Bandali ]
+  * Change packaging branch to debian/latest
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 08 Sep 2023 18:43:20 +0100
+
+gobject-introspection (1.76.1-5) unstable; urgency=medium
+
+  * Team upload
+
+  [ Jeremy Bicha ]
+  * Revert workaround for #1041499. Meson 1.2.1 fixed the underlying issue.
+
+  [ Simon McVittie ]
+  * d/p/gdump-Fix-leaked-io-streams.patch:
+    Add patch from upstream to fix some memory leaks.
+    The leaks indirectly caused Meson's test suite to fail, because that
+    test suite builds GObject projects with both GObject-Introspection and
+    AddressSanitizer enabled. (Closes: #1042050)
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 09 Aug 2023 11:26:45 +0100
+
+gobject-introspection (1.76.1-4) unstable; urgency=medium
+
+  * Team upload
+  * d/rules: Really pass --native-file to meson (Mitigates: #1041499)
+
+ -- Simon McVittie <smcv@debian.org>  Sat, 22 Jul 2023 00:43:02 +0100
+
+gobject-introspection (1.76.1-3) unstable; urgency=medium
+
+  * Team upload
+
+  [ Simon McVittie ]
+  * d/rules, d/meson/no-exe-wrapper.ini: Work around a meson bug which
+    caused FTBFS on mips64el. (Mitigates: #1041499)
+
+  [ Thomas Uhle ]
+  * dh_girepository: Discover more symbols in GIR files, fixing incomplete
+    ${gir:Depends} in packages like gir1.2-harfbuzz-0.0 and
+    gir1.2-freedesktop (Closes: #1039714)
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 21 Jul 2023 14:25:12 +0100
+
+gobject-introspection (1.76.1-2) unstable; urgency=medium
+
+  * Release to unstable
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Wed, 19 Jul 2023 07:34:16 -0400
+
+gobject-introspection (1.76.1-1) experimental; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Sun, 26 Mar 2023 15:41:48 -0400
+
+gobject-introspection (1.76.0-2) experimental; urgency=medium
+
+  [ Simon McVittie ]
+  * d/watch: Use the specific version of GLib matching gir/g*.c
+
+  [ Jeremy Bicha ]
+  * debian/watch: Bump glib version to 2.76.0
+  * Add patch to revert new tests that do not work on all architectures
+    (Closes: #1032959)
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Wed, 15 Mar 2023 16:09:35 -0400
+
+gobject-introspection (1.76.0-1) experimental; urgency=medium
+
+  * New upstream release
+  * debian/control.in: Bump minimum glib to 2.76.0
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Tue, 14 Mar 2023 08:37:36 -0400
+
+gobject-introspection (1.75.6-1) experimental; urgency=medium
+
+  * New upstream release
+  * debian/control.in: Build against glib 2.75
+  * debian/libgirepository-1.0-1.symbols.in: Add new symbols
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Fri, 17 Feb 2023 11:30:17 -0500
+
 gobject-introspection (1.74.0-3) unstable; urgency=medium
 
   * Team upload

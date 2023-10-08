@@ -29,8 +29,8 @@ Example to avoid:
       guint flags;
 
 
-Functionality only accessible through a C macro
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Functionality only accessible through a C macro or inline function
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The scanner does not support C macros as API. Solution - add a function
 accessor rather than a macro. This also has the side effect of making
@@ -43,6 +43,9 @@ Example:
     #define GTK_WIDGET_FLAGS(wid)             (GTK_OBJECT_FLAGS (wid))
 
     GtkWidgetFlags gtk_widget_get_flags (GtkWidget *widget); /* Actually, see http://bugzilla.gnome.org/show_bug.cgi?id=69872 */
+
+Likewise, inline functions cannot be loaded from a dynamic library. Make sure to
+provide a non-inline equivalent.
 
 
 Direct C structure access for objects
@@ -89,6 +92,9 @@ You can also expose the array variant under the name of the varargs variant
 using the ``rename-to`` annotation:
 ``gtk_list_store_newv: (rename-to gtk_list_store_new)``
 
+Also consider using C99's compound literals and designated initializers to avoid
+``va_list`` even in the C API, which is more type-safe.
+
 
 Multiple out parameters
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -107,12 +113,66 @@ gint x; gint y; }`` structure).
                                              gint           *y);
 
 
+In-out parameters
+~~~~~~~~~~~~~~~~~
+
+Don't use in-out arguments, especially not for non-scalar values. It's difficult
+to enforce or validate the conventions for in-out arguments, which can easily
+lead to crashes.
+
+Instead, pass the input as an in argument, and receive the output as either a
+return value or an out argument.
+
+.. code-block:: c
+
+    FooBoxed *foo_bar_scale_boxed(FooBar   *self,
+                                  FooBoxed *boxed);
+
+    void foo_bar_scale_boxed(FooBar    *self,
+                             FooBoxed  *boxed_in,
+                             FooBoxed **boxed_out);
+
+In particular, do not require the caller to pass an initialized ``GValue`` to
+avoid the in-out annotation; instead, pass a ``GValue`` as an out argument, and
+have the function initialize it.
+
+
 Arrays
 ~~~~~~
 
 For reference types, zero-terminated arrays are the easiest to work with.
 Arrays of primitive type such as "int" will require length metadata.
 
+In a general-purpose library, it's best not to expose GLib array and hash types
+such as ``GArray``, ``GPtrArray``, ``GByteArray``, ``GList``, ``GSList``,
+``GQueue``, and ``GHashTable`` in the public API. They are fine for internal
+libraries, but difficult in general for consumers of introspected libraries to
+deal with.
+
+
+Strings
+~~~~~~~
+
+C treats strings as zero-terminated arrays of bytes, but many other languages do not. So don't
+write APIs that treat ``const char *`` parameters as arrays that need an
+``array length`` annotation.
+
+Treat all ``const char *`` parameters as zero-terminated strings. Don't use the
+same entry point for zero-terminated strings as for byte arrays which may
+contain embedded zeroes.
+
+.. code-block:: c
+
+    void foo_bar_snarf_string(FooBar     *self,
+                              const char *str);
+
+    void foo_bar_snarf_bytes(FooBar        *self,
+                             const uint8_t *bytes,
+                             size_t         length);
+
+In particular, avoid functions taking a ``const char *`` with a signed length
+that can be set to a negative value to let the function compute the string
+length in bytes. These functions are hard to bind, and require manual overrides.
 
 Callbacks
 ~~~~~~~~~
@@ -168,3 +228,31 @@ That is, don't do this:
 
 Instead, put initialization code in the ``foo_bar_init()`` function or the
 ``foo_bar_constructed()`` virtual function.
+
+
+Transfer-none return values from the binding
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If your library expects to call a function from C which may be implemented in
+another language and exposed through the binding (for example, a signal handler,
+or a GObject vfunc), it's best not to return transfer-none values, because what
+you assume about storage lifetime in C may not apply in other languages.
+
+For example,
+
+.. code-block:: c
+
+    typedef struct {
+        GTypeInterface iface;
+
+        const char * (*my_vfunc)        (FooBaz *self);  /* Don't do this! */
+        char       * (*my_better_vfunc) (FooBaz *self);  /* Do this instead! */
+    } FooBazIface;
+
+A class that implements ``FooBazIface`` in another programming language may not
+be able to return a static string here, because the language may not have a
+concept of static storage lifetime, or it may not store strings as
+zero-terminated UTF-8 bytes as C code would expect. This can cause memory leaks.
+Instead, duplicate the string before returning it, and use transfer-full. This
+recommendation applies to any data type with an ownership, including boxed and
+object types.

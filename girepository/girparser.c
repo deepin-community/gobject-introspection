@@ -58,6 +58,7 @@
 struct _GIrParser
 {
   gchar **includes;
+  gchar **gi_gir_path;
   GList *parsed_modules; /* All previously parsed modules */
 };
 
@@ -114,6 +115,7 @@ struct _ParseContext
   GList *dependencies;
   GHashTable *aliases;
   GHashTable *disguised_structures;
+  GHashTable *pointer_structures;
 
   const char *file_path;
   const char *namespace;
@@ -183,6 +185,10 @@ GIrParser *
 _g_ir_parser_new (void)
 {
   GIrParser *parser = g_slice_new0 (GIrParser);
+  const char *gi_gir_path = g_getenv ("GI_GIR_PATH");
+
+  if (gi_gir_path != NULL)
+    parser->gi_gir_path = g_strsplit (gi_gir_path, G_SEARCHPATH_SEPARATOR_S, 0);
 
   return parser;
 }
@@ -192,8 +198,8 @@ _g_ir_parser_free (GIrParser *parser)
 {
   GList *l;
 
-  if (parser->includes)
-    g_strfreev (parser->includes);
+  g_strfreev (parser->includes);
+  g_strfreev (parser->gi_gir_path);
 
   for (l = parser->parsed_modules; l; l = l->next)
     _g_ir_module_free (l->data);
@@ -205,8 +211,7 @@ void
 _g_ir_parser_set_includes (GIrParser          *parser,
 			   const gchar *const *includes)
 {
-  if (parser->includes)
-    g_strfreev (parser->includes);
+  g_strfreev (parser->includes);
 
   parser->includes = g_strdupv ((char **)includes);
 }
@@ -235,11 +240,20 @@ firstpass_start_element_handler (GMarkupParseContext *context,
     {
       const gchar *name;
       const gchar *disguised;
+      const gchar *pointer;
 
       name = find_attribute ("name", attribute_names, attribute_values);
       disguised = find_attribute ("disguised", attribute_names, attribute_values);
+      pointer = find_attribute ("pointer", attribute_names, attribute_values);
 
-      if (disguised && strcmp (disguised, "1") == 0)
+      if (g_strcmp0 (pointer, "1") == 0)
+        {
+          char *key;
+
+          key = g_strdup_printf ("%s.%s", ctx->namespace, name);
+	  g_hash_table_replace (ctx->pointer_structures, key, GINT_TO_POINTER (1));
+        }
+      else if (g_strcmp0 (disguised, "1") == 0)
 	{
 	  char *key;
 
@@ -283,6 +297,7 @@ locate_gir (GIrParser  *parser,
   const gchar *const *dir;
   char *path = NULL;
 
+  g_debug ("Looking for %s", girname);
   datadirs = g_get_system_data_dirs ();
 
   if (parser->includes != NULL)
@@ -290,25 +305,64 @@ locate_gir (GIrParser  *parser,
       for (dir = (const gchar *const *)parser->includes; *dir; dir++)
 	{
 	  path = g_build_filename (*dir, girname, NULL);
+	  g_debug ("Trying %s from includes", path);
 	  if (g_file_test (path, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR))
-	    return path;
-	  g_free (path);
-	  path = NULL;
+	    return g_steal_pointer (&path);
+	  g_clear_pointer (&path, g_free);
 	}
     }
+
+  if (parser->gi_gir_path != NULL)
+    {
+      for (dir = (const gchar *const *) parser->gi_gir_path; *dir; dir++)
+        {
+          if (**dir == '\0')
+            continue;
+
+          path = g_build_filename (*dir, girname, NULL);
+          g_debug ("Trying %s from GI_GIR_PATH", path);
+          if (g_file_test (path, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR))
+            return g_steal_pointer (&path);
+          g_clear_pointer (&path, g_free);
+        }
+    }
+
+  path = g_build_filename (g_get_user_data_dir (), GIR_SUFFIX, girname, NULL);
+  g_debug ("Trying %s from user data dir", path);
+  if (g_file_test (path, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR))
+    return g_steal_pointer (&path);
+  g_clear_pointer (&path, g_free);
+
   for (dir = datadirs; *dir; dir++)
     {
       path = g_build_filename (*dir, GIR_SUFFIX, girname, NULL);
+      g_debug ("Trying %s from system data dirs", path);
       if (g_file_test (path, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR))
-	return path;
-      g_free (path);
-      path = NULL;
+        return g_steal_pointer (&path);
+      g_clear_pointer (&path, g_free);
     }
 
   path = g_build_filename (GIR_DIR, girname, NULL);
+  g_debug ("Trying %s from GIR_DIR", path);
   if (g_file_test (path, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR))
-    return path;
-  g_free (path);
+    return g_steal_pointer (&path);
+  g_clear_pointer (&path, g_free);
+
+  path = g_build_filename (GOBJECT_INTROSPECTION_DATADIR, GIR_SUFFIX, girname, NULL);
+  g_debug ("Trying %s from DATADIR", path);
+  if (g_file_test (path, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR))
+    return g_steal_pointer (&path);
+  g_clear_pointer (&path, g_free);
+
+#ifdef G_OS_UNIX
+  path = g_build_filename ("/usr/share", GIR_SUFFIX, girname, NULL);
+  g_debug ("Trying %s", path);
+  if (g_file_test (path, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR))
+    return g_steal_pointer (&path);
+  g_clear_pointer (&path, g_free);
+#endif
+
+  g_debug ("Did not find %s", girname);
   return NULL;
 }
 
@@ -477,7 +531,9 @@ parse_basic (const char *str)
 
 static GIrNodeType *
 parse_type_internal (GIrModule *module,
-		     const gchar *str, char **next, gboolean in_glib,
+		     const gchar *str,
+                     char **next,
+                     gboolean in_glib,
 		     gboolean in_gobject)
 {
   const BasicTypeInfo *basic;
@@ -658,12 +714,14 @@ resolve_aliases (ParseContext *ctx, const gchar *type)
   return lookup;
 }
 
-static gboolean
-is_disguised_structure (ParseContext *ctx, const gchar *type)
+static void
+is_pointer_or_disguised_structure (ParseContext *ctx,
+                                   const gchar *type,
+                                   gboolean *is_pointer,
+                                   gboolean *is_disguised)
 {
   const gchar *lookup;
   gchar *prefixed;
-  gboolean result;
 
   if (strchr (type, '.') == NULL)
     {
@@ -676,12 +734,12 @@ is_disguised_structure (ParseContext *ctx, const gchar *type)
       prefixed = NULL;
     }
 
-  result = g_hash_table_lookup (ctx->current_module->disguised_structures,
-				lookup) != NULL;
+  if (is_pointer != NULL)
+    *is_pointer = g_hash_table_lookup (ctx->current_module->pointer_structures, lookup) != NULL;
+  if (is_disguised != NULL)
+    *is_disguised = g_hash_table_lookup (ctx->current_module->disguised_structures, lookup) != NULL;
 
   g_free (prefixed);
-
-  return result;
 }
 
 static GIrNodeType *
@@ -2094,12 +2152,22 @@ start_type (GMarkupParseContext *context,
 
       typenode = parse_type (ctx, name);
 
-      /* A 'disguised' structure is one where the c:type is a typedef that
-       * doesn't look like a pointer, but is internally.
+      /* A "pointer" structure is one where the c:type is a typedef that
+       * to a pointer to a structure; we used to call them "disguised"
+       * structures as well.
        */
-      if (typenode->tag == GI_TYPE_TAG_INTERFACE &&
-	  is_disguised_structure (ctx, typenode->giinterface))
-	pointer_depth++;
+      if (typenode->tag == GI_TYPE_TAG_INTERFACE)
+        {
+          gboolean is_pointer = FALSE;
+          gboolean is_disguised = FALSE;
+
+          is_pointer_or_disguised_structure (ctx, typenode->giinterface,
+                                             &is_pointer,
+                                             &is_disguised);
+
+          if (is_pointer || is_disguised)
+	    pointer_depth++;
+        }
 
       if (pointer_depth > 0)
 	typenode->is_pointer = TRUE;
@@ -2556,10 +2624,14 @@ start_struct (GMarkupParseContext *context,
   const gchar *name;
   const gchar *deprecated;
   const gchar *disguised;
+  const gchar *opaque;
+  const gchar *pointer;
   const gchar *gtype_name;
   const gchar *gtype_init;
   const gchar *gtype_struct;
   const gchar *foreign;
+  const gchar *copy_func;
+  const gchar *free_func;
   GIrNodeStruct *struct_;
 
   if (!(strcmp (element_name, "record") == 0 &&
@@ -2575,10 +2647,14 @@ start_struct (GMarkupParseContext *context,
   name = find_attribute ("name", attribute_names, attribute_values);
   deprecated = find_attribute ("deprecated", attribute_names, attribute_values);
   disguised = find_attribute ("disguised", attribute_names, attribute_values);
+  pointer = find_attribute ("pointer", attribute_names, attribute_values);
+  opaque = find_attribute ("opaque", attribute_names, attribute_values);
   gtype_name = find_attribute ("glib:type-name", attribute_names, attribute_values);
   gtype_init = find_attribute ("glib:get-type", attribute_names, attribute_values);
   gtype_struct = find_attribute ("glib:is-gtype-struct-for", attribute_names, attribute_values);
   foreign = find_attribute ("foreign", attribute_names, attribute_values);
+  copy_func = find_attribute ("copy-function", attribute_names, attribute_values);
+  free_func = find_attribute ("free-function", attribute_names, attribute_values);
 
   if (name == NULL && ctx->node_stack == NULL)
     {
@@ -2605,8 +2681,14 @@ start_struct (GMarkupParseContext *context,
   else
     struct_->deprecated = FALSE;
 
-  if (disguised && strcmp (disguised, "1") == 0)
+  if (g_strcmp0 (disguised, "1") == 0)
     struct_->disguised = TRUE;
+
+  if (g_strcmp0 (pointer, "1") == 0)
+    struct_->pointer = TRUE;
+
+  if (g_strcmp0 (opaque, "1") == 0)
+    struct_->opaque = TRUE;
 
   struct_->is_gtype_struct = gtype_struct != NULL;
 
@@ -2614,6 +2696,9 @@ start_struct (GMarkupParseContext *context,
   struct_->gtype_init = g_strdup (gtype_init);
 
   struct_->foreign = (g_strcmp0 (foreign, "1") == 0);
+
+  struct_->copy_func = g_strdup (copy_func);
+  struct_->free_func = g_strdup (free_func);
 
   if (ctx->node_stack == NULL)
     ctx->current_module->entries =
@@ -2634,6 +2719,8 @@ start_union (GMarkupParseContext *context,
   const gchar *deprecated;
   const gchar *typename;
   const gchar *typeinit;
+  const gchar *copy_func;
+  const gchar *free_func;
   GIrNodeUnion *union_;
 
   if (!(strcmp (element_name, "union") == 0 &&
@@ -2650,6 +2737,8 @@ start_union (GMarkupParseContext *context,
   deprecated = find_attribute ("deprecated", attribute_names, attribute_values);
   typename = find_attribute ("glib:type-name", attribute_names, attribute_values);
   typeinit = find_attribute ("glib:get-type", attribute_names, attribute_values);
+  copy_func = find_attribute ("copy-function", attribute_names, attribute_values);
+  free_func = find_attribute ("free-function", attribute_names, attribute_values);
 
   if (name == NULL && ctx->node_stack == NULL)
     {
@@ -2663,6 +2752,8 @@ start_union (GMarkupParseContext *context,
   ((GIrNode *)union_)->name = g_strdup (name ? name : "");
   union_->gtype_name = g_strdup (typename);
   union_->gtype_init = g_strdup (typeinit);
+  union_->copy_func = g_strdup (copy_func);
+  union_->free_func = g_strdup (free_func);
   if (deprecated)
     union_->deprecated = TRUE;
   else
@@ -3018,7 +3109,9 @@ start_element_handler (GMarkupParseContext *context,
 	      ctx->current_module->aliases = ctx->aliases;
 	      ctx->aliases = NULL;
 	      ctx->current_module->disguised_structures = ctx->disguised_structures;
+	      ctx->current_module->pointer_structures = ctx->pointer_structures;
 	      ctx->disguised_structures = NULL;
+	      ctx->pointer_structures = NULL;
 
 	      for (l = ctx->include_modules; l; l = l->next)
 		_g_ir_module_add_include_module (ctx->current_module, l->data);
@@ -3607,6 +3700,7 @@ _g_ir_parser_parse_string (GIrParser           *parser,
   ctx.include_modules = NULL;
   ctx.aliases = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   ctx.disguised_structures = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  ctx.pointer_structures = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   ctx.type_depth = 0;
   ctx.dependencies = NULL;
   ctx.current_module = NULL;
@@ -3639,10 +3733,9 @@ _g_ir_parser_parse_string (GIrParser           *parser,
       /* An error occurred before we created a module, so we haven't
        * transferred ownership of these hash tables to the module.
        */
-      if (ctx.aliases != NULL)
-	g_hash_table_destroy (ctx.aliases);
-      if (ctx.disguised_structures != NULL)
-	g_hash_table_destroy (ctx.disguised_structures);
+      g_clear_pointer (&ctx.aliases, g_hash_table_unref);
+      g_clear_pointer (&ctx.disguised_structures, g_hash_table_unref);
+      g_clear_pointer (&ctx.pointer_structures, g_hash_table_unref);
       g_list_free (ctx.include_modules);
     }
 
@@ -3679,7 +3772,6 @@ _g_ir_parser_parse_file (GIrParser   *parser,
   gchar *buffer;
   gsize length;
   GIrModule *module;
-  const char *slash;
   char *dash;
   char *namespace;
 
@@ -3694,11 +3786,7 @@ _g_ir_parser_parse_file (GIrParser   *parser,
 
   g_debug ("[parsing] filename %s", filename);
 
-  slash = g_strrstr (filename, "/");
-  if (!slash)
-    namespace = g_strdup (filename);
-  else
-    namespace = g_strdup (slash+1);
+  namespace = g_path_get_basename (filename);
   namespace[strlen(namespace)-4] = '\0';
 
   /* Remove version */
