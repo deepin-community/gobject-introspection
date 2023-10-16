@@ -2307,7 +2307,9 @@ enum {
   REGRESS_TEST_OBJ_SIGNAL_SIG_NEW_WITH_ARRAY_LEN_PROP,
   REGRESS_TEST_OBJ_SIGNAL_SIG_WITH_HASH_PROP,
   REGRESS_TEST_OBJ_SIGNAL_SIG_WITH_STRV,
+  REGRESS_TEST_OBJ_SIGNAL_SIG_WITH_STRV_FULL,
   REGRESS_TEST_OBJ_SIGNAL_SIG_WITH_OBJ,
+  REGRESS_TEST_OBJ_SIGNAL_SIG_WITH_OBJ_FULL,
   REGRESS_TEST_OBJ_SIGNAL_SIG_WITH_FOREIGN_STRUCT,
   REGRESS_TEST_OBJ_SIGNAL_FIRST,
   REGRESS_TEST_OBJ_SIGNAL_CLEANUP,
@@ -2436,6 +2438,25 @@ regress_test_obj_class_init (RegressTestObjClass *klass)
 		  1,
 		  G_TYPE_STRV);
 
+  /**
+   * RegressTestObj::sig-with-strv-full:
+   * @self: an object
+   * @strs: (transfer full): strings
+   *
+   * Test GStrv as a param.
+   */
+  regress_test_obj_signals[REGRESS_TEST_OBJ_SIGNAL_SIG_WITH_STRV_FULL] =
+    g_signal_new ("sig-with-strv-full",
+                  G_TYPE_FROM_CLASS (gobject_class),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL,
+                  NULL,
+                  g_cclosure_marshal_VOID__BOXED,
+                  G_TYPE_NONE,
+                  1,
+                  G_TYPE_STRV);
+
    /**
    * RegressTestObj::sig-with-obj:
    * @self: an object
@@ -2455,6 +2476,26 @@ regress_test_obj_class_init (RegressTestObjClass *klass)
 		  G_TYPE_NONE,
 		  1,
 		  G_TYPE_OBJECT);
+
+   /**
+   * RegressTestObj::sig-with-obj-full:
+   * @self: an object
+   * @obj: (transfer full): A newly created RegressTestObj
+   *
+   * Test transfer full GObject as a param (tests refcounting).
+   * Use with regress_test_obj_emit_sig_with_obj_full
+   */
+  regress_test_obj_signals[REGRESS_TEST_OBJ_SIGNAL_SIG_WITH_OBJ_FULL] =
+    g_signal_new ("sig-with-obj-full",
+                  G_TYPE_FROM_CLASS (gobject_class),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL,
+                  NULL,
+                  g_cclosure_marshal_VOID__OBJECT,
+                  G_TYPE_NONE,
+                  1,
+                  G_TYPE_OBJECT);
 
 #ifndef _GI_DISABLE_CAIRO
    /**
@@ -2643,7 +2684,7 @@ regress_test_obj_class_init (RegressTestObjClass *klass)
                                    pspec);
 
   /**
-   * RegressTestObj:list: (type GLib.List(utf8)) (transfer none)
+   * RegressTestObj:list: (type GLib.List(utf8)) (transfer none) (default-value NULL)
    */
   pspec = g_param_spec_pointer ("list",
                                 "GList property",
@@ -2745,7 +2786,7 @@ regress_test_obj_class_init (RegressTestObjClass *klass)
 
 
   /**
-   * TestObj:gtype:
+   * RegressTestObj:gtype: (default-value G_TYPE_INVALID)
    */
   pspec = g_param_spec_gtype ("gtype",
                               "GType property",
@@ -2757,7 +2798,7 @@ regress_test_obj_class_init (RegressTestObjClass *klass)
                                    pspec);
 
   /**
-   * TestObj:name-conflict:
+   * RegressTestObj:name-conflict:
    */
   pspec = g_param_spec_int ("name-conflict",
                             "name-conflict property",
@@ -2771,7 +2812,7 @@ regress_test_obj_class_init (RegressTestObjClass *klass)
                                    pspec);
 
   /**
-   * TestObj:byte-array:
+   * RegressTestObj:byte-array:
    */
   pspec = g_param_spec_boxed ("byte-array",
                               "GByteArray property",
@@ -2783,7 +2824,7 @@ regress_test_obj_class_init (RegressTestObjClass *klass)
                                    pspec);
 
   /**
-   * TestObj:write-only:
+   * RegressTestObj:write-only:
    */
   pspec = g_param_spec_boolean ("write-only", "Write-only property",
                                 "A write-only bool property that resets the value of TestObj:int to 0 when true",
@@ -2881,6 +2922,27 @@ regress_test_obj_emit_sig_with_obj (RegressTestObj *obj)
     g_object_set (obj_param, "int", 3, NULL);
     g_signal_emit_by_name (obj, "sig-with-obj", obj_param);
     g_object_unref (obj_param);
+}
+
+void
+regress_test_obj_emit_sig_with_obj_full (RegressTestObj *obj)
+{
+  RegressTestObj *obj_param = regress_constructor ();
+  g_object_set (obj_param, "int", 5, NULL);
+  g_signal_emit (obj,
+                 regress_test_obj_signals[REGRESS_TEST_OBJ_SIGNAL_SIG_WITH_OBJ_FULL],
+                 0, g_steal_pointer (&obj_param));
+}
+
+void
+regress_test_obj_emit_sig_with_gstrv_full (RegressTestObj *obj)
+{
+  GStrvBuilder *builder = g_strv_builder_new ();
+  g_strv_builder_add_many (builder, "foo", "bar", "baz", NULL);
+  g_signal_emit (obj,
+                 regress_test_obj_signals[REGRESS_TEST_OBJ_SIGNAL_SIG_WITH_STRV_FULL],
+                 0, g_strv_builder_end (builder));
+  g_strv_builder_unref (builder);
 }
 
 #ifndef _GI_DISABLE_CAIRO
@@ -3904,6 +3966,7 @@ fundamental_object_no_get_set_func_transform_to_compatible_with_fundamental_sub_
   dest_object = regress_test_fundamental_sub_object_new (src_object->data);
 
   g_value_set_instance (dest_value, dest_object);
+  regress_test_fundamental_object_unref ((RegressTestFundamentalObject*) dest_object);
 }
 
 void

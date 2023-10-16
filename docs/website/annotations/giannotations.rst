@@ -129,6 +129,10 @@ Support for GObject objects
     - identifier (only applies to methods)
     - This signal is emitted by the given method
     -
+  * - ``(default-value VALUE)``
+    - identifier (only applies to properties)
+    - The default value of a GObject property, as a freeform string
+    - :issue:`4`
 
 
 Support for GObject closures
@@ -144,24 +148,22 @@ Support for GObject closures
     - Since
   * - ``(destroy)``
     - parameters
-    - The parameter is a "``destroy_data``" for callbacks.
+    - The parameter is part of a callback type and containing the ``destroy_data``.
     - :commit:`v0.6.3 <cf7621f3>`
       :bzbug:`574284`
   * - ``(destroy DESTROY)``
     - parameters
-    - The parameter is a "``destroy_data``" for callbacks, the
-      ``DESTROY`` option points to a paramter name other than
-      ``destroy_data``.
+    - The parameter defines the ``destroy_data`` for a given callback. The
+      ``DESTROY`` option points to the parameter that is the actual callback.
     -
   * - ``(closure)``
     - parameters
-    - The parameter is a "``user_data``" for callbacks.
-      Many bindings can pass ``NULL`` here.
+    - The parameter is part of a callback type and containing the ``user_data``.
     -
   * - ``(closure CLOSURE)``
     - parameters
-    - The parameter is a "``user_data``" for callbacks, the ``CLOSURE`` option
-      points to a different parameter that is the actual callback.
+    - The parameter defines the ``user_data`` for a given callback. The ``CLOSURE`` option
+      points to the parameter that is the actual callback. Many bindings can pass ``NULL`` here.
     -
 
 
@@ -195,6 +197,14 @@ Support for non-GObject fundamental objects
     - ``FUNC`` is the function used to convert from a struct to a GValue,
       must be a GTypeInstance
     -
+  * - ``(copy-func FUNC)``
+    - identifier
+    - ``FUNC`` is the function used to copy a struct or a union
+    - 1.76
+  * - ``(free-func FUNC)``
+    - identifier
+    - ``FUNC`` is the function used to free a struct or a union
+    - 1.76
 
 
 Type signature
@@ -211,7 +221,7 @@ Type signature
   * - ``(nullable)``
     - parameters, return value
     - Indicates that ``NULL`` may be a valid value for a parameter
-      (in, out, inout), or return value (though note that return values which
+      (in, out, inout), or return value (though note that return and out values which
       are only ``NULL`` when throwing an error should not be annotated as
       ``(nullable)``).
     - :commit:`1.42 <1459ff3e>`
@@ -669,6 +679,8 @@ parameter.
 
 An example which demonstrates an (optional) parameter: an (out) parameter
 where the caller can pass NULL if they don’t want to receive the (out) value.
+Note that if the GError is returned set, the value of contents and length might
+be unspecified and should therefore not be used or freed.
 
 ::
 
