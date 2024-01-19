@@ -1,0 +1,66 @@
+From: Simon McVittie <smcv@debian.org>
+Date: Thu, 30 Nov 2023 12:06:45 +0000
+Subject: scanner: If using libtool with a wrapper, use libtool --mode=execute
+
+The purpose of libtool's generated scripts is to automate setting the
+LD_LIBRARY_PATH that libtool knows is necessary to be able to find the
+library's dependencies. If we bypass the generated script and invoke
+the underlying binary directly, the LD_LIBRARY_PATH isn't set and the
+dependency isn't found.
+
+Instead of working against libtool, we can work with it by turning a
+g-ir-scanner invocation like
+
+    g-ir-scanner \
+        --use-binary-wrapper=qemu-aarch64 \
+        --libtool-path="/bin/bash ./libtool" \
+        ...
+
+into a libtool invocation like:
+
+    /bin/bash ./libtool --mode=execute qemu-aarch64 /path/to/dumper
+
+which is the same mechanism that's used to run gdb or strace on the
+underlying binary that is wrapped by libtool scripts. libtool will
+convert that into something more like the equivalent of:
+
+    LD_LIBRARY_PATH=/path/to/dependency/.libs \
+    qemu-aarch64 /path/to/.libs/dumper
+
+which arranges for the dumper executable to be able to find its
+dependency library as intended.
+
+Signed-off-by: Simon McVittie <smcv@debian.org>
+Forwarded: https://gitlab.gnome.org/GNOME/gobject-introspection/-/merge_requests/428
+Applied-upstream: 1.79.0, commit:ec65744f253adb50e0a66b5e7aaa6546a6d30593
+---
+ giscanner/scannermain.py | 15 ++++++---------
+ 1 file changed, 6 insertions(+), 9 deletions(-)
+
+diff --git a/giscanner/scannermain.py b/giscanner/scannermain.py
+index 1d39ab8..d377390 100644
+--- a/giscanner/scannermain.py
++++ b/giscanner/scannermain.py
+@@ -433,16 +433,13 @@ def create_binary(transformer, options, args):
+ 
+     shlibs = resolve_shlibs(options, binary, options.libraries)
+     if options.wrapper:
+-        # The wrapper needs the binary itself, not the libtool wrapper script,
+-        # so we check if libtool has sneaked the binary into .libs subdirectory
+-        # and adjust the path accordingly
+-        import os.path
+-        dir_name, binary_name = os.path.split(binary.args[0])
+-        libtool_binary = os.path.join(dir_name, '.libs', binary_name)
+-        if os.path.exists(libtool_binary):
+-            binary.args[0] = libtool_binary
+-        # Then prepend the wrapper to the command line to execute
+         binary.args = [options.wrapper] + binary.args
++
++        libtool = utils.get_libtool_command(options)
++
++        if libtool is not None:
++            binary.args = libtool + ['--mode=execute'] + binary.args
++
+     gdump_parser.set_introspection_binary(binary)
+     gdump_parser.parse()
+     return shlibs

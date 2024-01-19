@@ -1,0 +1,104 @@
+#!/usr/bin/python3
+# Copyright 2023 Collabora Ltd.
+# Copyright 2024 Simon McVittie
+# SPDX-License-Identifier: MIT
+
+import os
+import shutil
+import subprocess
+import sys
+import sysconfig
+from typing import NoReturn
+
+
+CAN_RUN = '@CAN_RUN@'
+DEB_HOST_ARCH = '@DEB_HOST_ARCH@'
+DEB_HOST_GNU_TYPE = '@DEB_HOST_GNU_TYPE@'
+DEB_HOST_MULTIARCH = '@DEB_HOST_MULTIARCH@'
+GET_NEEDED = '@GET_NEEDED@'
+TOOL = '@TOOL@'
+TOOL_PATH = '@TOOL_PATH@'
+
+ME = f'{DEB_HOST_GNU_TYPE}-{TOOL}'
+
+
+class CrossGirTool:
+    def __init__(
+        self,
+        argv: list[str],
+    ) -> None:
+        self.argv = argv
+
+    def can_run(self) -> bool:
+        python_arch = sysconfig.get_config_var('MULTIARCH')
+
+        if python_arch == DEB_HOST_MULTIARCH:
+            # Common case: if python3 is already an executable of the desired
+            # architecture, then trivially we can run it
+            return True
+
+        try:
+            completed = subprocess.run(
+                [CAN_RUN],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            )
+        except OSError:
+            return False
+        else:
+            return completed.stdout == b'ok\n' and completed.returncode == 0
+
+    def find_qemu(self) -> str:
+        qemu = shutil.which(f'qemu-{DEB_HOST_ARCH}')
+
+        if qemu is not None:
+            return qemu
+
+        qemu = shutil.which(f'qemu-{DEB_HOST_ARCH}-static')
+
+        if qemu is not None:
+            return qemu
+
+        raise SystemExit(f'{ME}: Cannot find qemu-{DEB_HOST_ARCH}(-static)')
+
+    def exec(self) -> NoReturn:
+        if 'CC' not in os.environ:
+            os.environ['CC'] = f'{DEB_HOST_GNU_TYPE}-gcc'
+
+        if 'PKG_CONFIG' not in os.environ:
+            os.environ['PKG_CONFIG'] = f'{DEB_HOST_GNU_TYPE}-pkgconf'
+
+        paths = os.environ.get('GI_GIR_PATH', '').split(':')
+        paths = [p for p in paths if p]
+        paths.append(f'/usr/lib/{DEB_HOST_MULTIARCH}/gir-1.0')
+        os.environ['GI_GIR_PATH'] = ':'.join(paths)
+
+        paths = os.environ.get('GI_TYPELIB_PATH', '').split(':')
+        paths = [p for p in paths if p]
+        paths.append(f'/usr/lib/{DEB_HOST_MULTIARCH}/girepository-1.0')
+        os.environ['GI_TYPELIB_PATH'] = ':'.join(paths)
+
+        extra_argv = []
+
+        if TOOL == 'g-ir-scanner':
+            if not self.can_run():
+                print(
+                    (f'{ME}: Cannot run {DEB_HOST_ARCH} executables '
+                     + 'directly, using qemu'),
+                    file=sys.stderr,
+                )
+                extra_argv.append('--use-binary-wrapper=' + self.find_qemu())
+
+            extra_argv.append(f'--use-ldd-wrapper={GET_NEEDED}')
+
+        argv = [TOOL_PATH] + extra_argv + sys.argv[1:]
+        try:
+            os.execvp(TOOL_PATH, argv)
+        except OSError:
+            print(f'{ME}: Unable to run: {argv}')
+            raise
+
+
+if __name__ == '__main__':
+    CrossGirTool(sys.argv).exec()

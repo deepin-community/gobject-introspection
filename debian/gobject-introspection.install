@@ -1,9 +1,5 @@
-usr/bin
-usr/share/aclocal
-usr/share/gobject-introspection-${env:GIR_API_VERSION}
-usr/share/man
-usr/lib/${DEB_HOST_MULTIARCH}/gobject-introspection/giscanner/*.py
-usr/lib/${DEB_HOST_MULTIARCH}/gobject-introspection/giscanner/*.so
-usr/lib/${DEB_HOST_MULTIARCH}/gobject-introspection/giscanner/doctemplates
-debian/dh_girepository /usr/bin
-debian/gir.pm /usr/share/perl5/Debian/Debhelper/Sequence
+debian/${DEB_HOST_GNU_TYPE}-gobject-introspection.ini usr/share/meson/cross
+debian/cross-tools/${DEB_HOST_GNU_TYPE}-g-ir-* usr/bin
+debian/cross-tools/deb-can-run-${DEB_HOST_ARCH} usr/lib/${DEB_HOST_MULTIARCH}/gobject-introspection
+usr/lib/${DEB_HOST_MULTIARCH}/libgirepository-${env:GIR_API_VERSION}.so
+usr/lib/${DEB_HOST_MULTIARCH}/pkgconfig

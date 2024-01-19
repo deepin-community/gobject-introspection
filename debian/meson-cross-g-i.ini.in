@@ -1,0 +1,10 @@
+# Copyright 2023 Collabora Ltd.
+# SPDX-License-Identifier: MIT
+
+[binaries]
+g-ir-annotation-tool = '@bindir@/@DEB_HOST_GNU_TYPE@-g-ir-annotation-tool'
+g-ir-compiler = '@bindir@/@DEB_HOST_GNU_TYPE@-g-ir-compiler'
+g-ir-doc-tool = '@bindir@/@DEB_HOST_GNU_TYPE@-g-ir-doc-tool'
+g-ir-generate = '@bindir@/@DEB_HOST_GNU_TYPE@-g-ir-generate'
+g-ir-inspect = '@bindir@/@DEB_HOST_GNU_TYPE@-g-ir-inspect'
+g-ir-scanner = '@bindir@/@DEB_HOST_GNU_TYPE@-g-ir-scanner'

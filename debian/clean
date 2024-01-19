@@ -1,3 +1,9 @@
+debian/*-linux-*-gobject-introspection.ini
+debian/cross-tools/
+debian/deb-elf-get-needed
+debian/deb-elf-get-needed-for-build
+debian/dh_girepository.1
 debian/extra-substvars
 debian/libgirepository-1.0-1.symbols
+debian/meson-cross-for-build.ini
 giscanner/__pycache__/

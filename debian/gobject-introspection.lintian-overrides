@@ -1,0 +1,3 @@
+# intentional, to silence -Wmissing-include-dirs in our workaround for
+# https://github.com/mesonbuild/meson/issues/12680
+gobject-introspection: package-contains-empty-directory [usr/include/gobject-introspection-1.0/]

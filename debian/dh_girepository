@@ -35,6 +35,11 @@ need to use C<dh $@ --with gir> for C<dh> to include it.
 
 =head1 OPTIONS
 
+Note that the B<-p> option conflicts with the B<-p> option defined by
+L<debhelper(7)> (see L<Debian bug #703941|https://bugs.debian.org/703941>).
+To run B<dh_girepository> on a single package, use
+C<dh_girepository --package=gir1.2-foo-1.0> instead of the usual B<-p>.
+
 =over 4
 
 =item B<-l>I<directory>
@@ -89,17 +94,19 @@ my @archpackages = getpackages("arch");
 
 my $triplet = `dpkg-architecture -qDEB_HOST_MULTIARCH`;
 chomp $triplet;
+my $gnu_type = `dpkg-architecture -qDEB_HOST_GNU_TYPE`;
+chomp $gnu_type;
 my $typelib_multiarch_path = "/usr/lib/$triplet/girepository-1.0";
-my $typelib_path = "/usr/lib/girepository-1.0";
+my $legacy_typelib_path = "/usr/lib/girepository-1.0";
 
-my @typelibdirs = (@ARGV, $typelib_path, $typelib_multiarch_path);
+my @public_typelibdirs = ($typelib_multiarch_path, $legacy_typelib_path);
+my @typelibdirs = (@ARGV, @public_typelibdirs);
+my $gir_multiarch_path = "/usr/lib/$triplet/gir-1.0";
 my $gir_path = "/usr/share/gir-1.0";
-my @girdirs = (@ARGV, $gir_path);
-my $arch_triplet = `dpkg-architecture -qDEB_HOST_MULTIARCH`;
-chomp $arch_triplet;
+my @public_girdirs = ($gir_path, $gir_multiarch_path);
+my @girdirs = (@ARGV, @public_girdirs);
 my @privlibdirs = (@ARGV);
-my @libdirs = ("/lib/$arch_triplet", "/lib", "/usr/lib/$arch_triplet", "/usr/lib", @privlibdirs);
-my $format;
+my @libdirs = ("/lib/$triplet", "/lib", "/usr/lib/$triplet", "/usr/lib", @privlibdirs);
 
 # Get Build-Depends in an array
 my @bdeps;
@@ -139,10 +146,117 @@ sub find_gir {
     error("Could not find gir file for $req.typelib");
 }
 
+# Split GLib-2.0 into (GLib, 2.0)
+sub split_name_version {
+    my $stem = shift;
+    error("Unexpected GIR name-version: $stem") unless $stem =~ m{^([A-Za-z0-9_]+)-([0-9.]+)$};
+    return ($1, $2);
+}
+
+# Convert (1.2, GLib, 2.0) into gir1.2-glib-2.0
+sub gir_package_name {
+    my $format = shift;
+    my $name = shift;
+    my $version = shift;
+    error("Unexpected GIR name $name") unless $name =~ m{^[A-Za-z0-9_]+$};
+    error("Unexpected GIR version $version") unless $version =~ m{^[0-9.]+$};
+    my $lcname = lc $name;
+    $lcname =~ tr/_/-/;
+    return "gir${format}-${lcname}-${version}";
+}
+
+sub require_gir {
+    my $format = shift;
+    my $stem = shift;
+    my $package = shift;
+
+    my $fullpath = "";
+    my $req = "${stem}.gir";
+    foreach my $girdir (@girdirs) {
+        $fullpath = "$girdir/$req";
+
+        verbose_print ("Dependency: $req");
+        foreach my $girdir (@girdirs) {
+            if (-f tmpdir($package)."$girdir/$req") {
+                verbose_print("  found in the same package");
+                return;
+            }
+        }
+        foreach my $otherpkg (@archpackages) {
+            if (-f tmpdir($otherpkg)."$fullpath") {
+                error("Dependency on $otherpkg with a different format than $format")
+                    if ($otherpkg =~ /^gir[0-9.]+-/ and $otherpkg !~ /^gir$format/);
+                verbose_print("$package Depends $otherpkg (= $bin_version) for $req");
+                addsubstvar ($package, "gir:Depends", $otherpkg, "= $bin_version");
+                return;
+            }
+        }
+        foreach my $privpath (@privdirs) {
+            if (-f "$privpath/$req") {
+                verbose_print ("  found in $privpath");
+                $fullpath = "$privpath/$req";
+                last;
+            }
+        }
+
+        if (-f "$fullpath") {
+            my @output = (split ':', `dpkg -S $fullpath 2>/dev/null`);
+            error("$fullpath does not belong to any package") unless @output;
+            my $deppkg = $output[0];
+            error("Dependency on $deppkg with a different format than $format")
+                if ($deppkg =~ /^gir[0-9.]+-/ and $deppkg !~ /^gir$format/);
+
+            my $dir = dirname($fullpath);
+            my $in_public_dir = (grep { $_ eq $dir } @public_girdirs);
+            my ($name, $version) = split_name_version($stem);
+            my $canonical_name = gir_package_name($format, $name, $version)."-dev";
+
+            if ($canonical_name ne $deppkg and $in_public_dir) {
+                my $provides = qx_cmd('dpkg-query', '-W', '-f', '${Provides}', $deppkg);
+
+                if ($provides =~ /(^|,)\s*\Q$canonical_name\E\s*\(=/) {
+                    $deppkg = $canonical_name;
+                    my $found = 0;
+
+                    foreach my $bdep (@bdeps) {
+                        if ($bdep =~ /^\s*\Q$canonical_name\E(\s|$)/) {
+                            $found = 1;
+                            last;
+                        }
+                    }
+                    if (! $found) {
+                        warning("Missing Build-Depends: $canonical_name (ideally with <!nogir>)");
+                    }
+                } else {
+                    warning("$deppkg should have Provides: $canonical_name (= \${binary:Version})");
+                }
+            }
+
+            # Look for version information in build-dependencies
+            my $found = 0;
+            foreach my $bdep (@bdeps) {
+                if ($bdep =~ /^\s*([a-z0-9\._\-\+]+)\s*\((.*)\)/) {
+                    if ($1 eq $deppkg or $1 eq "${canonical_name}") {
+                        verbose_print("$package Depends $1 ($2) for $req (version taken from $1 in B-D)");
+                        addsubstvar ($package, "gir:Depends", $1, $2);
+                        $found = 1;
+                    }
+                }
+            }
+            if (! $found) {
+                verbose_print("$package Depends $deppkg for $req");
+                addsubstvar ($package, "gir:Depends", $deppkg);
+            }
+            return;
+        }
+    }
+    error("Could not find $req dependency");
+}
 
 # Function used for dependencies on other .typelib files
 
 sub require_typelib {
+    my $format = shift;
     my $req = shift;
     my $package = shift;
     my $fullpath = "";
@@ -159,6 +273,7 @@ sub require_typelib {
         foreach my $otherpkg (@archpackages) {
             if (-f tmpdir($otherpkg)."$fullpath") {
                 error("Dependency on $otherpkg with a different format than $format") unless $otherpkg =~ /^gir$format/;
+                verbose_print("$package Depends $otherpkg (= $bin_version) for $req");
                 addsubstvar ($package, "gir:Depends", $otherpkg, "= $bin_version");
                 return;
             }
@@ -176,12 +291,35 @@ sub require_typelib {
             error("$fullpath does not belong to any package") unless @output;
             my $deppkg = $output[0];
             error("Dependency on $deppkg with a different format than $format") unless $deppkg =~ /^gir$format/;
+
+            my $dir = dirname($fullpath);
+            my $in_public_dir = (grep { $_ eq $dir } @public_typelibdirs);
+            my $stem = $req;
+            $stem =~ s/\.typelib$//;
+            my ($name, $version) = split_name_version($stem);
+            my $canonical_name = gir_package_name($format, $name, $version);
+
+            if ($canonical_name ne $deppkg and $in_public_dir) {
+                my $provides = qx_cmd('dpkg-query', '-W', '-f', '${Provides}', $deppkg);
+
+                if ($provides =~ /(^|,)\s*\Q$canonical_name\E\s*\(=/) {
+                    $deppkg = $canonical_name;
+                } else {
+                    warning("$deppkg should have Provides: $canonical_name (= \${binary:Version})");
+                }
+            }
+
             # Look for version information in build-dependencies
             my $found = 0;
             foreach my $bdep (@bdeps) {
                 if ($bdep =~ /^\s*([a-z0-9\._\-\+]+)\s*\((.*)\)/) {
-                    if ($1 eq $deppkg) {
+                    if ($1 eq $deppkg or $1 eq $canonical_name) {
+                        verbose_print("$package Depends $1 ($2) for $req (version taken from $1 in B-D)");
                         addsubstvar ($package, "gir:Depends", $1, $2);
+                        $found = 1;
+                    } elsif ($1 eq "${canonical_name}-dev") {
+                        verbose_print("$package Depends $deppkg ($2) for $req (version taken from $1 in B-D)");
+                        addsubstvar ($package, "gir:Depends", $deppkg, $2);
                         $found = 1;
                     }
                 }
@@ -191,13 +329,14 @@ sub require_typelib {
                 (my $req_gir = $req) =~ s/\.typelib$/\.gir/;
                 foreach my $girdir (@girdirs) {
                     if (-f "$girdir/$req_gir") {
-                        $fullpath_gir = "$gir_path/$req_gir";
+                        $fullpath_gir = "$girdir/$req_gir";
                         my @output_gir = (split ':', `dpkg -S $fullpath_gir 2>/dev/null`);
                         error("$fullpath_gir does not belong to any package") unless @output_gir;
                         my $deppkg_gir = $output_gir[0];
                         foreach my $bdep (@bdeps) {
                             if ($bdep =~ /^\s*([a-z0-9\._\-\+]+)\s*\((.*)\)/) {
-                                if ($1 eq $deppkg_gir) {
+                                if ($1 eq $deppkg_gir or $1 eq "${canonical_name}-dev") {
+                                    verbose_print("$package Depends $deppkg ($2) for $req (version taken from $1 in B-D)");
                                     addsubstvar ($package, "gir:Depends", $deppkg, $2);
                                     $found = 1;
                                 }
@@ -207,6 +346,7 @@ sub require_typelib {
                 }
             }
             if (! $found) {
+                verbose_print("$package Depends $deppkg for $req");
                 addsubstvar ($package, "gir:Depends", $deppkg);
             }
             return;
@@ -270,15 +410,89 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
     my @bin_files = ();
     my @c_files = ();
     my @typelib_deps = ();
-    my $multiarch_required = 0;
+    my @gir_deps = ();
+    my @provides = ();
+    my $format;
+    my $gir_multiarch_required = 0;
+    verbose_print("Package: $package");
+
+    foreach my $dir (@girdirs) {
+        my $girdir = "$tmp$dir";
+        next unless -d $girdir;
+
+        my $in_public_dir = (grep { $_ eq $dir } @public_girdirs);
+        if ($in_public_dir) {
+            verbose_print("Public GIR XML directory: $tmp$dir");
+        } else {
+            verbose_print("Private GIR XML directory: $tmp$dir");
+        }
+
+        opendir(DIRHANDLE, $girdir);
+        while (my $girxml = readdir(DIRHANDLE)) {
+            next unless $girxml =~ /\.gir$/;
+            next if excludefile($girxml);
+            verbose_print ("GIR XML: $girxml");
+            if ($dir eq $gir_multiarch_path) {
+                warning("$dir/$girxml will not be compatible with older GIR XML consumers");
+                $gir_multiarch_required = 1;
+            }
+            my $stem = $girxml;
+            $stem =~ s/\.gir$//;
+            my ($name, $version) = split_name_version($stem);
+            my $deptypelib="$name-$version.typelib";
+            if ($in_public_dir && ! grep { $_ eq $deptypelib } @typelib_deps) {
+                push @typelib_deps, $deptypelib;
+            }
+            my $girfile = "$girdir/$girxml";
+            error("Unable to open $girfile") unless open (my $f, "<", $girfile);
+            while (<$f>) {
+                # "Parse" the XML file
+                chomp;
+                if (/<repository.+?version="(.*?)"/) {
+                    # gir format version
+                    $format="$1";
+                } elsif (/<include\s+name="(.*?)"\s+version="(.*?)"\/>/) {
+                    # Dependency on another GIR XML file
+                    my $stem="$1-$2";
+                    verbose_print ("  Dependency: $stem.gir");
+                    if ($in_public_dir && ! grep { $_ eq $stem } @gir_deps) {
+                        push @gir_deps, $stem;
+                    }
+                }
+            }
+            close $f;
+
+            error("Unable to determine gir format") unless $format;
+            my $canonical_name = gir_package_name($format, $name, $version) . "-dev";
+
+            if ($package ne $canonical_name and $in_public_dir) {
+                push @provides, $canonical_name;
+            }
+        }
+    }
 
     foreach my $dir (@typelibdirs) {
         my $typelibdir = "$tmp$dir";
         next unless -d $typelibdir;
+
+        my $in_public_dir = grep { $_ eq $dir } @public_typelibdirs;
+        if ($in_public_dir) {
+            verbose_print("Public typelib directory: $tmp$dir");
+        } else {
+            verbose_print("Private typelib directory: $tmp$dir");
+        }
+
         opendir(DIRHANDLE, $typelibdir);
         while (my $typelib = readdir(DIRHANDLE)) {
             next unless $typelib =~ /\.typelib$/;
             next if excludefile ($typelib);
+            verbose_print ("Typelib: $typelib");
+            if ($dir eq $legacy_typelib_path) {
+                warning("$dir/$typelib should be installed into $typelib_multiarch_path");
+            }
+            my $stem = $typelib;
+            $stem =~ s/\.typelib$//;
+            my ($name, $version) = split_name_version($stem);
             my $girfile = find_gir ($typelib);
             error("Unable to open $girfile") unless open (my $f, "<", $girfile);
             verbose_print ("$girfile...");
@@ -331,6 +545,7 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
             error("Package name $package doesn't match gir format $format")
                 unless $package =~ /^gir$format/
                 or not $typelibdir =~ /usr\/lib\/girepository/;
+
             verbose_print(sprintf("  %d symbols found", $#symbols+1));
             if (@libraries or @symbols) {
                 my $c_file = "$typelibdir/$typelib.c";
@@ -350,11 +565,14 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
                 # Build a dummy binary using all referenced symbols and libraries
                 # We use -shared so that gcc doesn’t try to resolve references
                 verbose_print ("  building $bin_file");
-                doit (("gcc", "-Wno-implicit-function-declaration", "-shared", "-fPIC", "-o", $bin_file, $c_file, @libraries));
+                doit (("${gnu_type}-gcc", "-Wno-implicit-function-declaration", "-shared", "-fPIC", "-o", $bin_file, $c_file, @libraries));
                 push @bin_files, $bin_file;
             }
-            if ($typelibdir =~ $typelib_multiarch_path) {
-                $multiarch_required = 1;
+
+            my $canonical_name = gir_package_name($format, $name, $version);
+
+            if ($package ne $canonical_name and $in_public_dir) {
+                push @provides, $canonical_name;
             }
         }
     }
@@ -372,9 +590,28 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
     }
     doit (("rm", "-f", @c_files, @bin_files));
 
+    # This must come after dpkg-shlibdeps, otherwise dpkg-shlibdeps will
+    # delete ${gir:anything} from the substvars
+    foreach my $canonical_name (@provides) {
+        verbose_print("$package Provides $canonical_name (= $bin_version)");
+        addsubstvar($package, "gir:Provides", $canonical_name, "= $bin_version");
+    }
+
     # Generate dependencies on other .typelib files
     foreach my $dep (@typelib_deps) {
-        require_typelib ($dep, $package);
+        require_typelib($format, $dep, $package);
+    }
+
+    # Generate dependencies on other .gir files
+    foreach my $stem (@gir_deps) {
+        require_gir($format, $stem, $package);
+    }
+
+    if ($gir_multiarch_required) {
+        # This version has the necessary Breaks to ensure that if
+        # libgirepository-1.0-1 is installed, then it's a version that
+        # will load GIR XML from the multiarch location
+        addsubstvar($package, "gir:Depends", "gir1.2-glib-2.0", ">= 1.78.1-3~");
     }
 }
 

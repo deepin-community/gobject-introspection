@@ -1,0 +1,2 @@
+# The dependency is >= rather than = because src:glib2.0 will take this over in future
+gir-missing-typelib-dependency gir1.2-glib-2.0 [usr/share/gir-1.0/GLib-2.0.gir]
