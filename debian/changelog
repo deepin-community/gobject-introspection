@@ -1,3 +1,350 @@
+gobject-introspection (1.78.1-11) unstable; urgency=medium
+
+  * d/control: gobject-introspection Depends on libglib2.0-dev.
+    Otherwise, pkg-config lookup for gobject-introspection-1.0 will fail,
+    which in turn makes Meson's gnome.generate_gir() fail. In practice,
+    this probably only affects glib2.0 itself, because every other
+    library that generates GIR XML is very likely to depend on GLib.
+  * d/rules: Consistently use architecture comparison to detect cross-builds.
+    This is a little more user-friendly: if a developer forgets to set
+    DEB_BUILD_PROFILES=cross, but the required cross-tools happen to be
+    installed anyway, the build will still work.
+  * GObject-Introspection mini-policy:
+    - Link to a list of packages known not to support multiarch GIR XML
+    - Add underlines below section headings for better clarity
+    - Clarify advice to use ${gir:Depends}, ${gir:Provides}
+    - Packages should now depend on gir1.2-glib-2.0-dev, etc. if needed.
+      -dev packages that use ${gir:Depends} will automatically
+      start following this advice when they are rebuilt with
+      gobject-introspection 1.78.1-7 or later.
+    - Packages that only build typelibs need the same Build-Depends
+      as packages that build GIR XML
+    - Relax the requirement to depend on libgirepository1.0-dev
+    - Clarify that Build-Depends(-Arch,-Indep) may be conditional
+    - Provide a draft of the nogir build-profile, for future discussion
+      on -devel
+  * README.Debian:
+    - Move to gobject-introspection.
+      This should make it a bit more discoverable.
+    - Mention packages that still require libgirepository1.0-dev
+    - Add a note about indirect gir1.2-*-dev dependencies
+    - Minor clarifications
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 17 Jan 2024 14:42:22 +0000
+
+gobject-introspection (1.78.1-10) unstable; urgency=medium
+
+  * d/control: g-i Depends on g-i-bin for same kernel, not just same endian.
+    If the host and build architecture are different kernels
+    (cross-compiling for Hurd on Linux or vice versa) then qemu-user is
+    not going to work. In practice qemu-user is only available on Linux
+    anyway, so this restricts us to cross-compiling for Linux on Linux,
+    or native builds.
+  * d/control: Make g-i-bin Multi-Arch: foreign.
+    The release team's migration tools now handle the case where :any
+    appears on a dependency on a virtual package name that is provided by
+    a Multi-Arch: allowed real package (see #1059929), but it's simpler
+    if we don't have to rely on that subtlety. (Helps: #1030223)
+  * d/cross-g-ir-tool.in: Autodetect whether we can run host binaries.
+    Instead of assuming that we need qemu-user to run anything whose
+    architecture does not match Python's, run a small test program from
+    the host architecture and see what happens. This means we'll use a
+    configured binfmt implementation if any, falling back to qemu-user
+    if none. (Helps: #1030223)
+  * Rename Debian-specific elf-get-needed tool to deb-elf-get-needed.
+    This provides a better indication that it is not part of the upstream
+    API of the package.
+  * Release to unstable
+
+ -- Simon McVittie <smcv@debian.org>  Sun, 14 Jan 2024 19:33:20 +0000
+
+gobject-introspection (1.78.1-9) experimental; urgency=medium
+
+  * d/gobject-introspection-bin.README.Debian: Fix cross-file name
+  * d/control: Convert Breaks/Replaces to a concrete version.
+    During development of the changes that were released as 1.78.1-7,
+    I used ${binary:Version} for these, but now that we've released that
+    version we can use a more concrete cutoff point.
+  * Provide the libgirepository-1.0.so symlink in gobject-introspection
+    (which is depended on by libgirepository-1.0-dev), and not directly in
+    libgirepository-1.0-dev.
+    This is a workaround for a Meson issue,
+    https://github.com/mesonbuild/meson/issues/12680, in which the
+    dumper binary is unnecessarily linked to libgirepository-1.0 even
+    if no such dependency was declared.
+    The C headers for the library are still in libgirepository-1.0-dev,
+    to ensure that packages that use the library (like gjs and pygobject)
+    are still forced to build-depend on libgirepository-1.0-dev (or
+    the older libgirepository1.0-dev).
+  * README.Debian: Adjust Meson advice
+  * d/control: Canonicalize Uploaders field (wrap-and-sort -at)
+  * d/control: Canonicalize order of Build-Depends (wrap-and-sort -at)
+  * d/*.install: Canonicalize order of file lists (wrap-and-sort -at)
+  * d/tests: Canonicalize order of dependencies (wrap-and-sort -at)
+  * d/control: Canonicalize order of dependencies etc. (wrap-and-sort -at)
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 02 Jan 2024 14:53:46 +0000
+
+gobject-introspection (1.78.1-8) experimental; urgency=medium
+
+  * Re-upload with binaries included
+
+ -- Simon McVittie <smcv@debian.org>  Sat, 30 Dec 2023 00:40:32 +0000
+
+gobject-introspection (1.78.1-7) experimental; urgency=medium
+
+  * Split GIRepository-2.0 into its own binary package.
+    During the GNOME 46 (GLib 2.79.x) cycle, gir1.2-glib-2.0 will need
+    to be taken over by the glib2.0 source package. However, GLib 2.79.x
+    does not build GIRepository-2.0.typelib; instead, it has a version of
+    the same library with API/ABI changes, GIRepository-3.0.typelib. As
+    a result, we need to separate these two.
+    Newer uploads of gjs and pygobject have made sure to pull in the
+    GIRepository-2.0 typelib. Add Breaks on versions that were too old
+    to have that dependency.
+    Cinnamon's cjs also uses GIRepository, but only in the implementation
+    of functionality that Cinnamon doesn't actually appear to be using
+    (imports.package), so no Breaks are needed for that.
+  * Split GIR XML out from libgirepository1.0-dev.
+    This introduces new binary packages gir1.2-freedesktop-dev,
+    gir1.2-glib-2.0-dev and gir1.2-girepository-2.0-dev.
+    gir1.2-glib-2.0{,-dev} are likely to be taken over by the glib2.0
+    source package in a future release (as part of GNOME 46), so use
+    greater-than-or-equal dependencies instead of lockstep dependencies
+    for those.
+    To allow gir1.2-glib-2.0-dev to be Multi-Arch: same, install its
+    GIR XML into the architecture-specific location. Some consumers of
+    GIR XML do not yet search that location, so provide a symlink in
+    libgirepository1.0-dev which provides backward compatibility.
+    (Closes: #859013)
+  * Move native binaries to gobject-introspection-bin.
+    As an implementation detail, the upstream-provided executables are
+    now in gobject-introspection-bin. These unprefixed versions continue
+    to use appropriate search paths for the native (build) architecture.
+    The architecture-prefixed versions continue to be provided by the
+    gobject-introspection package; that package is now Multi-Arch: same,
+    allowing the prefixed versions to be used while cross-compiling.
+    Because binary typelibs are in an endian-dependent format, the build
+    and host architectures must be of the same endianness, which is
+    achieved by using a virtual package. In practice all Debian release
+    architectures except s390x are little-endian, and so are many ports
+    architectures, so this will only be a practical concern for s390x
+    and older ports architectures like powerpc and m68k.
+    The gobject-introspection package now includes the pkg-config metadata
+    gobject-introspection-1.0.pc, which is how Autotools and Meson build
+    systems normally discover the command-line tools. The few packages
+    that link to the libgirepository-1.0 shared library (mostly language
+    bindings like gjs and python3-gi) will still need to build-depend
+    on its -dev package in addition to gobject-introspection.
+    (Helps: #801672, #905715)
+  * Split shared library development files into libgirepository-1.0-dev.
+    libgirepository1.0-dev has historically had three roles: it's the
+    equivalent of libc6-dev for the libgirepository-1.0 shared library, it
+    also pulls in the gobject-introspection CLI tools, and it also pulls
+    in (or historically, contained) the GIR XML for basic libraries.
+    Now those three roles are taken over by libgirepository-1.0-dev,
+    gobject-introspection and gir1.2-*-dev, respectively, leaving
+    libgirepository1.0-dev as essentially a metapackage.
+    libgirepository1.0-dev is not Multi-Arch: same and cannot become
+    Multi-Arch: same without breaking backwards compatibility, but all
+    three of its replacements are.
+    The one unique piece of functionality that is still provided by
+    libgirepository1.0-dev is that it makes GLib-2.0.gir available in
+    the legacy location /usr/share/gir-2.0/GLib-2.0.gir, which makes it
+    available to older code-generation tools that have not been updated
+    to read from the architecture-specific directory.
+    (Closes: #801672, #905715)
+  * dh_girepository: Generate dependencies for GIR from this source package.
+    Now that gir1.2-glib-2.0-dev, gir1.2-girepository-2.0-dev and
+    gir1.2-freedesktop-dev are separate, Multi-Arch: same packages,
+    there's no barrier to generating dependencies on them.
+  * d/tests: Test both libgirepository-1.0-dev and libgirepository1.0-dev
+  * Add a Lintian override for gir1.2-glib-2.0-dev's large /usr/share
+  * Add a README.Debian describing how to make packages containing GIR XML
+    and/or typelibs cross-compilable
+  * Upload to experimental for NEW processing, and to allow QA tools to
+    detect any remaining file-overwrite issues
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 29 Dec 2023 22:25:28 +0000
+
+gobject-introspection (1.78.1-6) unstable; urgency=medium
+
+  * dh_girepository:
+    - Fix generation of GIR XML -> typelib dependency
+    - Don't generate Depends for GIR XML included by private GIR XML.
+      It's somewhat common for packages like gnome-shell and cinnamon
+      to ship GIR XML in a private location in a non-"-dev"-suffixed
+      package. In such cases, development/compilation is not the primary
+      purpose of the package, so we don't want to force a dependency
+      on the -dev package that contains an included GIR XML file. For
+      example, it would be inappropriate to force cinnamon to depend on
+      libmuffin-dev, or gnome-shell on libmutter-dev.
+      (Helps: #1057391)
+  * policy:
+    - Relax naming and dependency requirements for private GIR XML.
+      As discussed on #1057391, this mini-policy is primarily for public
+      GIR XML and public typelibs. (Helps: #1057391)
+    - Cite another reason why public GIR XML cannot be
+      Architecture: all
+    - Replace an outdated introductory paragraph
+  * d/control, d/rules: Use a shorter substvar name for libffiN
+  * d/rules: Pass all dpkg-architecture variables to d/extra-substvars.py
+  * d/extra-substvars.py: Generate substvars for host architecture information
+  * d/elf-get-needed: Add a tool to read dependencies' SONAMEs
+  * d/rules, d/control: Don't run gtk-doc for Architecture: any builds
+  * d/control: g-i Depends on ${perl:Depends}, for dh_girepository
+  * d/copyright: Update
+  * d/control, d/tests: Depend on pkgconf in preference to pkg-config
+  * d/control: gobject-introspection Depends on pkgconf
+  * d/p/scanner-If-using-libtool-with-a-wrapper-use-libtool-mode-.patch:
+    Add a patch to improve use of --use-binary-wrapper with libtool.
+    This will help to make a future version of gobject-introspection able
+    to cross-compile typelibs.
+  * d/p/Drop-GIO-from-libgirepository-s-dependencies.patch:
+    Add patch from upstream to avoid depending on GIO in type-dumping tool.
+    This is needed for forward-compatibility with GLib 2.79.x.
+  * Install GLib-2.0.gir into multiarch location, with a compatibility
+    symlink.
+    This will help to start the process of updating dependent packages
+    to be able to load GLib-2.0.gir and other GIR XML from the multiarch
+    location. (Helps: #859013)
+  * Generate architecture-prefixed executables.
+    These will eventually make it possible to cross-compile
+    GIR XML and typelibs for (for example) riscv64-linux-gnu
+    libraries on an x86_64-linux-gnu build system, by invoking
+    riscv64-linux-gnu-g-ir-scanner and so on. (Helps: #801672, #905715)
+  * Edit pkg-config metadata to point to architecture-prefixed tools
+  * Install a Meson cross-file to force use of the prefixed tools
+    If necessary, Meson can be invoked as
+    "meson --cross-file ${DEB_HOST_GNU_TYPE}-gobject-introspection.ini"
+    to use this.
+  * d/control, d/rules: Use a prebuilt g-i when cross-building.
+    We can generate a special variant of debian/cross-g-ir-tool.in that wraps
+    the upstream g-ir-scanner, etc. binaries with an appropriate search path
+    and executable wrapper to adapt them for the host architecture.
+  * d/control: Make build-dependencies satisfiable during cross-compilation.
+    Thanks to Helmut Grohne for hints on how this can be achieved.
+
+ -- Simon McVittie <smcv@debian.org>  Thu, 28 Dec 2023 22:01:44 +0000
+
+gobject-introspection (1.78.1-5) unstable; urgency=medium
+
+  * dh_girepository: Generate ${gir:Depends} for GIR XML -> typelib.
+    For example, this should make it unnecessary to hard-code libfoo-dev
+    Depends: gir1.2-foo-0 (= ${binary:Version}).
+    Only do this for GIR XML in public directories, to avoid causing
+    FTBFS in packages like src:mutter that ship private GIR XML and
+    typelibs in a package not matching the usual naming convention.
+  * Upload to unstable
+    (Helps: #801672, #905715, #1016631, #1029957, #1030223)
+
+ -- Simon McVittie <smcv@debian.org>  Sun, 12 Nov 2023 17:56:43 +0000
+
+gobject-introspection (1.78.1-4) experimental; urgency=medium
+
+  * dh_girepository, policy.txt: Don't depend on -dev packages provided by
+    gir1.2-freedesktop.
+    Until we can split up libgirepository1.0-dev into smaller binary
+    packages (#859013) or split out GIR XML from other -dev packages
+    (#1030223), either of which will require trips through the NEW queue,
+    it's undesirable for other -dev packages to hard-require it, because
+    that will make them non-multiarch-friendly (due to #801672). For now,
+    assume that all GIR XML provided by src:gobject-introspection will
+    be pulled in by the gobject-introspection toolchain rather than by
+    -dev packages' dependencies.
+
+ -- Simon McVittie <smcv@debian.org>  Sun, 12 Nov 2023 13:23:04 +0000
+
+gobject-introspection (1.78.1-3) experimental; urgency=medium
+
+  * dh_girepository: Warn if Build-Depends: gir1.2-foo-0-dev is missing.
+    If the package builds GIR XML with <include name="Foo" version="0"/>,
+    then it should build-depend on gir1.2-foo-0-dev <!nogir>. This
+    will allow us to move GIR XML from libfoo-dev into a separate
+    gir1.2-foo-0-dev binary package when all dependent source packages
+    have added the build-dependency, making it possible to build libfoo
+    without GObject-Introspection. (Helps: #1030223)
+  * policy: Say more about build-dependencies
+  * dh_girepository: Remove tracking of typelibs in the multiarch path.
+    This used to generate a versioned Depends, but that was removed in
+    1.54.0-2 (2017).
+  * dh_girepository: Show a warning for typelibs in the pre-multiarch location.
+    Debian's gobject-introspection only searches this location as a
+    result of a Debian-specific patch which we would prefer to remove.
+    This warning corresponds to typelib-not-in-multiarch-directory
+    in Lintian.
+  * Search for GIR XML in /usr/lib/*/gir-1.0.
+    A subset of GIR XML genuinely varies between architectures,
+    and we need to install that into ${libdir} for multiarch
+    co-installability.  However, changing the girdir unconditionally
+    would make most libraries with GIR XML fail to build, and most
+    libraries' GIR XML doesn't actually vary between architectures
+    anyway: it's analogous to C/C++ header files.  Instead, set
+    gobject-introspection's internal gir_dir_prefix to ${libdir} so that
+    it searches /usr/lib/MULTIARCH/gir-1.0. It will also still search
+    /usr/share/gir-1.0, as a result of #455 upstream.
+    Write girdir=${datadir}/gir-1.0 into its .pc file, so that
+    third-party libraries will still default to installing GIR XML into
+    /usr/share/gir-1.0. This will continue to be appropriate for the
+    majority of GIR XML, for example in libflatpak-dev.
+    Several consumers of GIR XML do not yet search /usr/lib/*/gir-1.0,
+    so for now we continue to install GLib-2.0.gir into /usr/share,
+    even though it has architecture-dependent contents. Separating out
+    the GIR XML into its own binary package will be a good opportunity
+    to change that to the more correct location, but that will require
+    a trip through NEW, so let's get the groundwork into place first.
+    (Helps: #801672, #905715, #1016631, #1029957, #1030223)
+
+ -- Simon McVittie <smcv@debian.org>  Sat, 11 Nov 2023 16:13:58 +0000
+
+gobject-introspection (1.78.1-2) experimental; urgency=medium
+
+  * d/.gitignore: Add
+  * d/rules, d/clean: Clean up man page declaratively
+  * d/rules: Use one run of dh_girepository for all packages.
+    In fact it was acting on all packages each time anyway, because the -p
+    option was interpreted as dh_girepository's -p./gir1.2-glib-2.0 (load from
+    private directory) and not as debhelper's --package (see #703941).
+  * d/rules: Run dh_girepository in verbose mode for this package
+  * dh_girepository.1: Mention the unusual meaning of -p for this tool
+    (mitigates: #703941)
+  * d/rules: Don't delete test data from glib during clean
+  * d/copyright: Update
+  * Use the same build directory for all architectures.
+    This makes GIRepository-2.0.gir architecture-independent, so it no
+    longer needs a solution to #1029957 and related bugs.
+    (GLib-2.0.gir still has architecture-dependent contents, though.)
+  * dh_girepository:
+    - Generate gir:Provides substvar for typelibs in public locations
+    - Generate gir:Provides substvar for GIR XML in public locations
+      (Helps: #1030223)
+    - Generate gir:Depends substvar for GIR XML, following <include>
+    - Try to depend on GIR packages by their canonical names, if they
+      exist as Provides
+    - Pick up versioned B-D (if any) from GIR packages' canonical names
+    - Use the host architecture gcc for compilation
+  * policy:
+    - Suggest using Provides: ${gir:Provides} for typelibs
+    - Describe gir1.2-foo-2.0-dev naming, and suggest ${gir:Provides}
+    - Packages must not have Provides for files they don't contain.
+      GObject-Introspection relies on running an executable of the host
+      architecture, so when cross-compiling, we will likely need to disable
+      it via a build-profile. If this results in GIR XML and typelibs not
+      being produced, then it would be misleading to have these Provides in
+      the package(s) that would ordinarily have contained them.
+    - Packages with GIR XML should depend on GIR XML they <include>.
+      Dependencies on the core modules provided by gir1.2-glib-2.0 are
+      excluded from this: we assume that libgirepository1.0-dev will pull
+      those in, and it would be undesirable to depend on
+      gir1.2-glib-2.0-dev while it still can't be multiarch (see #1029957).
+    - Fix an inconsistency.
+      Section 3 said that the packages with GIR XML must depend on the
+      corresponding typelibs, but section 4 said this was unnecessary.
+      Keep the stricter requirement.
+  * Add myself to Uploaders
+
+ -- Simon McVittie <smcv@debian.org>  Sat, 04 Nov 2023 17:23:21 +0000
+
 gobject-introspection (1.78.1-1) unstable; urgency=medium
 
   * New upstream release

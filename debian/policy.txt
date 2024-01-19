@@ -2,18 +2,39 @@ GObject introspection mini-policy
 =================================
 
 1. Directory layout
+-------------------
 
 GObject-introspection data is generally provided in two formats:
- * XML format in /usr/share/gir-1.0/Foo-X.Y.gir
+ * XML format in /usr/share/gir-1.0/Foo-X.Y.gir or
+   /usr/lib/$(DEB_HOST_MULTIARCH)/gir-1.0/Foo-X.Y.gir
  * binary format in /usr/lib/girepository-1.0/Foo-X.Y.typelib or
    /usr/lib/$(DEB_HOST_MULTIARCH)/girepository-1.0/Foo-X.Y.typelib
 
 Using the multiarch paths for typelib files is recommended nowadays.
 
+In the common case where Foo-X.Y.gir does not vary between architectures,
+it should be installed into /usr/share/gir-1.0.
+
+In the uncommon case where it varies between architectures, it may be
+installed into /usr/lib/${DEB_HOST_MULTIARCH}/gir-1.0, but maintainers
+should keep in mind that several packages are not yet able to consume
+GIR XML from that location[1a]. A versioned dependency or a versioned Breaks
+is required in this case (see below).
+
+GObject-Introspection data for private libraries that are only suitable
+for use within a single source package or a tightly-coupled group of source
+packages should be installed into a directory that is not on the default
+search path, for example
+/usr/lib/$(DEB_HOST_MULTIARCH)/mypackage/Foo-X.Y.typelib or.
+/usr/share/mypackage/Foo-X.Y.gir.
+
+[1a] https://udd.debian.org/cgi-bin/bts-usertags.cgi?user=pkg-gnome-maintainers%40lists.alioth.debian.org&tag=gi-gir-path
+
 
 2. Binary introspection packages
+--------------------------------
 
-The binary typelib file must be put in an architecture-dependent package
+A public binary typelib file must be put in an architecture-dependent package
 named after its namespace. The name must be girFORMAT-NAMESPACE-VERSION,
 replacing any underscores in the namespace with hyphen/minus, and
 case-folding it to lower-case.
@@ -32,35 +53,73 @@ However, related libraries that are known to evolve together can live in
 the same package (example: Gst*-0.10), as long as their versions are
 expected to change in lockstep. If this is done, the package should have
 versioned Provides for all the names that would have been used if the
-typelibs had been packaged separately.
+typelibs had been packaged separately. Since gobject-introspection 1.78.1-2,
+this can be achieved by adding Provides: ${gir:Provides} to the package
+and using dh_girepository.
 
 Introspection packages belong in section introspection.
 
+Private binary typelib files do not usually need to be separated from a
+larger package. Following the naming convention above is not required.
+
 
 3. XML introspection data
+-------------------------
 
-The XML format introspection must be shipped in another
-architecture-dependent* package of the same source.
+Public XML format introspection must be shipped in another
+architecture-dependent package of the same source. This is done for
+two reasons:
 
- * This is so that it is guaranteed to be accessible at build time by
-   the tool that will compute the dependencies for the .typelib files.
+    a. so that it is guaranteed to be accessible at build time by
+       the tool that will compute the dependencies for the .typelib files;
+    b. so that the package with the GIR XML can depend on a matching
+       version of the package with the typelib.
 
-If the source package also contains the library itself, this data should
-be in the development binary package. If the introspection data is split
-from the library source (e.g. for gobject-instrospection-repository), a
-separate package containing this XML data can be created, in section
-libdevel.
+If the source package also contains the library itself, this data may
+be in the development binary package, or in a separate package in section
+libdevel whose name is the same as the typelib package name followed by -dev.
+
+If the introspection data is split from the library source (e.g. for
+gir1.2-freedesktop-dev), a separate package containing this XML data can be
+created, in section libdevel.
 
 The package containing the XML data must depend on each of the
 introspection packages that contain the corresponding binary files.
+Since gobject-introspection 1.78.1-5, this can be achieved by adding
+Depends: ${gir:Depends} to the package and using dh_girepository.
 
-For example, a source package would generate libfoo2.0-0, libfoo2.0-dev
-and gir1.2-foo-2.0.
+The package containing the XML data should have a versioned Provides on
+the canonical package name for each GIR XML module that it contains, if
+different from the package's name. Since gobject-introspection 1.78.1-2,
+this can be achieved by adding Provides: ${gir:Provides} to the package
+and using dh_girepository.
+
+If the source package is built using a build-profile that excludes
+GObject-Introspection data, then it must not have this Provides.
+dh_girepository will not generate ${gir:Provides} for missing GIR XML,
+so this is usually only a concern if the Provides are hard-coded.
+
+For example, a source package that generates Foo-2.0.typelib and Foo-2.0.gir
+might have binary packages libfoo2.0-0, libfoo2.0-dev and gir1.2-foo-2.0:
+
  - gir1.2-foo-2.0: Depends: libfoo2.0-0 through the ${gir:Depends}
- - libfoo2.0-dev:  Depends: gir1.2-foo-2.0 (= ${binary:Version})
+ - libfoo2.0-dev:  Depends: gir1.2-foo-2.0 (= ${binary:Version}),
+   and Provides: gir1.2-foo-2.0-dev (= ${binary:Version}) through the
+   ${gir:Provides}
+
+or it might have binary packages libfoo2.0-0, libfoo2.0-dev, gir1.2-foo-2.0
+and gir1.2-foo-2.0-dev:
+
+ - gir1.2-foo-2.0: Depends: libfoo2.0-0 through the ${gir:Depends}
+ - libfoo2.0-dev:  Depends: gir1.2-foo-2.0 (= ${binary:Version}),
+ - gir1.2-foo-2.0-dev: Depends: gir1.2-foo-2.0 (= ${binary:Version})
+
+Private GIR XML files do not usually need to be separated from a
+larger package. Following the naming convention above is not required.
 
 
 4. Dependencies of introspection packages
+-----------------------------------------
 
 Introspection packages must depend on the libraries they reference, with
 a sufficient version for the symbols they reference.
@@ -75,15 +134,26 @@ dependencies as well. Build-dependencies on packages containing them
 must be set, with sufficient version information. The dependencies must
 be in the same gir format as the source package.
 
-Packages containing the XML data don’t need any specific new
-dependencies.
+Packages containing public XML data must depend on the introspection package
+containing the corresponding typelib.
+This is not required for private XML data.
+
+Packages containing public XML data should depend on the package containing
+the XML data for each GIR XML module that they reference via <include>.
+This is not required for private XML data.
+
+If GIR XML data is installed in the multiarch directory, it must have a
+versioned dependency on gir1.2-glib-2.0 (>= 1.78.1-3~), or some other
+mechanism to ensure that it is not co-installed with older versions of
+libgirepository-1.0-1.
 
 
 5. Dependencies on introspection packages
+-----------------------------------------
 
-Currently, there are only Seed (JavaScript) scripts to use these
-introspection packages. In the future, there might also be Python or
-other interpreted languages.
+Typelibs are typically loaded by an interpreted script written in a
+language such as JavaScript (gjs, cjs or Seed), Python (PyGI) or Perl
+(Glib::Object::Introspection).
 
 Generating dependencies automatically for interpreted languages is not
 reliable. Therefore, these packages must depend by hand on the
@@ -91,7 +161,72 @@ appropriate gir* packages. The interpreters themselves don’t need to
 depend on packages they don’t use directly.
 
 
-6. Example
+6. Build-dependencies
+---------------------
+
+Source packages that build GIR XML or typelibs must build-depend on
+gobject-introspection and/or dh-sequence-gir.
+
+Source packages that build GIR XML or typelibs must also build-depend on
+at least one of: gobject-introspection (>= 1.78.1-7~) or newer, or
+one of the gir1.2-*-dev packages that were split out from
+libgirepository1.0-dev in that release, or libgirepository1.0-dev.
+
+Where possible, source packages that build GIR XML or typelibs should have a
+Build-Depends or Build-Depends-Arch on the canonicalized gir1.2-*-dev
+package name of any GObject-Introspection modules referenced via
+<include>. This build-dependency cannot be added if
+the gir1.2-*-dev package name does not yet exist as a real or virtual
+package.
+
+All of these build-dependencies may be conditional on build-profiles such
+as <!nogir> and/or architecture constraints such as [linux-any], if
+they are not needed for all builds.
+
+
+7. The proposed nogir build-profile
+-----------------------------------
+
+(This section has not been finalized and is subject to change)
+
+Source packages that build GIR XML and typelibs may implement the nogir
+build profile. This will usually be desirable for libraries that can be
+used directly from C/C++ code without needing to use GObject-Introspection.
+It will usually not be useful to implement the nogir build profile in
+packages where GObject-Introspection is a functional requirement for using
+the package, such as gnome-shell.
+
+Ideally, the nogir build profile should disable the build of gir1.2-* and
+gir1.2-*-dev packages, and disable all build-dependencies on the
+gobject-introspection toolchain and gir1.2-*-dev packages, without
+affecting the contents of any other binary package, in particular lib*-dev.
+When implemented like this, nogir is a "safe" or "reproducible" build-profile.
+
+However, for many pre-existing source packages, separating GIR XML
+from the lib*-dev package into a new gir1.2-*-dev package would be an
+incompatible change that needs to be coordinated with dependent packages,
+because previously-correct dependent packages would begin to fail to build
+from source until they add gir1.2-*-dev to their Build-Depends (even if
+the package was built without the nogir profile and the dependency is
+a native build). It would also require manual processing by the Debian
+archive administrators, to approve the new binary package name.
+
+To mitigate those factors, if the GIR XML is included in a lib*-dev
+binary package, the nogir build profile may remove the GIR XML from
+that package. The resulting binary package must drop any Provides
+matching gir1.2-*-dev that it would have had when built normally. This
+will often be automatic: if dh_girepository is used, ${gir:Depends}
+and ${gir:Provides} will automatically be emptied for packages that do
+not contain any GIR XML or typelibs.
+
+If this is done, dependent packages will continue to build successfully
+against any dependency that was not built with nogir, but will require
+changes (namely adding Build-Depends: gir1.2-*-dev <!nogir>) in order to
+be sucessfully buildable with dependencies that were built with nogir.
+
+
+8. Example
+----------
 
 Suppose that libfoo-2.0 is an API built on libbar-3.0. The libfoo-2.0
 source generates the following files, put in the following packages:
@@ -101,7 +236,13 @@ source generates the following files, put in the following packages:
                    /usr/share/gir-1.0/Foo-2.0.gir
  - gir1.2-foo-2.0: /usr/lib/*/girepository-1.0/Foo-2.0.typelib
 
-libfoo-2.0-dev Depends: libfoo-2.0-3, libbar-3.0-dev, gir1.2-foo-2.0
+libfoo-2.0 should have Build-Depends(-Arch) on libgirepository1.0-dev
+and dh-sequence-gir.
+
+libfoo-2.0-dev Depends: libfoo-2.0-3, libbar-3.0-dev, gir1.2-foo-2.0,
+                        ${gir:Depends} (which expands to gir1.2-bar-3.0-dev)
+libfoo-2.0-dev Provides: ${gir:Provides} (which expands to gir1.2-foo-2.0-dev)
+
 gir1.2-foo-2.0 Depends: ${gir:Depends} which expands to:
 libfoo-2.0-3, gir1.2-bar-3.0
 

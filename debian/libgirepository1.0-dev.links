@@ -1,0 +1,3 @@
+# Various tools haven't yet been updated to load GIR XML from
+# /usr/lib/${DEB_HOST_MULTIARCH}, so provide backwards compatibility.
+usr/lib/${DEB_HOST_MULTIARCH}/gir-1.0/GLib-2.0.gir usr/share/gir-${env:GIR_API_VERSION}/GLib-2.0.gir

@@ -4,7 +4,7 @@
 
 '''
 Inspect libffi-dev:$DEB_HOST_ARCH and print the corresponding library ABI
-name, e.g. "gobjectintrospection:libffiN=libffi8".
+name, e.g. "local:libffiN=libffi8".
 '''
 
 import os
@@ -43,4 +43,15 @@ if __name__ == '__main__':
             'No libffiN dependency in libffi-dev'
         )
 
-    print('gobjectintrospection:libffiN=' + libffiN)
+    print('local:libffiN=' + libffiN)
+
+    for suffix in ('ARCH_ENDIAN', 'ARCH_OS', 'GNU_TYPE', 'MULTIARCH'):
+        var = 'DEB_HOST_' + suffix
+        substvar = var.replace('_', '-')
+        print(f'local:{substvar}={os.environ[var]}')
+
+    for suffix in ('GNU_TYPE',):
+        var = 'DEB_HOST_' + suffix
+        substvar = var.replace('_', '-') + '-DASHES'
+        value = os.environ[var].replace('_', '-')
+        print(f'local:{substvar}={value}')

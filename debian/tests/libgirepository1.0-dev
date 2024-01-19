@@ -1,0 +1,18 @@
+#!/bin/sh
+
+set -e
+failed=0
+
+./debian/tests/build || failed=1
+
+# For backwards compatibility with older code-generation tools, this package
+# is not Multi-Arch co-installable, and provides GLib-2.0.gir in its legacy
+# location.
+if [ -f /usr/share/gir-1.0/GLib-2.0.gir ]; then
+    echo "OK: GLib-2.0.gir found in legacy location"
+else
+    echo "ERROR: GLib-2.0.gir not found in legacy location"
+    failed=1
+fi
+
+exit "$failed"

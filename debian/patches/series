@@ -1,2 +1,4 @@
+scanner-If-using-libtool-with-a-wrapper-use-libtool-mode-.patch
+Drop-GIO-from-libgirepository-s-dependencies.patch
 meson-Only-generate-typelib-and-install-win32-files-on-wi.patch
 debian/multiarch_compat.patch

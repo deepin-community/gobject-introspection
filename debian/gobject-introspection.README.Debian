@@ -1,0 +1,131 @@
+GObject-Introspection in Debian
+===============================
+
+Enabling cross-compiling for packages that generate introspection data
+----------------------------------------------------------------------
+
+Early-adopter example packages include src:graphene (Meson)
+and src:ostree (Autotools).
+
+1. Build-dependencies:
+
+    * Build-depend on at least:
+
+          gobject-introspection,
+          gobject-introspection (>= 1.78.1-9~) <cross>,
+
+      If the package will not be backported then it is OK to simplify
+      this into:
+
+          gobject-introspection (>= 1.78.1-9~),
+
+    * Build-depend on gir1.2-NAMESPACE-VERSION-dev for each
+      NAMESPACE-VERSION that is passed to g-ir-scanner --include
+
+    * Build-depend on dh-sequence-gir (optional but recommended)
+
+    * Don't build-depend on libgirepository1.0-dev, which is not
+      multiarch-friendly for historical reasons
+
+      - If your build requires vapigen (#1060904), cppgir (#1060906),
+        haskell-haskell-gi (#1060907), gir-to-d (1060909) or
+        blueprint-compiler (#1060916) then workarounds are likely to
+        be needed
+
+    * You might need to build-depend on gir1.2-freedesktop-dev or
+      gir1.2-glib-2.0-dev, if they are an indirect dependency via a
+      package that has not yet picked them up as a direct dependency
+
+    * Only build-depend on libgirepository-1.0-dev if the package also
+      needs to link to libgirepository-1.0.so.1 (usually only language
+      bindings will need to do this)
+
+2. Configuration of upstream build system:
+
+    * Meson wants all cross-tools to be specified in a cross-file and
+      uses a build-architecture version from pkgconf otherwise (#1060838).
+      Until/unless we can solve this more centrally, use the cross-file
+      provided by the gobject-introspection package since 1.78.1-6:
+
+      ifneq ($(DEB_BUILD_ARCH),$(DEB_HOST_ARCH))
+      configure_options += --cross-file=$(DEB_HOST_GNU_TYPE)-gobject-introspection.ini
+      endif
+
+      override_dh_auto_configure:
+              dh_auto_configure -- $(configure_options)
+
+    * Autotools already discovers g-ir-scanner and g-ir-compiler from the
+      host architecture pkgconf, and picks up the
+      ${DEB_HOST_GNU_TYPE}-prefixed tools.
+
+    * Commonly-used CMake macros appear to have the same behaviour as
+      Autotools, so hopefully they will work as-is.
+
+    * For others, use ${DEB_HOST_GNU_TYPE}-g-ir-scanner instead of
+      g-ir-scanner, and ${DEB_HOST_GNU_TYPE}-g-ir-compiler instead of
+      g-ir-compiler.
+
+3. Runtime dependencies:
+
+    * Add ${gir:Depends} to all gir1.2-* packages
+
+    * Add ${gir:Depends} to -dev packages if they contain GIR XML
+
+    * Add ${gir:Provides} to all gir1.2-* packages
+      (not necessary if the package only contains one typelib and its name
+      fits the systematic pattern, e.g. Foo-0.typelib -> gir1.2-foo-0)
+
+    * Add ${gir:Provides} to -dev packages if they contain GIR XML
+      (not necessary if the package only contains one GIR XML file and its
+      name fits the systematic pattern, e.g. Foo-0.gir -> gir1.2-foo-0-dev)
+
+    * Or if you are not using dh-sequence-gir, add the same Depends
+      and Provides manually
+
+Making GObject-Introspection optional, for bootstrapping
+--------------------------------------------------------
+
+1. Preparation:
+
+    * Make sure any gir1.2-* package has ${gir:Provides},
+      unless the package only contains one typelib and its name
+      fits the systematic pattern, e.g. Foo-0.typelib -> gir1.2-foo-0
+
+    * Make sure any -dev package containing GIR XML has ${gir:Provides},
+      unless the package only contains one GIR XML file and its name
+      fits the systematic pattern, e.g. Foo-0.gir -> gir1.2-foo-0-dev
+
+2. Preparation in reverse dependencies:
+
+    * Identify all reverse dependencies that generate GIR XML/typelibs
+      (for example gtk4 -> libadwaita-1)
+
+    * For each reverse dependency, add Build-Depends: gir1.2-foo-0-dev
+
+    * Ideally, upload all reverse dependencies
+
+3. Binary package stanzas:
+
+    * Add Build-Profiles: <!nogir> to each gir1.2-* package
+
+4. -dev packages with GIR XML:
+
+    * If GIR XML is in a separate gir1.2-foo-0-dev package, then it can
+      have Build-Profiles: <!nogir>.
+      This is recommended in the long term, but for existing packages
+      it requires changing all reverse-dependencies to explicitly
+      build-depend on gir1.2-*-dev, and then going through the NEW queue;
+      see below.
+
+    * If GIR XML is in libfoo-dev, you will have to use dh-exec or similar
+      to avoid installing the GIR XML if it was not built
+
+5. Configuration of upstream build system
+
+    * Disable introspection (typically meson setup -Dintrospection=disabled
+      or ./configure --disable-introspection) if the nogir profile is active
+
+6. Build-dependencies
+
+    * Annotate libgirepository1.0-dev, gobject-introspection, gir1.2-*, etc.
+      with <!nogir>

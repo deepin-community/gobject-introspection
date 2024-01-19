@@ -1,0 +1,1 @@
+usr/include/gobject-introspection-${env:GIR_API_VERSION}

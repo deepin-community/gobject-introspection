@@ -25,6 +25,14 @@ Files:
  giscanner/giscannermodule.c
  giscanner/sourcescanner.c
  giscanner/sourcescanner.h
+ giscanner/__init__.py
+ giscanner/cachestore.py
+ giscanner/gdumpparser.py
+ giscanner/girparser.py
+ giscanner/sourcescanner.py
+ giscanner/transformer.py
+ giscanner/utils.py
+ giscanner/xmlwriter.py
  tools/compiler.c
  tools/generate.c
 Copyright:
@@ -35,6 +43,8 @@ Copyright:
  2011-2016 Dominique Leuenberger
  2016 Igor Gnatenko
  2007-2010 Johan Dahlin
+ 2007 Jürg Billeter
+ 2003-2005 Matthias Clasen
  2008 Philip Van Hoof
  2008-2013 Red Hat, Inc.
 License: LGPL-2+
@@ -54,7 +64,9 @@ Copyright:
  2015 Garrett Regier <garrett.regier@riftio.com>
 License: LGPL-2.1+
 
-Files: giscanner/scannerlexer.l giscanner/scannerparser.y
+Files:
+ giscanner/scannerlexer.l
+ giscanner/scannerparser.y
 Copyright:
  1997 Sandro Sigala
  2007-2008 Jürg Billeter
@@ -70,8 +82,9 @@ License: FSFAP and FSFULLR
 
 Files: debian/*
 Copyright:
+ 2023 Collabora Ltd.
  2008-2022 Debian contributors as listed in debian/changelog
- 2021-2022 Simon McVittie
+ 2021-2023 Simon McVittie
 License: Expat and GPL-2+
 Comment:
  No license was specified for the contents of debian/ prior to 2022. It
@@ -79,10 +92,21 @@ Comment:
  the upstream licenses, namely GPL-2+.
  The following contributors give permission to relicense their contributions
  to this package under either Expat, GPL-2+ or LGPL-2.1+ if desired:
+ - Collabora Ltd.
  - Simon McVittie
  (Please add your name to this list if you wish to give this permission.)
 
+# ----------------------------------------------------------------------
+
 Files: glib/*
+Comment:
+ This directory is added by the Debian packaging to provide corresponding
+ source code for gir/*.c, which are concatenations of doc-comments from the
+ source files in glib/, in order to make it obvious that the preferred form
+ for modification is included. The upstream plan is that responsibility for
+ generating gir1.2-glib-2.0{,-dev} will move to the equivalent of Debian's
+ src:glib2.0 during the GNOME 46 release cycle, at which point glib/ and
+ gir/*.c can be dropped from src:gobject-introspection.
 Copyright:
  2004-2005 Adam Weinberger
  2005-2006 Alexander Larsson
@@ -94,21 +118,20 @@ Copyright:
  2001-2004 Behdad Esfahbod
  2006 Behdad Esfahbod
  2009 Benjamin Otte
- 2015 Canonical Limited
- 2005-2022 Canonical Ltd
+ 2009-2022 Canonical Ltd (Canonical Limited)
  2009-2022 Christian Hergert
  2010 Christian Kellner
  2010 Christian Persch
  2014-2015 Chun-wei Fan
  2008 Claus Tondering
  2008 Clemens N. Buss
- 2008-2014 Codethink Ltd
+ 2008-2014 Codethink Ltd (Codethink Limited)
  2012-2013 Colin Walters
  2017-2018 Collabora Inc
  2008-2022 Collabora Ltd
  1999-2000 Craig Setera
  2000 Eazel, Inc
- 2005-2022 Emmanuele Bassi
+ 2005-2023 Emmanuele Bassi
  2022 Emmanuel Fleury
  2016-2020 Endless Mobile, Inc
  2017-2022 Endless OS Foundation, LLC
@@ -155,7 +178,8 @@ Copyright:
  2018 pdknsk
  1995-2011 Peter Mattis
  1995-2011 Peter Mattis, Spencer Kimball, Josh MacDonald, Sebastian Wilhelmi and others
- 2000-2022 Red Hat, Inc
+ 2022 Philip Withnall
+ 1998-2022 Red Hat, Inc
  1999-2003 Red Hat Software
  2001 Ron Steinke
  2020 Ruslan N. Marchenko
@@ -199,6 +223,8 @@ License: LGPL-2+ and LGPL-2.1+ and FSFULLR and CC0-1.0
 
 Files:
  glib/gio/xdgmime/xdgmime*
+Comment:
+ Unused in this particular package, see comment in glib/* entry above.
 Copyright:
  2003-2004 Jonathan Blandford
  2004-2005 Matthias Clasen
@@ -207,13 +233,17 @@ License: AFL-2.0 or LGPL-2.1+
 
 Files:
  glib/glib/tests/NormalizationTest.txt
+Comment:
+ Unused in this particular package, see comment in glib/* entry above.
 Copyright:
  2021 Unicode®, Inc.
 License: Unicode-DFS-2016
 
 Files:
  glib/gio/kqueue/*.?
- */tests/taptestrunner.py
+ glib/*/tests/taptestrunner.py
+Comment:
+ Unused in this particular package, see comment in glib/* entry above.
 Copyright:
  2011-2012 Dmitry Matveev
  2015 Remko Tronçon
@@ -225,6 +255,8 @@ Files:
  glib/glib/tests/gen-casemap-txt.py
  glib/po/po2tbl.sed.in
  glib/tools/glib-gettextize.in
+Comment:
+ Unused in this particular package, see comment in glib/* entry above.
 Copyright:
  1989-2001 Free Software Foundation, Inc
  2001 Red Hat Software
@@ -232,29 +264,27 @@ Copyright:
 License: GPL-2+
 
 Files:
- glib/m4macros/attributes.m4
-Copyright:
- 2006-2008 Diego Pettenò
- 2006-2008 xine project
- 2012 Lucas De Marchi
-License: GPL-2+ with Autoconf exception
-
-Files:
  glib/gio/tests/memory-monitor-dbus.py.in
  glib/gio/tests/memory-monitor-portal.py.in
  glib/gio/tests/power-profile-monitor-dbus.py.in
  glib/gio/tests/power-profile-monitor-portal.py.in
+Comment:
+ Unused in this particular package, see comment in glib/* entry above.
 Copyright: 2019-2021 Red Hat, Inc
 License: LGPL-3+
 
 Files:
  glib/.gitlab-ci/clang-format-diff.py
  glib/fuzzing/driver.c
+Comment:
+ Unused in this particular package, see comment in glib/* entry above.
 Copyright: 2018, LLVM contributors
 License: Apache-2.0 with LLVM exception
 
 Files:
  glib/glib/gchecksum.c
+Comment:
+ Unused in this particular package, see comment in glib/* entry above.
 Copyright:
  1995 A.M. Kuchling
  2006 Dave Benson
@@ -263,6 +293,8 @@ License: LGPL-2.1+ and Kuchling-PD and Plumb-PD
 
 Files:
  glib/docs/reference/glib/regex-syntax.xml
+Comment:
+ Unused in this particular package, see comment in glib/* entry above.
 Copyright:
  1997-2006 University of Cambridge
  2012-2022 unspecified GLib contributors
@@ -270,14 +302,24 @@ License: LGPL-2.1+ and BSD-3-clause-pcre
 
 Files:
  glib/glib/valgrind.h
+Comment:
+ Unused in this particular package, see comment in glib/* entry above.
 Copyright:
  2000-2017, Julian Seward
 License: bzip2-1.0.6
 
 Files:
  glib/docs/reference/gio/menu-model.png
+Comment:
+ Unused in this particular package, see comment in glib/* entry above.
 Copyright: unspecified
 License: CC-BY-SA-3.0
+
+Files: glib/m4macros/glib-gettext.m4
+Copyright:
+ 1995-2002 Free Software Foundation, Inc.
+ 2001-2004 Red Hat, Inc.
+License: GPL with Autoconf exception
 
 # ----------------------------------------------------------------------
 
@@ -949,39 +991,12 @@ License: GPL-2+
  On Debian systems, a copy of the GPL version 2 can be found in
  /usr/share/common-licenses/GPL-2.
 
-License: GPL-2+ with Autoconf exception
- This program is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 2, or (at your option)
- any later version.
- .
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
- .
- You should have received a copy of the GNU General Public License
- along with this program; if not, write to the Free Software
- Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
- 02110-1301, USA.
- .
- As a special exception, the copyright owners of the
- macro gives unlimited permission to copy, distribute and modify the
- configure scripts that are the output of Autoconf when processing the
- Macro. You need not follow the terms of the GNU General Public
- License when using or distributing such scripts, even though portions
- of the text of the Macro appear in them. The GNU General Public
- License (GPL) does govern all other use of the material that
- constitutes the Autoconf Macro.
- .
- This special exception to the GPL applies to versions of the
- Autoconf Macro released by this project. When you make and
- distribute a modified version of the Autoconf Macro, you may extend
- this special exception to the GPL to apply to your modified version as
- well.
- .
- On Debian systems, a copy of the GPL version 2 can be found in
- /usr/share/common-licenses/GPL-2.
+License: GPL with Autoconf exception
+ This file is free software, distributed under the terms of the GNU
+ General Public License.  As a special exception to the GNU General
+ Public License, this file may be distributed as part of a program
+ that contains a configuration script generated by Autoconf, under
+ the same distribution terms as the rest of that program.
 
 License: Kuchling-PD
  Distribute and use freely; there are no restrictions on further

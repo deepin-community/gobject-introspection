@@ -1,6 +1,8 @@
 #!/usr/bin/make -f
 include /usr/share/dpkg/default.mk
 
+built_binaries := $(shell dh_listpackages)
+
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_LDFLAGS_MAINT_APPEND = -Wl,-O1
 export DPKG_GENSYMBOLS_CHECK_LEVEL = 4
@@ -14,36 +16,147 @@ $(MANPAGES): debian/dh_girepository
 	pod2man -c "gobject-introspection" -r "$(DEB_VERSION)" $< $@
 
 %:
-	dh $@
+	dh $@ --builddir=_build
 
 debian/extra-substvars:
-	DEB_HOST_ARCH=$(DEB_HOST_ARCH) debian/extra-substvars.py >> debian/extra-substvars
+	dpkg-architecture -c debian/extra-substvars.py > debian/extra-substvars
 
 debian/libgirepository-1.0-1.symbols: debian/libgirepository-1.0-1.symbols.in debian/extra-substvars
 	set -e; \
-	libffiN=$$(sed -ne 's/^gobjectintrospection:libffiN=//p' debian/extra-substvars); \
+	libffiN=$$(sed -ne 's/^local:libffiN=//p' debian/extra-substvars); \
 	sed -e "s/@libffiN@/$$libffiN/" < $< > $@
 
+override_dh_clean:
+	dh_clean -Xorg.gtk.test.gschema.xml.orig -Xorg.gtk.test.gschema.override.orig
+
+configure_options = \
+	-Dgir_dir_prefix=lib/${DEB_HOST_MULTIARCH} \
+	-Dcairo=enabled \
+	-Ddoctool=enabled \
+	-Dpython=python3 \
+	$(NULL)
+
+ifeq ($(filter %-doc,$(built_binaries)),)
+configure_options += -Dgtk_doc=false
+else
+configure_options += -Dgtk_doc=true
+endif
+
+ifneq ($(DEB_HOST_ARCH),$(DEB_BUILD_ARCH))
+configure_options += --cross-file=$(CURDIR)/debian/meson-cross-for-build.ini
+# This is a bit weird: gobject-introspection uses the build architecture
+# gobject-introspection to build typelibs for the host architecture.
+# That should maybe be fixed upstream, but for now force use of our
+# appropriate $(DEB_HOST_GNU_TYPE)-g-ir-scanner and -compiler, which
+# in turn will use the appropriate host gcc.
+configure_options += --native-file=$(CURDIR)/debian/meson-cross-for-build.ini
+configure_options += -Dgi_cross_binary_wrapper=qemu-$(DEB_HOST_ARCH)
+configure_options += -Dgi_cross_ldd_wrapper=$(CURDIR)/debian/deb-elf-get-needed-for-build
+configure_options += -Dgi_cross_use_prebuilt_gi=true
+endif
+
+ifneq ($(DEB_HOST_ARCH_ENDIAN),$(DEB_BUILD_ARCH_ENDIAN))
+$(error Cross-compiling gobject-introspection requires host endianness = build endianness)
+endif
+
 override_dh_auto_configure:
-	dh_auto_configure -- \
-		-Dgtk_doc=true \
-		-Dcairo=enabled \
-		-Ddoctool=enabled \
-		-Dpython=python3
+	dh_auto_configure -- $(configure_options)
 
 execute_before_dh_auto_build: $(MANPAGES)
+
+execute_before_dh_auto_build: debian/cross-tools/deb-can-run-$(DEB_HOST_ARCH)
+debian/cross-tools/deb-can-run-$(DEB_HOST_ARCH):
+	mkdir -p debian/cross-tools
+	$(DEB_HOST_GNU_TYPE)-gcc $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o$@ debian/can-run.c
+
+execute_before_dh_auto_build: debian/deb-elf-get-needed
+debian/deb-elf-get-needed:
+	$(DEB_HOST_GNU_TYPE)-gcc $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o$@ debian/elf-get-needed.c -lelf
+
+ifneq ($(DEB_HOST_ARCH),$(DEB_BUILD_ARCH))
+execute_before_dh_auto_build: debian/deb-elf-get-needed-for-build
+debian/deb-elf-get-needed-for-build:
+	$(DEB_BUILD_GNU_TYPE)-gcc -o$@ debian/elf-get-needed.c -lelf
+endif
+
+execute_before_dh_auto_configure: debian/$(DEB_HOST_GNU_TYPE)-gobject-introspection.ini
+debian/$(DEB_HOST_GNU_TYPE)-gobject-introspection.ini: debian/meson-cross-g-i.ini.in debian/rules
+	sed \
+		-e 's|@DEB_HOST_GNU_TYPE@|$(DEB_HOST_GNU_TYPE)|' \
+		-e 's|@bindir@|/usr/bin|' \
+		< $< > $@.tmp
+	mv $@.tmp $@
+
+execute_before_dh_auto_configure: debian/meson-cross-for-build.ini
+debian/meson-cross-for-build.ini: debian/meson-cross-g-i.ini.in debian/rules
+	sed \
+		-e 's|@DEB_HOST_GNU_TYPE@|$(DEB_HOST_GNU_TYPE)|' \
+		-e 's|@bindir@|$(CURDIR)/debian/cross-tools/for-build|' \
+		< $< > $@.tmp
+	mv $@.tmp $@
+
+execute_before_dh_auto_configure: cross-tools
+
+cross_tools = \
+	g-ir-annotation-tool \
+	g-ir-compiler \
+	g-ir-doc-tool \
+	g-ir-generate \
+	g-ir-inspect \
+	g-ir-scanner \
+	$(NULL)
+cross-tools: debian/cross-g-ir-tool.in debian/rules
+	mkdir -p debian/cross-tools/for-build
+	set -e; for tool in $(cross_tools); do \
+		sed \
+			-e 's|@CAN_RUN@|/usr/lib/$(DEB_HOST_MULTIARCH)/gobject-introspection/deb-can-run-$(DEB_HOST_ARCH)|' \
+			-e 's|@DEB_HOST_ARCH@|$(DEB_HOST_ARCH)|' \
+			-e 's|@DEB_HOST_GNU_TYPE@|$(DEB_HOST_GNU_TYPE)|' \
+			-e 's|@DEB_HOST_MULTIARCH@|$(DEB_HOST_MULTIARCH)|' \
+			-e 's|@GET_NEEDED@|/usr/libexec/gobject-introspection-bin/deb-elf-get-needed|' \
+			-e 's|@TOOL@|'"$$tool"'|' \
+			-e 's|@TOOL_PATH@|/usr/bin/'"$$tool"'|' \
+			< $< > debian/cross-tool.tmp; \
+		chmod 0755 debian/cross-tool.tmp; \
+		mv debian/cross-tool.tmp debian/cross-tools/$(DEB_HOST_GNU_TYPE)-$$tool; \
+	done
+ifneq ($(DEB_HOST_ARCH),$(DEB_BUILD_ARCH))
+	set -e; for tool in $(cross_tools); do \
+		sed \
+			-e 's|@CAN_RUN@|$(CURDIR)/debian/cross-tools/deb-can-run-$(DEB_HOST_ARCH)|' \
+			-e 's|@DEB_HOST_ARCH@|$(DEB_HOST_ARCH)|' \
+			-e 's|@DEB_HOST_GNU_TYPE@|$(DEB_HOST_GNU_TYPE)|' \
+			-e 's|@DEB_HOST_MULTIARCH@|$(DEB_HOST_MULTIARCH)|' \
+			-e 's|@GET_NEEDED@|$(CURDIR)/debian/deb-elf-get-needed-for-build|' \
+			-e 's|@TOOL@|'"$$tool"'|' \
+			-e 's|@TOOL_PATH@|/usr/bin/'"$$tool"'|' \
+			< $< > debian/cross-tool.tmp; \
+		chmod 0755 debian/cross-tool.tmp; \
+		mv debian/cross-tool.tmp debian/cross-tools/for-build/$(DEB_HOST_GNU_TYPE)-$$tool; \
+	done
+endif
+
+execute_after_dh_auto_install:
+	sed -i \
+		-e 's|^girdir=\(.*\)|girdir=$${datadir}/gir-1.0|' \
+		-e 's|^g_ir_\(.*\)=\(.*\)/g-ir-\(.*\)$$|g_ir_\1=$${bindir}/${DEB_HOST_GNU_TYPE}-g-ir-\3|' \
+		debian/tmp/usr/lib/*/pkgconfig/*.pc
 
 execute_before_dh_makeshlibs: debian/libgirepository-1.0-1.symbols
 
 execute_after_dh_shlibdeps:
-	perl -w debian/dh_girepository -pgir1.2-glib-2.0
-	perl -w debian/dh_girepository -pgir1.2-freedesktop
-
-execute_after_dh_auto_clean:
-	rm -rf $(MANPAGES)
+	perl -w debian/dh_girepository -v -Nlibgirepository1.0-dev
 
 execute_before_dh_python3:
 	dh_python3 -pgobject-introspection /usr/lib/$(DEB_HOST_MULTIARCH)/gobject-introspection/giscanner/
 
-override_dh_gencontrol:
+override_dh_gencontrol: debian/extra-substvars
 	dh_gencontrol -- -Tdebian/extra-substvars
+
+override_dh_installdocs:
+	dh_installdocs -pgobject-introspection-bin --doc-main-package=gobject-introspection
+	dh_installdocs --remaining-packages
+
+override_dh_installexamples:
+	dh_installexamples -pgobject-introspection-bin --doc-main-package=gobject-introspection
+	dh_installexamples --remaining-packages
