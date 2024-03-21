@@ -1,0 +1,3 @@
+usr/lib/${DEB_HOST_MULTIARCH}/gobject-introspection/g-ir-compiler usr/bin/g-ir-compiler
+usr/lib/${DEB_HOST_MULTIARCH}/gobject-introspection/g-ir-generate usr/bin/g-ir-generate
+usr/lib/${DEB_HOST_MULTIARCH}/gobject-introspection/g-ir-inspect usr/bin/g-ir-inspect

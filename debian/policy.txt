@@ -184,13 +184,12 @@ as <!nogir> and/or architecture constraints such as [linux-any], if
 they are not needed for all builds.
 
 
-7. The proposed nogir build-profile
------------------------------------
-
-(This section has not been finalized and is subject to change)
+7. The nogir build-profile
+--------------------------
 
 Source packages that build GIR XML and typelibs may implement the nogir
-build profile. This will usually be desirable for libraries that can be
+build profile. This will usually only be desirable for libraries that
+are involved in bootstrapping, and only for libraries that can be
 used directly from C/C++ code without needing to use GObject-Introspection.
 It will usually not be useful to implement the nogir build profile in
 packages where GObject-Introspection is a functional requirement for using
