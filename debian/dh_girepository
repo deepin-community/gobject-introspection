@@ -7,6 +7,7 @@ dh_girepository - compute dependencies for GObject introspection packages
 =cut
 
 use strict;
+use Cwd qw(realpath);
 use File::Find;
 use Dpkg::Deps;
 use Dpkg::Control;
@@ -200,6 +201,19 @@ sub require_gir {
         }
 
         if (-f "$fullpath") {
+            # /usr/share/gir-1.0 is higher precedence than /usr/lib/*/gir-1.0
+            # because of how upstream handles XDG_DATA_DIRS, but when we
+            # provide a legacy non-multiarch-friendly location like
+            # /usr/share/gir-1.0/GLib-2.0.gir as a symlink to a multiarch
+            # co-installable location like /usr/lib/*/gir-1.0/GLib-2.0.gir,
+            # we would prefer the generated dependency to reflect the latter.
+            # In particular this matters for libgirepository1.0-dev.
+            my $realpath = realpath($fullpath);
+
+            if ($realpath eq "$gir_multiarch_path/$req") {
+                $fullpath = $realpath;
+            }
+
             my @output = (split ':', `dpkg -S $fullpath 2>/dev/null`);
             error("$fullpath does not belong to any package") unless @output;
             my $deppkg = $output[0];

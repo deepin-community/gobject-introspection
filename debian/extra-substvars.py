@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
     print('local:libffiN=' + libffiN)
 
-    for suffix in ('ARCH_ENDIAN', 'ARCH_OS', 'GNU_TYPE', 'MULTIARCH'):
+    for suffix in ('ARCH_OS', 'GNU_TYPE', 'MULTIARCH'):
         var = 'DEB_HOST_' + suffix
         substvar = var.replace('_', '-')
         print(f'local:{substvar}={os.environ[var]}')

@@ -1,3 +1,128 @@
+gobject-introspection (1.78.1-19) unstable; urgency=medium
+
+  * d/emulated-g-ir-tool.in: Fix qemu-user invocation.
+    Previously, this only worked on systems that could run the tool
+    directly via binfmt_misc.
+
+ -- Simon McVittie <smcv@debian.org>  Mon, 18 Mar 2024 14:26:54 +0000
+
+gobject-introspection (1.78.1-18) unstable; urgency=medium
+
+  * d/p/girparser-Don-t-assume-sizeof-size_t-sizeof-void.patch,
+    d/p/girparser-Make-sizes-in-integer_aliases-more-obviously-co.patch,
+    d/p/girparser-Allow-time_t-off_t-etc.-to-appear-in-GIR-XML.patch,
+    d/p/giscanner-treat-time_t-and-off_t-as-standalone-types.patch,
+    d/p/tests-fix-the-tests-after-time_t-and-off_t-are-standalone.patch,
+    d/p/tests-Add-coverage-for-off_t.patch:
+    Add patches from upstream git to fix handling of time_t and off_t.
+    Thanks to Shuyu Liu (Closes: #1066032)
+
+ -- Simon McVittie <smcv@debian.org>  Mon, 18 Mar 2024 12:49:20 +0000
+
+gobject-introspection (1.78.1-17) unstable; urgency=medium
+
+  [ Simon McVittie, Jeremy Bícha ]
+  * Add a nogir build profile
+
+  [ Simon McVittie ]
+  * d/control: Correct a misleading comment.
+    It's g-ir-scanner, not g-ir-compiler, that runs the dumper executable.
+  * Use host-architecture g-ir-compiler, etc. when cross-compiling.
+    When setting up the cross wrappers for g-ir-compiler, etc. I had
+    assumed that g-ir-compiler was a simple transformation from
+    GIR XML into binary, which varied only by its endianness. Unfortunately,
+    it is not: it also transforms abstract types such as size_t into
+    equivalent fixed-size types such as guint64, which requires knowledge
+    of the size of each type.
+    Instead of running the build architecture g-ir-compiler and
+    telling it to use the host architecture search path, install upstream's
+    g-ir-compiler etc. into ${pkglibdir}, and set up cross wrappers
+    that will automatically detect whether we can run them directly or
+    whether we must use qemu-user. We already had logic for this for the
+    dumper executable that is run by g-ir-scanner, which is always a
+    host-architecture binary.
+    This involves running qemu more often, but does have the side benefit
+    that we no longer require the build and host endianness to be the same,
+    because everything that interacts the typelib is now a host binary
+    (possibly running under emulation). (Closes: #1066900)
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 15 Mar 2024 13:14:58 +0000
+
+gobject-introspection (1.78.1-16) unstable; urgency=medium
+
+  * d/control, d/gbp.conf, d/watch: Branch for 1.78.x
+  * dh_girepository: Avoid generating a dependency on
+    libgirepository1.0-dev.
+    We don't want other -dev packages to depend on libgirepository1.0-dev
+    if we can help it, because it isn't Multi-Arch co-installable,
+    even though when installed it provides the highest-precedence
+    version of GLib-2.0.gir (as a symlink to the real file). Instead,
+    we would prefer dependent packages to depend on the package that
+    really contains GLib-2.0.gir, which is gir1.2-glib-2.0-dev.
+    Handle this generically so that if there are other pairs of packages
+    in a similar situation, they will also be covered. (Closes: #1065332)
+  * d/control: Make g-i explicitly depend on g-i-bin, not just via a
+    virtual package, as requested by Matthias Klose on #1064369.
+    This might possibly help autopkgtest to provide better pinning.
+
+ -- Simon McVittie <smcv@debian.org>  Sun, 03 Mar 2024 16:35:05 +0000
+
+gobject-introspection (1.78.1-15) unstable; urgency=medium
+
+  * policy: Clarify when (not) to use the nogir build-profile.
+    We don't need to add it indiscriminately to every package with
+    GIR; it's only useful for packages that are either involved in
+    bootstrapping, or difficult to cross-compile any other way, or being
+    used as a harmless example of how to use this build profile with a
+    particular build system.
+  * policy: Consider the nogir build-profile to be stable.
+    There didn't seem to be any objection to it on debian-devel.
+  * Release to unstable, allowing experimental to be used for 1.79.x.
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 09 Feb 2024 11:38:46 +0000
+
+gobject-introspection (1.78.1-14) experimental; urgency=medium
+
+  * Replace exact version matches by gir1.2-freedesktop(-dev) with
+    a minimum.
+    As with gir1.2-girepository-2.0(-dev), we need these to depend
+    on gir1.2-glib-2.0 (>= 1.78.x) instead of (= 1.78.x), so that
+    src:glib2.0 can take over those binary packages gracefully. Instead
+    of hard-coding the dependencies, put the ${gir:Depends} back, and
+    postprocess the output of dh_girepository instead of ignoring it.
+
+ -- Simon McVittie <smcv@debian.org>  Sat, 20 Jan 2024 15:58:58 +0000
+
+gobject-introspection (1.78.1-13) experimental; urgency=medium
+
+  * gir1.2-girepository-2.0{,-dev}: Don't force GLib to match exactly.
+    src:glib2.0 is going to take over the gir1.2-glib-2.0{,-dev}
+    package names in 2.79.x, but it will have its
+    own gir1.2-girepository-3.0{,-dev}. To keep our
+    gir1.2-girepository-2.0{,-dev} installable, relax their dependencies
+    to not be in lockstep.
+    This would not usually be allowed, but GLib-2.0 and the other
+    affected typelibs are conceptually part of glib2.0 anyway - they
+    were only built by this source package up until now to avoid circular
+    dependencies.
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 19 Jan 2024 18:55:42 +0000
+
+gobject-introspection (1.78.1-12) unstable; urgency=medium
+
+  * d/rules: Tell dh_python3 to look for private giscanner modules.
+    Previously we were only doing this for the gobject-introspection
+    binary package, which was correct before 1.78.1-7, but regressed when
+    we moved the giscanner implementation to g-i-bin. (Closes: #1061141)
+  * d/control: (Build-)Depend on python3-setuptools.
+    This provides a python3.12-friendly implementation of the deprecated
+    distutils API, which (for the moment) g-ir-scanner still needs.
+  * d/p/tests-Do-not-use-PYTHONPATH-to-import-giscanner.patch:
+    Add patch from upstream to fix FTBFS with python3.12 as default.
+    Thanks to Graham Inggs, Matthias Klose (Closes: #1061143)
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 19 Jan 2024 13:50:09 +0000
+
 gobject-introspection (1.78.1-11) unstable; urgency=medium
 
   * d/control: gobject-introspection Depends on libglib2.0-dev.

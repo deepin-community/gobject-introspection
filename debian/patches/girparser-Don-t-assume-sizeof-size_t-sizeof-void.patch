@@ -1,0 +1,32 @@
+From: Simon McVittie <smcv@debian.org>
+Date: Mon, 18 Mar 2024 10:52:23 +0000
+Subject: girparser: Don't assume sizeof(size_t) == sizeof(void *)
+
+We don't actually need to use the results of configure-time checks here:
+sizeof is a perfectly reasonable integer constant expression, so we can
+use that directly.
+
+Equivalent to https://gitlab.gnome.org/GNOME/glib/-/merge_requests/3966
+in GLib.
+
+Signed-off-by: Simon McVittie <smcv@debian.org>
+Applied-upstream: 1.80.1, commit:9c9c4ad2c31602bcc1c588abecf6ac4eaa65660e
+---
+ girepository/girparser.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/girepository/girparser.c b/girepository/girparser.c
+index 9a7554c..f63136c 100644
+--- a/girepository/girparser.c
++++ b/girepository/girparser.c
+@@ -447,8 +447,8 @@ static IntegerAliasInfo integer_aliases[] = {
+   { "gulong",   SIZEOF_LONG,      0 },
+   { "gssize",   GLIB_SIZEOF_SIZE_T,    1 },
+   { "gsize",    GLIB_SIZEOF_SIZE_T,    0 },
+-  { "gintptr",  GLIB_SIZEOF_SIZE_T,    1 },
+-  { "guintptr", GLIB_SIZEOF_SIZE_T,    0 },
++  { "gintptr",  sizeof (gintptr),      1 },
++  { "guintptr", sizeof (guintptr),     0 },
+ };
+ 
+ typedef struct {
