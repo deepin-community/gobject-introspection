@@ -10,12 +10,11 @@ Uploaders: Iain Lane <laney@debian.org>,
            Michael Biebl <biebl@debian.org>,
            Tim Lunn <tim@feathertop.org>,
            Simon McVittie <smcv@debian.org>,
-# B-D on gobject-introspection if cross && !nogir
 Build-Depends: bison,
                debhelper-compat (= 13),
                dh-sequence-python3,
                flex,
-               gobject-introspection (>= 1.78.1-17~) <cross !nogir>,
+               gobject-introspection:native <cross>,
                libcairo2-dev,
                libelf-dev,
                libelf-dev:native,
@@ -31,12 +30,13 @@ Build-Depends: bison,
                python3-markdown:native,
                python3-setuptools,
                python3:native,
+               qemu-user <cross>,
 Build-Depends-Indep: gtk-doc-tools,
                      libglib2.0-doc (>= 2.78.0),
 Rules-Requires-Root: no
 Standards-Version: 4.6.2
 Vcs-Browser: https://salsa.debian.org/gnome-team/gobject-introspection
-Vcs-Git: https://salsa.debian.org/gnome-team/gobject-introspection.git -b debian/trixie
+Vcs-Git: https://salsa.debian.org/gnome-team/gobject-introspection.git
 Homepage: https://wiki.gnome.org/GObjectIntrospection
 
 Package: libgirepository-1.0-1
@@ -65,7 +65,6 @@ Description: Library for handling GObject introspection data (runtime library)
  This package contains a C library for handling the introspection data.
 
 Package: libgirepository1.0-dev
-Build-Profiles: <!nogir>
 Section: libdevel
 Architecture: any
 Depends: gir1.2-freedesktop (= ${binary:Version}),
@@ -146,20 +145,20 @@ Description: Library for handling GObject introspection data (documentation)
 # gobject-introspection is installed for the host architecture if
 # cross-compiling, and it builds and runs a host executable, the "dumper".
 # If python3 is of the same architecture (typical during native compilation)
-# then the ${DEB_HOST_GNU_TYPE}-g-ir-scanner wrapper script runs the
+# then the ${DEB_HOST_GNU_TYPE}-g-ir-compiler wrapper script runs the
 # dumper directly.
 # If python3 is of a different architecture (typically the build
-# architecture) then ${DEB_HOST_GNU_TYPE}-g-ir-scanner might need to
+# architecture) then ${DEB_HOST_GNU_TYPE}-g-ir-compiler might need to
 # run the dumper via qemu-user, depending on whether binfmt-misc was set up
 # (which we cannot express as a dependency).
-# This only works for the same OS (in practice Linux).
+# This only works for the same OS (in practice Linux) and the same
+# endianness.
 Package: gobject-introspection
 Multi-Arch: same
 Architecture: any
 Depends: binutils-${local:DEB-HOST-GNU-TYPE-DASHES}:any,
          gcc-${local:DEB-HOST-GNU-TYPE-DASHES},
-         gobject-introspection-bin (= ${binary:Version}),
-         gobject-introspection-bin-${local:DEB-HOST-ARCH-OS} (= ${binary:Version}),
+         gobject-introspection-${local:DEB-HOST-ARCH-OS}-${local:DEB-HOST-ARCH-ENDIAN}-endian (= ${binary:Version}),
          libgirepository-1.0-1 (= ${binary:Version}),
          libglib2.0-dev (>= 2.78.0),
          pkgconf,
@@ -185,7 +184,8 @@ Description: Generate interface introspection data for GObject libraries
  This package contains tools for extracting introspection data from libraries
  and transforming it to different formats. The versions of these tools with
  architecture name prefixes, such as ${local:DEB-HOST-GNU-TYPE}-g-ir-scanner,
- can be used during cross-compilation.
+ can be used during cross-compilation on a build architecture with the same
+ endianness.
  .
  Although this package includes the pkg-config metadata for both the tools
  and the libgirepository-1.0 library, it does not guarantee to provide the
@@ -208,7 +208,7 @@ Depends: build-essential,
          ${perl:Depends},
          ${python3:Depends},
          ${shlibs:Depends},
-Provides: gobject-introspection-bin-${local:DEB-HOST-ARCH-OS} (= ${binary:Version}),
+Provides: gobject-introspection-${local:DEB-HOST-ARCH-OS}-${local:DEB-HOST-ARCH-ENDIAN}-endian (= ${binary:Version}),
 Breaks: gobject-introspection (<< 1.78.1-7~),
         libgirepository1.0-dev (<< 1.78.1-7~),
 Replaces: gobject-introspection (<< 1.78.1-7~),
@@ -220,12 +220,12 @@ Description: Executables for gobject-introspection
  automatic code generation for bindings, API verification and documentation
  generation.
  .
- This package contains the implementation for various tools.
+ This package contains the implementation for various tools, compatible
+ with the typelibs for ${local:DEB-HOST-ARCH-ENDIAN}-endian architectures.
  Please do not depend on this package directly: use gobject-introspection
  instead.
 
 Package: gir1.2-glib-2.0
-Build-Profiles: <!nogir>
 Architecture: any
 Section: introspection
 Depends: ${gir:Depends},
@@ -247,7 +247,6 @@ Description: Introspection data for GLib, GObject, Gio and GModule
  but is likely to be taken over by a future release of the glib2.0 package.
 
 Package: gir1.2-glib-2.0-dev
-Build-Profiles: <!nogir>
 Architecture: any
 Multi-Arch: same
 Section: libdevel
@@ -272,7 +271,6 @@ Description: GIR XML for GLib, GObject, Gio and GModule
  but is likely to be taken over by a future release of the glib2.0 package.
 
 Package: gir1.2-girepository-2.0
-Build-Profiles: <!nogir>
 Architecture: any
 Section: introspection
 Depends: ${gir:Depends},
@@ -294,7 +292,6 @@ Description: Introspection data for GIRepository library
  and load introspection data.
 
 Package: gir1.2-girepository-2.0-dev
-Build-Profiles: <!nogir>
 Architecture: any
 Multi-Arch: same
 Section: libdevel
@@ -317,7 +314,6 @@ Description: GIR XML for GIRepository library
  like C++, D and Haskell.
 
 Package: gir1.2-freedesktop
-Build-Profiles: <!nogir>
 Architecture: any
 Section: introspection
 Depends: ${gir:Depends},
@@ -341,7 +337,6 @@ Description: Introspection data for some FreeDesktop components
  introspection packages to work properly.
 
 Package: gir1.2-freedesktop-dev
-Build-Profiles: <!nogir>
 Architecture: any
 Multi-Arch: same
 Section: libdevel

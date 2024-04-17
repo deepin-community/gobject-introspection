@@ -55,8 +55,8 @@ configure_options += -Dgi_cross_ldd_wrapper=$(CURDIR)/debian/deb-elf-get-needed-
 configure_options += -Dgi_cross_use_prebuilt_gi=true
 endif
 
-ifeq ($(filter gir1.2-%,$(built_binaries)),)
-configure_options += -Dbuild_introspection_data=false
+ifneq ($(DEB_HOST_ARCH_ENDIAN),$(DEB_BUILD_ARCH_ENDIAN))
+$(error Cross-compiling gobject-introspection requires host endianness = build endianness)
 endif
 
 override_dh_auto_configure:
@@ -91,24 +91,22 @@ execute_before_dh_auto_configure: debian/meson-cross-for-build.ini
 debian/meson-cross-for-build.ini: debian/meson-cross-g-i.ini.in debian/rules
 	sed \
 		-e 's|@DEB_HOST_GNU_TYPE@|$(DEB_HOST_GNU_TYPE)|' \
-		-e 's|@bindir@|/usr/bin|' \
+		-e 's|@bindir@|$(CURDIR)/debian/cross-tools/for-build|' \
 		< $< > $@.tmp
 	mv $@.tmp $@
 
-execute_before_dh_auto_configure: cross-tools emulated-cross-tools
+execute_before_dh_auto_configure: cross-tools
 
 cross_tools = \
 	g-ir-annotation-tool \
-	g-ir-doc-tool \
-	g-ir-scanner \
-	$(NULL)
-emulated_cross_tools = \
 	g-ir-compiler \
+	g-ir-doc-tool \
 	g-ir-generate \
 	g-ir-inspect \
+	g-ir-scanner \
 	$(NULL)
 cross-tools: debian/cross-g-ir-tool.in debian/rules
-	mkdir -p debian/cross-tools
+	mkdir -p debian/cross-tools/for-build
 	set -e; for tool in $(cross_tools); do \
 		sed \
 			-e 's|@CAN_RUN@|/usr/lib/$(DEB_HOST_MULTIARCH)/gobject-introspection/deb-can-run-$(DEB_HOST_ARCH)|' \
@@ -122,21 +120,21 @@ cross-tools: debian/cross-g-ir-tool.in debian/rules
 		chmod 0755 debian/cross-tool.tmp; \
 		mv debian/cross-tool.tmp debian/cross-tools/$(DEB_HOST_GNU_TYPE)-$$tool; \
 	done
-
-emulated-cross-tools: debian/emulated-g-ir-tool.in debian/rules
-	mkdir -p debian/cross-tools
-	set -e; for tool in $(emulated_cross_tools); do \
+ifneq ($(DEB_HOST_ARCH),$(DEB_BUILD_ARCH))
+	set -e; for tool in $(cross_tools); do \
 		sed \
-			-e 's|@CAN_RUN@|/usr/lib/$(DEB_HOST_MULTIARCH)/gobject-introspection/deb-can-run-$(DEB_HOST_ARCH)|' \
+			-e 's|@CAN_RUN@|$(CURDIR)/debian/cross-tools/deb-can-run-$(DEB_HOST_ARCH)|' \
 			-e 's|@DEB_HOST_ARCH@|$(DEB_HOST_ARCH)|' \
 			-e 's|@DEB_HOST_GNU_TYPE@|$(DEB_HOST_GNU_TYPE)|' \
 			-e 's|@DEB_HOST_MULTIARCH@|$(DEB_HOST_MULTIARCH)|' \
+			-e 's|@GET_NEEDED@|$(CURDIR)/debian/deb-elf-get-needed-for-build|' \
 			-e 's|@TOOL@|'"$$tool"'|' \
-			-e 's|@TOOL_PATH@|/usr/lib/$(DEB_HOST_MULTIARCH)/gobject-introspection/'"$$tool"'|' \
+			-e 's|@TOOL_PATH@|/usr/bin/'"$$tool"'|' \
 			< $< > debian/cross-tool.tmp; \
 		chmod 0755 debian/cross-tool.tmp; \
-		mv debian/cross-tool.tmp debian/cross-tools/$(DEB_HOST_GNU_TYPE)-$$tool; \
+		mv debian/cross-tool.tmp debian/cross-tools/for-build/$(DEB_HOST_GNU_TYPE)-$$tool; \
 	done
+endif
 
 execute_after_dh_auto_install:
 	sed -i \
@@ -146,7 +144,6 @@ execute_after_dh_auto_install:
 
 execute_before_dh_makeshlibs: debian/libgirepository-1.0-1.symbols
 
-ifneq ($(filter gir1.2-%,$(built_binaries)),)
 execute_after_dh_shlibdeps:
 	perl -w debian/dh_girepository -v -Nlibgirepository1.0-dev
 	# Convert (= ${binary:Version}) dependencies on gir1.2-glib-2.0(-dev)
@@ -157,7 +154,6 @@ execute_after_dh_shlibdeps:
 	perl -p -i \
 		-e 's{\b(gir1\.2-(?:glib|gmodule|gobject|gio)-2\.0(?:-dev)?) *\(= *([^)]+)\)}{$$1 (>= $$2)}g if /:Depends/' \
 		debian/gir1.2-freedesktop*.substvars debian/gir1.2-girepository*.substvars
-endif
 
 execute_before_dh_python3:
 	dh_python3 /usr/lib/$(DEB_HOST_MULTIARCH)/gobject-introspection/giscanner/

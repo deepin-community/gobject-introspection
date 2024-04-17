@@ -1,8 +1,5 @@
 debian/${DEB_HOST_GNU_TYPE}-gobject-introspection.ini usr/share/meson/cross
 debian/cross-tools/${DEB_HOST_GNU_TYPE}-g-ir-* usr/bin
 debian/cross-tools/deb-can-run-${DEB_HOST_ARCH} usr/lib/${DEB_HOST_MULTIARCH}/gobject-introspection
-usr/bin/g-ir-compiler usr/lib/${DEB_HOST_MULTIARCH}/gobject-introspection
-usr/bin/g-ir-generate usr/lib/${DEB_HOST_MULTIARCH}/gobject-introspection
-usr/bin/g-ir-inspect usr/lib/${DEB_HOST_MULTIARCH}/gobject-introspection
 usr/lib/${DEB_HOST_MULTIARCH}/libgirepository-${env:GIR_API_VERSION}.so
 usr/lib/${DEB_HOST_MULTIARCH}/pkgconfig
