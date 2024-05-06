@@ -24,10 +24,8 @@ import operator
 from itertools import chain
 from collections import OrderedDict
 
-from . import message
-
 from .sourcescanner import CTYPE_TYPEDEF, CSYMBOL_TYPE_TYPEDEF
-from .message import Position
+from .message import Position, warn
 from .utils import to_underscores
 
 
@@ -233,6 +231,9 @@ TYPE_DOUBLE = Type(target_fundamental='gdouble', ctype='gdouble')
 TYPE_LONG_DOUBLE = Type(target_fundamental='long double',
                         ctype='long double')
 TYPE_UNICHAR = Type(target_fundamental='gunichar', ctype='gunichar')
+# Platform-specific types
+TYPE_TIME_T = Type(target_fundamental='time_t', ctype='time_t')
+TYPE_OFF_T = Type(target_fundamental='off_t', ctype='off_t')
 
 # C types with semantics overlaid
 TYPE_GTYPE = Type(target_fundamental='GType', ctype='GType')
@@ -245,7 +246,7 @@ BASIC_TYPES = [TYPE_BOOLEAN, TYPE_INT8, TYPE_UINT8, TYPE_INT16,
                TYPE_UINT16, TYPE_INT32, TYPE_UINT32, TYPE_INT64,
                TYPE_UINT64, TYPE_CHAR, TYPE_SHORT, TYPE_USHORT, TYPE_INT,
                TYPE_UINT, TYPE_LONG, TYPE_ULONG, TYPE_SIZE, TYPE_SSIZE,
-               TYPE_LONG_LONG, TYPE_LONG_ULONG,
+               TYPE_LONG_LONG, TYPE_LONG_ULONG, TYPE_TIME_T, TYPE_OFF_T,
                TYPE_FLOAT, TYPE_DOUBLE,
                TYPE_LONG_DOUBLE, TYPE_UNICHAR, TYPE_GTYPE]
 
@@ -346,8 +347,8 @@ type_names['size_t'] = type_names['gsize']
 type_names['ssize_t'] = type_names['gssize']
 type_names['uintptr_t'] = type_names['guintptr']
 type_names['intptr_t'] = type_names['gintptr']
-type_names['time_t'] = TYPE_LONG
-type_names['off_t'] = type_names['gsize']
+type_names['time_t'] = TYPE_TIME_T
+type_names['off_t'] = TYPE_OFF_T
 type_names['pid_t'] = TYPE_INT
 type_names['uid_t'] = TYPE_UINT
 type_names['gid_t'] = TYPE_UINT
@@ -686,6 +687,9 @@ class Callable(Node):
         self.throws = not not throws
         self.instance_parameter = None  # Parameter
         self.parent = None  # A Class or Interface
+        self.finish_func = None
+        self.sync_func = None
+        self.async_func = None
 
     def _get_retval(self):
         return self._retval
@@ -757,6 +761,7 @@ class Function(Callable):
         self.internal_skipped = False   # if True, this func will not be written to GIR
         self.set_property = None        # Property name
         self.get_property = None        # Property name
+        self.is_inline = False
 
     def clone(self):
         clone = copy.copy(self)
@@ -779,7 +784,7 @@ class Function(Callable):
         # Returns GType
         rettype = self.retval.type
         if (not rettype.is_equiv(TYPE_GTYPE) and rettype.target_giname != 'Gtk.Type'):
-            message.warn("function '%s' returns '%r', not a GType" % (self.name, rettype))
+            warn("function '%s' returns '%r', not a GType" % (self.name, rettype))
             return False
 
         return True

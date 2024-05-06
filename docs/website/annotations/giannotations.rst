@@ -18,7 +18,7 @@ Symbol visibility
     - :commit:`v0.6.4 <7549c8053d0229a12d9196cc8abae54a01a555d0>`
       :bzbug:`556628`
   * -
-    - paremeters, return value
+    - parameters, return value
     - Indicate that the parameter or return value is only useful in C and
       should be skipped.
     - :commit:`v1.29.0 <9c6797e0478b5025c3f2f37b1331c1328cf34f4d>`
@@ -238,6 +238,11 @@ Type signature
       can pass ``NULL`` to ignore this output parameter.
     - :commit:`1.42 <1459ff3e>`
       :bzbug:`660879`
+  * - ``(not optional)``
+    - parameters
+    - For ``(out)`` or ``(inout)`` parameters, signifies that the caller
+      cannot pass ``NULL`` to ignore this output parameter.
+    - v1.80
   * - ``(in)``
     - parameters
     - In parameter.
@@ -309,6 +314,21 @@ Type signature
       in a g-i supported library.
     - :commit:`v0.6.12 <1edeccd2>`
       :bzbug:`619450`
+  * - ``(sync-func FUNC)``
+    - identifier
+    - ``FUNC`` is the identifier of the function which implements the synchronous
+      version of the asynchronous function referred to by the annotated symbol.
+    -
+  * - ``(async-func FUNC)``
+    - identifier
+    - ``FUNC`` is the identifier of the function which implements the asynchronous
+      version of the synchronous function referred to by the annotated symbol.
+    -
+  * - ``(finish-func FUNC)``
+    - identifier
+    - ``FUNC`` is the identifier of the function which returns the result of the
+      asynchronous function referred to by the annotated symbol.
+    -
   * - ``(scope TYPE)``
     - parameters
     - The parameter is a callback, the ``TYPE`` option indicates the lifetime
@@ -332,9 +352,11 @@ An example of a function using the ``call`` scope is ``g_slist_foreach()``.
 For ``async`` there is ``g_file_read_async()`` and for notified
 ``g_idle_add_full()``.
 
-Default Annotations: To avoid having the developers annotate everything the
-introspection framework is providing sane default annotation values for a
-couple of situations:
+Default Annotations
+~~~~~~~~~~~~~~~~~~~
+
+The introspection framework provides default values for parameters, return
+values, and certain types.
 
 * ``(in)`` parameters: ``(transfer none)``
 * ``(inout)`` and ``(out)`` parameters: ``(transfer full)``
@@ -707,7 +729,7 @@ be unspecified and should therefore not be used or freed.
 
 
 mylib_hash_table_iter_next() demonstrates the difference between (nullable) and
-(optional) for (out) parameters. For an (out) parameter, (optional) indicates
+(optional) for (out) parameters. For an (out) or (inout) parameter, (optional) indicates
 that NULL may be passed by the caller to indicate they don’t want to receive
 the (out) value. (nullable) indicates that NULL may be passed out by the
 callee as the returned value.
@@ -744,7 +766,7 @@ callee as the returned value.
 Rename to
 ~~~~~~~~~
 
-Rename to is an advisory annotation. It's not required to fulfill the advisory
+Rename to is an advisory annotation. It's not required to fulfil the advisory
 when generating or making a language binding. The way it is currently
 implemented, if you rename a function to a name already in use, it will remove
 the other binding. This is useful to eliminate unwanted/deprecated functions

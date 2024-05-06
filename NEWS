@@ -1,3 +1,43 @@
+1.80.1 - 2024-04-01
+-------------------
+
+* Require Python 3.8 when running mypy
+* Ensure that POSIX types follow the target architecture
+* Look for finish functions inside the list of constructors
+
+1.80.0 - 2024-03-09
+-------------------
+
+* Allow using `transfer none` with GClosure
+* Only allow loading GIRepository-2.0
+* Add marshalling tests for uninitialized and NaN arguments
+* Check for setuptools when building with Python >= 3.12
+* Add fallback doc elements for virtual functions
+* Add doc elements for callback fields
+* Support static inline declarations in the GIR
+* Add annotations for sync, async, and async-finish functions in the GIR
+* Simplify the giscanner module build with Python >= 3.12
+* Allow passing full shared library paths on Windows
+
+1.79.1 - 2023-12-28
+-------------------
+
+* Build fixes
+* Require Meson ≥ 1.2
+* Avoid test failures with Python ≥ 3.12
+* Update the GIR schema, and validate GIR files as part of the test suite
+* Support (not optional) annotation
+* Allow ownership transfer of structure types with copy/free functions
+
+1.79.0 - 2023-12-24
+-------------------
+
+* Require GLib >= 2.79
+* Require Python >= 3.8
+* Simplify libtool use with wrappers
+* Drop GIO dependency from libgirepository
+* Do not install the GLib introspection data
+
 1.78.1 - 2023-09-16
 -------------------
 

@@ -12,10 +12,11 @@ pacman --noconfirm -S --needed \
     ${MINGW_PACKAGE_PREFIX}-meson \
     ${MINGW_PACKAGE_PREFIX}-python3 \
     ${MINGW_PACKAGE_PREFIX}-python3-pip \
+    ${MINGW_PACKAGE_PREFIX}-python3-packaging \
     ${MINGW_PACKAGE_PREFIX}-python3-mako \
     ${MINGW_PACKAGE_PREFIX}-python3-markdown \
     ${MINGW_PACKAGE_PREFIX}-libffi \
-    ${MINGW_PACKAGE_PREFIX}-pkg-config \
+    ${MINGW_PACKAGE_PREFIX}-pkgconf \
     ${MINGW_PACKAGE_PREFIX}-cairo \
     ${MINGW_PACKAGE_PREFIX}-pcre2 \
     ${MINGW_PACKAGE_PREFIX}-zlib \
@@ -24,7 +25,7 @@ pacman --noconfirm -S --needed \
 export CCACHE_BASEDIR="${CI_PROJECT_DIR}"
 export CCACHE_DIR="${CCACHE_BASEDIR}/_ccache"
 
-pip3 install --upgrade --user meson==0.60 flake8 mypy==0.931 types-Markdown
+pip3 install --upgrade --user meson==1.2.3 flake8 mypy==0.931 types-Markdown
 export PATH="$HOME/.local/bin:$PATH"
 
 meson setup \

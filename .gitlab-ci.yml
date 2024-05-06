@@ -2,7 +2,7 @@ stages:
   - build
   - deploy
 
-image: registry.gitlab.gnome.org/gnome/gobject-introspection:v11
+image: registry.gitlab.gnome.org/gnome/gobject-introspection:v13
 
 cache:
   paths:
@@ -10,42 +10,6 @@ cache:
 
 variables:
   COMMON_MESON_FLAGS: "--prefix /usr --libdir lib64 --buildtype=debug -Dglib:werror=false -Dcairo=enabled -Dpython=python3"
-
-example-meson:
-  stage: build
-  variables:
-    EXTRA_MESON_FLAGS: "-Ddoctool=enabled -Dgtk_doc=true"
-  script:
-    - meson setup ${COMMON_MESON_FLAGS} ${EXTRA_MESON_FLAGS} _build .
-    - .gitlab-ci/show-git-commits.sh || true
-    - meson compile -C _build
-    - sudo meson install -C _build
-    - g-ir-scanner --version
-    - cd examples/library
-    - meson setup --prefix /usr --default-library=both _build .
-    - meson compile -C _build
-    - sudo meson install -C _build
-    - g-ir-inspect --print-typelibs --print-shlibs GISample
-    # also build a small program using libgirepository
-    - cd ../girepository
-    - meson setup _build
-    - meson compile -C _build
-
-example-autotools:
-  stage: build
-  variables:
-    EXTRA_MESON_FLAGS: "-Ddoctool=enabled -Dgtk_doc=true"
-  script:
-    - meson setup ${COMMON_MESON_FLAGS} ${EXTRA_MESON_FLAGS} _build .
-    - .gitlab-ci/show-git-commits.sh || true
-    - meson compile -C _build
-    - sudo meson install -C _build
-    - g-ir-scanner --version
-    - cd examples/library
-    - ./autogen.sh --prefix /usr
-    - make -j
-    - sudo make install
-    - g-ir-inspect --print-typelibs --print-shlibs GISample
 
 fedora-x86_64-meson:
   stage: build
@@ -61,7 +25,7 @@ fedora-x86_64-meson:
     - ninja -C _build gi-doc
     - mkdir -p public
     - mv _build/docs/reference/html/ public/girepository/
-    - python3 -m pip install --user flake8 mypy==0.931 types-Markdown
+    - python3 -m pip install --user flake8 mypy types-Markdown
     - python3 -m flake8 --count
     - python3 -m mypy _build
   except:
@@ -74,7 +38,7 @@ fedora-x86_64-meson:
       - public
 
 fedora-x86_64-subprojects:
-  image: registry.gitlab.gnome.org/gnome/gobject-introspection:min-v4
+  image: registry.gitlab.gnome.org/gnome/gobject-introspection:min-v6
   stage: build
   variables:
     CCACHE_BASEDIR: "${CI_PROJECT_DIR}"
@@ -113,12 +77,12 @@ fedora-x86_64-no-introspection-data:
       - "${CI_PROJECT_DIR}/_build/meson-logs"
       - public
 
-fedora-x86_64-python3.6:
+fedora-x86_64-python3.8:
   stage: build
   variables:
     CCACHE_BASEDIR: "${CI_PROJECT_DIR}"
     CCACHE_DIR: "${CI_PROJECT_DIR}/_ccache"
-    PYENV_VERSION: "3.6.12"
+    PYENV_VERSION: "3.8.17"
   script:
     - meson setup ${COMMON_MESON_FLAGS} ${EXTRA_MESON_FLAGS} _build .
     - .gitlab-ci/show-git-commits.sh || true

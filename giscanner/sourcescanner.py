@@ -28,10 +28,7 @@ from .utils import have_debug_flag, dll_dirs
 
 dlldirs = dll_dirs()
 dlldirs.add_dll_dirs(['gio-2.0'])
-if 'UNINSTALLED_INTROSPECTION_SRCDIR' in os.environ:
-    from _giscanner import SourceScanner as CSourceScanner
-else:
-    from giscanner._giscanner import SourceScanner as CSourceScanner
+from giscanner._giscanner import SourceScanner as CSourceScanner
 dlldirs.cleanup_dll_dirs()
 
 HEADER_EXTS = ['.h', '.hpp', '.hxx']
@@ -117,7 +114,7 @@ def ctype_name(ctype):
 
 class SourceType(object):
     __members__ = ['type', 'base_type', 'name', 'type_qualifier',
-                   'child_list', 'is_bitfield']
+                   'child_list', 'is_bitfield', 'function_specifier']
 
     def __init__(self, scanner, stype):
         self._scanner = scanner
@@ -156,6 +153,10 @@ class SourceType(object):
     @property
     def is_bitfield(self):
         return self._stype.is_bitfield
+
+    @property
+    def function_specifier(self):
+        return self._stype.function_specifier
 
 
 class SourceSymbol(object):

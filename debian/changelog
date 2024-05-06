@@ -1,3 +1,76 @@
+gobject-introspection (1.80.1-2) unstable; urgency=medium
+
+  * Release to unstable
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Sat, 04 May 2024 12:39:14 -0400
+
+gobject-introspection (1.80.1-1) experimental; urgency=medium
+
+  [ Jeremy Bícha ]
+  * New upstream release
+  * Drop time_t and off_t patches: applied in new release
+
+  [ Simon McVittie ]
+  * d/copyright: Remove unused license paragraph
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Mon, 01 Apr 2024 10:28:10 -0400
+
+gobject-introspection (1.80.0-2) experimental; urgency=medium
+
+  * Merge packaging changes from unstable:
+    - d/p/girparser-Don-t-assume-sizeof-size_t-sizeof-void.patch,
+      d/p/girparser-Make-sizes-in-integer_aliases-more-obviously-co.patch,
+      d/p/girparser-Allow-time_t-off_t-etc.-to-appear-in-GIR-XML.patch,
+      d/p/giscanner-treat-time_t-and-off_t-as-standalone-types.patch,
+      d/p/tests-fix-the-tests-after-time_t-and-off_t-are-standalone.patch,
+      d/p/tests-Add-coverage-for-off_t.patch:
+      Add patches from upstream git to fix handling of time_t and off_t.
+      Thanks to Shuyu Liu (Closes: #1066032)
+    - d/emulated-g-ir-tool.in: Fix qemu-user invocation.
+      Previously, this only worked on systems that could run the tool
+      directly via binfmt_misc.
+  * d/control: libgirepository1.0-dev requires GLib 2.80 data.
+    Now that we are not building gir1.2-glib-2.0 locally, we shouldn't
+    use ${binary:Version} to refer to it any more. Thanks: lintian
+  * d/control: Bump required GLib version to 2.80.0.
+    Now that GLib 2.80.0 is available, nobody should be using its
+    development snapshots 2.79.x.
+  * d/copyright: Update
+  * Add a g-ir-inspect(1) man page
+  * d/source/lintian-overrides: Add overrides for nogir profile name
+
+ -- Simon McVittie <smcv@debian.org>  Mon, 18 Mar 2024 23:39:13 +0000
+
+gobject-introspection (1.80.0-1) experimental; urgency=medium
+
+  * New upstream stable release
+  * Merge packaging changes from unstable
+    - dh_girepository: Avoid generating a dependency on
+      libgirepository1.0-dev (Closes: #1065332)
+    - Use host g-ir-compiler (possibly wrapped with qemu-user) when
+      cross-compiling, since the build architecture g-ir-compiler has
+      built-in knowledge of type sizes which is not necessarily correct
+      for the host architecture (Closes: #1066900)
+    - d/control: Make g-i explicitly depend on g-i-bin, not just via a
+      virtual package, as requested by Matthias Klose on #1064369.
+      This might possibly help autopkgtest to provide better pinning.
+    - d/rules: Base the choice of -Dbuild_introspection_data on
+      whether we are building gir1.2-*, not the nogir build profile
+      specifically
+  * Refresh patch series
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 15 Mar 2024 15:32:45 +0000
+
+gobject-introspection (1.79.1-1) experimental; urgency=medium
+
+  * New upstream release
+  * Bump minimum glib to 2.79.0
+  * Add gir1.2-glib-2.0-dev to Build-Depends
+  * Drop gir1.2-glib-2.0 & gir1.2.0-glib-dev: Now built by glib2.0
+  * Drop 3 patches applied in new release
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Mon, 19 Feb 2024 06:31:08 -0500
+
 gobject-introspection (1.78.1-19) unstable; urgency=medium
 
   * d/emulated-g-ir-tool.in: Fix qemu-user invocation.

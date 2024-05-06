@@ -1,0 +1,3 @@
+# https://salsa.debian.org/lintian/lintian/-/merge_requests/495
+invalid-profile-name-in-build-profiles-field nogir *
+invalid-profile-name-in-source-relation nogir *

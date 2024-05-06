@@ -4,6 +4,7 @@ debian/deb-elf-get-needed
 debian/deb-elf-get-needed-for-build
 debian/dh_girepository.1
 debian/extra-substvars
+debian/g-ir-inspect.1
 debian/libgirepository-1.0-1.symbols
 debian/meson-cross-for-build.ini
 giscanner/__pycache__/

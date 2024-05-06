@@ -1,11 +1,2 @@
-scanner-If-using-libtool-with-a-wrapper-use-libtool-mode-.patch
-Drop-GIO-from-libgirepository-s-dependencies.patch
-tests-Do-not-use-PYTHONPATH-to-import-giscanner.patch
-girparser-Don-t-assume-sizeof-size_t-sizeof-void.patch
-girparser-Make-sizes-in-integer_aliases-more-obviously-co.patch
-girparser-Allow-time_t-off_t-etc.-to-appear-in-GIR-XML.patch
-giscanner-treat-time_t-and-off_t-as-standalone-types.patch
-tests-fix-the-tests-after-time_t-and-off_t-are-standalone.patch
-tests-Add-coverage-for-off_t.patch
 meson-Only-generate-typelib-and-install-win32-files-on-wi.patch
 debian/multiarch_compat.patch
