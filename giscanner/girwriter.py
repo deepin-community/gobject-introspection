@@ -207,12 +207,18 @@ class GIRWriter(XMLWriter):
         self._append_version(callable, attrs)
         self._append_node_generic(callable, attrs)
         self._append_throws(callable, attrs)
+        if callable.finish_func is not None:
+            attrs.append(('glib:finish-func', callable.finish_func))
+        if callable.sync_func is not None:
+            attrs.append(('glib:sync-func', callable.sync_func))
+        if callable.async_func is not None:
+            attrs.append(('glib:async-func', callable.async_func))
         with self.tagcontext(tag_name, attrs):
             self._write_generic(callable)
             self._write_return_type(callable.retval, parent=callable)
             self._write_parameters(callable)
 
-    def _write_function(self, func, tag_name='function'):
+    def _write_function_common(self, func, tag_name='function'):
         if func.internal_skipped:
             return
         attrs = []
@@ -239,14 +245,23 @@ class GIRWriter(XMLWriter):
             self._write_generic(macro)
             self._write_untyped_parameters(macro)
 
+    def _write_function(self, function):
+        if function.is_inline:
+            self._write_function_common(function, tag_name='function-inline')
+        else:
+            self._write_function_common(function, tag_name='function')
+
     def _write_method(self, method):
-        self._write_function(method, tag_name='method')
+        if method.is_inline:
+            self._write_function_common(method, tag_name='method-inline')
+        else:
+            self._write_function_common(method, tag_name='method')
 
     def _write_static_method(self, method):
-        self._write_function(method, tag_name='function')
+        self._write_function_common(method, tag_name='function')
 
     def _write_constructor(self, method):
-        self._write_function(method, tag_name='constructor')
+        self._write_function_common(method, tag_name='constructor')
 
     def _write_return_type(self, return_, parent=None):
         if not return_:
@@ -651,6 +666,7 @@ class GIRWriter(XMLWriter):
                 attrs = [('name', field.name)]
                 self._append_node_generic(field, attrs)
                 with self.tagcontext('field', attrs):
+                    self._write_generic(field)
                     self._write_callback(field.anonymous_node)
             elif isinstance(field.anonymous_node, ast.Record):
                 self._write_record(field.anonymous_node)

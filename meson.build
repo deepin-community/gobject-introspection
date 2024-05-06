@@ -1,6 +1,6 @@
 project('gobject-introspection', 'c',
-  version: '1.78.1',
-  meson_version: '>= 0.60.0',
+  version: '1.80.1',
+  meson_version: '>= 1.2.0',
   default_options: [
     'c_std=gnu99',
     'warning_level=2',
@@ -20,9 +20,13 @@ pymod = import('python')
 python = pymod.find_installation(get_option('python'))
 
 python_version = python.language_version()
-python_version_req = '>=3.6'
+python_version_req = '>=3.8'
 if not python_version.version_compare(python_version_req)
   error('Requires Python @0@, @1@ found.'.format(python_version_req, python_version))
+endif
+
+if python_version.version_compare('>=3.12')
+  pymod.find_installation(get_option('python'), modules: ['setuptools'])
 endif
 
 cc = meson.get_compiler('c')
@@ -128,7 +132,10 @@ glib_micro_version = 0  # gi_versions[2]
 glib_version = '>=2.@0@.@1@'.format(gi_versions[1], glib_micro_version)
 
 glib_dep = dependency('glib-2.0', version: glib_version,
-                      default_options: ['tests=false'])
+  default_options: [
+    'tests=false',
+    'introspection=disabled',
+  ])
 gobject_dep = dependency('gobject-2.0', version: glib_version)
 gio_dep = dependency('gio-2.0', version: glib_version)
 gmodule_dep = dependency('gmodule-2.0', version: glib_version)
@@ -220,6 +227,8 @@ if not with_doctool
   warning('Not building with doctool support, not all tests will be run')
 endif
 
+fs = import('fs')
+
 subdir('girepository')
 subdir('tools')
 subdir('giscanner')
@@ -256,8 +265,6 @@ if host_system == 'windows' or host_system == 'cygwin'
 endif
 
 pkgconfig_variables = [
-  'datadir=' + '${prefix}' / get_option('datadir'),
-  'bindir=' + '${prefix}' / get_option('bindir'),
   'g_ir_scanner=${bindir}/g-ir-scanner',
   'g_ir_compiler=${bindir}/g-ir-compiler@0@'.format(exe_ext),
   'g_ir_generate=${bindir}/g-ir-generate@0@'.format(exe_ext),

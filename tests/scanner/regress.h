@@ -10,6 +10,7 @@
 #include <time.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/types.h>
 
 #include "gitestmacros.h"
 
@@ -92,6 +93,9 @@ gunichar regress_test_unichar (gunichar in);
 
 _GI_TEST_EXTERN
 time_t regress_test_timet (time_t in);
+
+_GI_TEST_EXTERN
+off_t regress_test_offt (off_t in);
 
 _GI_TEST_EXTERN
 GType regress_test_gtype (GType in);
@@ -1251,6 +1255,17 @@ int regress_test_callback_thaw_async (void);
 _GI_TEST_EXTERN
 void regress_test_async_ready_callback (GAsyncReadyCallback callback);
 
+_GI_TEST_EXTERN
+void regress_test_function_async (int                 io_priority,
+                                  GCancellable       *cancellable,
+                                  GAsyncReadyCallback callback,
+                                  gpointer            user_data);
+
+_GI_TEST_EXTERN
+gboolean regress_test_function_finish (GAsyncResult *res, GError **error);
+
+_GI_TEST_EXTERN
+gboolean regress_test_function_sync (int io_priority);
 
 _GI_TEST_EXTERN
 void regress_test_obj_instance_method_callback (RegressTestObj *obj, RegressTestCallback callback);
@@ -1262,6 +1277,15 @@ _GI_TEST_EXTERN
 RegressTestObj *regress_test_obj_new_callback (RegressTestCallbackUserData callback,
                                 gpointer user_data,
                                 GDestroyNotify notify);
+
+_GI_TEST_EXTERN
+void regress_test_obj_new_async (const char          *x G_GNUC_UNUSED,
+                                 GCancellable        *cancellable G_GNUC_UNUSED,
+                                 GAsyncReadyCallback  callback G_GNUC_UNUSED,
+                                 gpointer             user_data G_GNUC_UNUSED);
+_GI_TEST_EXTERN
+RegressTestObj *regress_test_obj_new_finish (GAsyncResult  *res G_GNUC_UNUSED,
+                                             GError       **error G_GNUC_UNUSED);
 
 _GI_TEST_EXTERN
 void regress_test_hash_table_callback (GHashTable *data, RegressTestCallbackHashtable callback);
@@ -1611,5 +1635,40 @@ void regress_test_array_struct_in_full (RegressTestStructA *arr, gsize len);
 
 _GI_TEST_EXTERN
 void regress_test_array_struct_in_none (RegressTestStructA *arr, gsize len);
+
+_GI_TEST_EXTERN
+void regress_test_obj_function_async (RegressTestObj     *self,
+                                      int                 io_priority,
+                                      GCancellable       *cancellable,
+                                      GAsyncReadyCallback callback,
+                                      gpointer            user_data);
+
+_GI_TEST_EXTERN
+gboolean regress_test_obj_function_finish (RegressTestObj *self, GAsyncResult *res, GError **error);
+
+_GI_TEST_EXTERN
+gboolean regress_test_obj_function_sync (RegressTestObj *self, int io_priority);
+
+static inline gboolean regress_test_inline_function(gboolean foo);
+/*
+ * regress_test_inline_function:
+ *
+ * An inline function that should be exposed as such
+ */
+static inline gboolean regress_test_inline_function (gboolean foo)
+{
+  return foo;
+}
+
+static inline gboolean regress_test_obj_inline_method(RegressTestObj *obj, gboolean foo);
+/*
+ * regress_test_obj_inline_method:
+ *
+ * An inline function that should be exposed as such
+ */
+static inline gboolean regress_test_obj_inline_method (RegressTestObj *obj, gboolean foo)
+{
+  return foo;
+}
 
 #endif /* __GITESTTYPES_H__ */

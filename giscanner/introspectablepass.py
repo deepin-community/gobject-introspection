@@ -117,12 +117,14 @@ class IntrospectablePass(object):
         if (is_return
         and isinstance(target, (ast.Record, ast.Union))
         and target.get_type is None
+        and (target.copy_func is None or target.free_func is None)
         and not target.foreign):
             if node.transfer != ast.PARAM_TRANSFER_NONE:
                 self._parameter_warning(
                     parent, node,
                     "Invalid non-constant return of bare structure or union; "
-                    "register as boxed type or (skip)")
+                    "register as boxed type, add (copy-func) and (free-func), "
+                    "or (skip)")
                 parent.introspectable = False
             return
 
@@ -209,6 +211,9 @@ class IntrospectablePass(object):
             if not self._type_is_introspectable(obj.retval.type):
                 obj.introspectable = False
                 return True
+        if isinstance(obj, ast.Function) and obj.is_inline:
+            obj.introspectable = False
+            return True
         if isinstance(obj, ast.Signal):
             if obj.emitter is None:
                 return False

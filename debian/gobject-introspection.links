@@ -1,4 +1,5 @@
 usr/share/man/man1/g-ir-compiler.1.gz   usr/share/man/man1/${DEB_HOST_GNU_TYPE}-g-ir-compiler.1.gz
 usr/share/man/man1/g-ir-doc-tool.1.gz   usr/share/man/man1/${DEB_HOST_GNU_TYPE}-g-ir-doc-tool.1.gz
 usr/share/man/man1/g-ir-generate.1.gz   usr/share/man/man1/${DEB_HOST_GNU_TYPE}-g-ir-generate.1.gz
+usr/share/man/man1/g-ir-inspect.1.gz    usr/share/man/man1/${DEB_HOST_GNU_TYPE}-g-ir-inspect.1.gz
 usr/share/man/man1/g-ir-scanner.1.gz    usr/share/man/man1/${DEB_HOST_GNU_TYPE}-g-ir-scanner.1.gz

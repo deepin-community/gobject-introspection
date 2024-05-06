@@ -10,10 +10,10 @@ Forwarded: not-needed
  1 file changed, 3 insertions(+)
 
 diff --git a/girepository/girepository.c b/girepository/girepository.c
-index a0754f4..28aee6d 100644
+index 12eaf36..5afca04 100644
 --- a/girepository/girepository.c
 +++ b/girepository/girepository.c
-@@ -221,6 +221,9 @@ init_globals (void)
+@@ -228,6 +228,9 @@ init_globals (void)
  
        typelib_search_path = g_slist_prepend (typelib_search_path, typelib_dir);
  

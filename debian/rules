@@ -11,9 +11,15 @@ export GIR_SONAME = 1
 export GIR_API_VERSION = 1.0
 export GIR_FORMAT = 1.2
 
-MANPAGES := debian/dh_girepository.1
-$(MANPAGES): debian/dh_girepository
+POD_MANPAGES := debian/dh_girepository.1
+$(POD_MANPAGES): %.1: %
 	pod2man -c "gobject-introspection" -r "$(DEB_VERSION)" $< $@
+
+RST_MANPAGES := debian/g-ir-inspect.1
+$(RST_MANPAGES): %.1: %.rst
+	rst2man $< $@
+
+MANPAGES := $(POD_MANPAGES) $(RST_MANPAGES)
 
 %:
 	dh $@ --builddir=_build
@@ -62,7 +68,9 @@ endif
 override_dh_auto_configure:
 	dh_auto_configure -- $(configure_options)
 
+ifeq ($(filter nodoc,$(DEB_BUILD_PROFILES)),)
 execute_before_dh_auto_build: $(MANPAGES)
+endif
 
 execute_before_dh_auto_build: debian/cross-tools/deb-can-run-$(DEB_HOST_ARCH)
 debian/cross-tools/deb-can-run-$(DEB_HOST_ARCH):
@@ -149,14 +157,6 @@ execute_before_dh_makeshlibs: debian/libgirepository-1.0-1.symbols
 ifneq ($(filter gir1.2-%,$(built_binaries)),)
 execute_after_dh_shlibdeps:
 	perl -w debian/dh_girepository -v -Nlibgirepository1.0-dev
-	# Convert (= ${binary:Version}) dependencies on gir1.2-glib-2.0(-dev)
-	# into (>= ${binary:Version}), so that src:glib2.0 can take over
-	# gir1.2-glib-2.0(-dev) from us.
-	# This can be removed after this source package stops producing
-	# gir1.2-glib-2.0(-dev) and relies on src:glib2.0 for those.
-	perl -p -i \
-		-e 's{\b(gir1\.2-(?:glib|gmodule|gobject|gio)-2\.0(?:-dev)?) *\(= *([^)]+)\)}{$$1 (>= $$2)}g if /:Depends/' \
-		debian/gir1.2-freedesktop*.substvars debian/gir1.2-girepository*.substvars
 endif
 
 execute_before_dh_python3:

@@ -190,6 +190,12 @@ regress_test_timet (time_t in)
   return in;
 }
 
+off_t
+regress_test_offt (off_t in)
+{
+  return in;
+}
+
 GType
 regress_test_gtype (GType in)
 {
@@ -4239,6 +4245,38 @@ regress_test_async_ready_callback (GAsyncReadyCallback callback)
 }
 
 /**
+ * regress_test_function_async:
+ *
+ */
+void
+regress_test_function_async (int                 io_priority G_GNUC_UNUSED,
+                                 GCancellable       *cancellable G_GNUC_UNUSED,
+                                 GAsyncReadyCallback callback G_GNUC_UNUSED,
+                                 gpointer            user_data G_GNUC_UNUSED)
+{
+}
+
+/**
+ * regress_test_function_finish:
+ *
+ */
+gboolean
+regress_test_function_finish (GAsyncResult *res G_GNUC_UNUSED, GError **error G_GNUC_UNUSED)
+{
+  return TRUE;
+}
+
+/**
+ * regress_test_function_sync:
+ *
+ */
+gboolean
+regress_test_function_sync (int io_priority G_GNUC_UNUSED)
+{
+  return TRUE;
+}
+
+/**
  * regress_test_obj_instance_method_callback:
  * @callback: (scope call) (allow-none):
  *
@@ -4282,6 +4320,29 @@ regress_test_obj_new_callback (RegressTestCallbackUserData callback, gpointer us
 
   notified_callbacks = g_slist_prepend(notified_callbacks, info);
 
+  return g_object_new (REGRESS_TEST_TYPE_OBJ, NULL);
+}
+
+/**
+ * regress_test_obj_new_async:
+ *
+ */
+void
+regress_test_obj_new_async (const char          *x G_GNUC_UNUSED,
+                            GCancellable        *cancellable G_GNUC_UNUSED,
+                            GAsyncReadyCallback  callback G_GNUC_UNUSED,
+                            gpointer             user_data G_GNUC_UNUSED)
+{
+}
+
+/**
+ * regress_test_obj_new_finish:
+ *
+ */
+RegressTestObj *
+regress_test_obj_new_finish (GAsyncResult  *res G_GNUC_UNUSED,
+                             GError       **error G_GNUC_UNUSED)
+{
   return g_object_new (REGRESS_TEST_TYPE_OBJ, NULL);
 }
 
@@ -4931,3 +4992,35 @@ regress_test_array_struct_in_none (RegressTestStructA *arr, gsize len)
   g_assert_cmpint (arr[2].some_int, ==, 303);
 }
 
+/**
+ * regress_test_obj_function_async:
+ *
+ */
+void
+regress_test_obj_function_async (RegressTestObj     *self,
+                                 int                 io_priority,
+                                 GCancellable       *cancellable,
+                                 GAsyncReadyCallback callback,
+                                 gpointer            user_data)
+{
+}
+
+/**
+ * regress_test_obj_function_finish:
+ *
+ */
+gboolean
+regress_test_obj_function_finish (RegressTestObj *self, GAsyncResult *res, GError **error)
+{
+  return TRUE;
+}
+
+/**
+ * regress_test_obj_function_sync:
+ *
+ */
+gboolean
+regress_test_obj_function_sync (RegressTestObj *self, int io_priority)
+{
+  return TRUE;
+}
