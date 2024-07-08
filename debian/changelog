@@ -1,3 +1,14 @@
+gobject-introspection (1.80.1-3) unstable; urgency=medium
+
+  * d/p/giscanner-Be-more-thorough-about-applying-Wl-no-as-needed.patch:
+    Add proposed patch to apply -Wl,--no-as-needed more thoroughly.
+    This avoids build regressions in libkkc and ibus-anthy, which pass
+    libraries to `g-ir-scanner --library` that do not contain any functions
+    directly called by the dumper.
+    (Closes: #1060951, #1060953) (Mitigates: #1071116)
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 14 May 2024 18:42:37 +0100
+
 gobject-introspection (1.80.1-2) unstable; urgency=medium
 
   * Release to unstable
