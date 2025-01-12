@@ -1,3 +1,4 @@
 meson-Only-generate-typelib-and-install-win32-files-on-wi.patch
 giscanner-Be-more-thorough-about-applying-Wl-no-as-needed.patch
 debian/multiarch_compat.patch
+remove-dependency-on-distutils.msvccompiler.patch
