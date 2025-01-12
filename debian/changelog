@@ -1,3 +1,9 @@
+gobject-introspection (1.80.1-3deepin1) unstable; urgency=medium
+
+  *giscanner: remove dependency on distutils.msvccompiler.
+
+ -- lichenggang <lichenggang@deepin.org>  Sun, 12 Jan 2025 23:14:04 +0800
+
 gobject-introspection (1.80.1-3) unstable; urgency=medium
 
   * d/p/giscanner-Be-more-thorough-about-applying-Wl-no-as-needed.patch:
