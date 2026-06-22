@@ -132,6 +132,8 @@ class MainTransformer(object):
             if isinstance(node, (ast.Class, ast.Interface)):
                 self._pair_class_virtuals(node)
                 self._pair_property_accessors(node)
+            if isinstance(node, (ast.Enum, ast.Bitfield)):
+                self._pass_member_numeric_name(node)
 
         # Some annotations need to be post function pairing
         self._namespace.walk(self._pass_read_annotations2)
@@ -224,6 +226,29 @@ class MainTransformer(object):
         else:
             target.shadowed_by = node.name
             node.shadows = target.name
+
+    def _check_instance_parameter(self, node, block):
+        if not node.is_method or not node.instance_parameter or not block:
+            return
+
+        param = node.instance_parameter
+        tag = block.params.get(param.argname)
+        annotations = tag.annotations if tag else {}
+        transfer = annotations.get(ANN_TRANSFER, ['none'])[0]
+
+        if ANN_NULLABLE in annotations:
+            message.strict_node(node,
+                '"nullable" annotation on instance parameter of {0}: did you '
+                'really intend that?'.format(node.symbol))
+
+        if (transfer not in (OPT_TRANSFER_NONE, None) and
+                not node.name.startswith('free') and
+                not node.name.startswith('destroy')):
+            message.strict_node(node,
+                '"transfer" annotation of "{0}" on instance parameter of '
+                '{1}: should not be applied to a method\'s instance '
+                'parameter unless this is a free() or destroy() method'.format(
+                    transfer, node.symbol))
 
     def _apply_annotations_function(self, node, chain):
         block = self._blocks.get(node.symbol)
@@ -834,40 +859,72 @@ class MainTransformer(object):
         block = self._get_block(node)
         self._apply_annotations_annotated(node, block)
 
-    def _apply_annotations_param(self, parent, param, tag):
+    def _apply_annotations_param_callback(self, parent, param, tag):
         annotations = tag.annotations if tag else {}
 
+        target = self._transformer.lookup_typenode(param.type)
+        target = self._transformer.resolve_aliases(target)
+        if not isinstance(target, ast.Callback):
+            for ann in (ANN_SCOPE, ANN_DESTROY, ANN_CLOSURE):
+                if ann in annotations:
+                    message.warn(f'invalid "{ann}" annotation: only valid on callback parameters', annotations.position)
+            return
+
+        scope_annotation = annotations.get(ANN_SCOPE)
+        if scope_annotation and len(scope_annotation) == 1:
+            param.scope = scope_annotation[0]
+
+        destroy_annotation = annotations.get(ANN_DESTROY)
+        if destroy_annotation and len(destroy_annotation) == 1:
+            param.destroy_name = self._get_validate_parameter_name(parent, destroy_annotation[0], param)
+            if param.destroy_name is not None:
+                param.scope = ast.PARAM_SCOPE_NOTIFIED
+                destroy_param = parent.get_parameter(param.destroy_name)
+                # This is technically bogus: destroy parameters are not
+                # notified; we handle this in the final transformation pass
+                destroy_param.scope = ast.PARAM_SCOPE_NOTIFIED
+
+        closure_annotation = annotations.get(ANN_CLOSURE)
+        if closure_annotation and len(closure_annotation) == 1:
+            param.closure_name = self._get_validate_parameter_name(parent, closure_annotation[0], param)
+            closure_param = parent.get_parameter(param.closure_name)
+            closure_target = self._transformer.lookup_typenode(closure_param.type)
+            closure_target = self._transformer.resolve_aliases(closure_target)
+            if not isinstance(closure_target, ast.Type):
+                closure_target = closure_param.type
+
+            if closure_target != ast.TYPE_ANY:
+                message.warn('invalid "closure" annotation: only valid on gpointer parameters', annotations.position)
+
+    def _apply_annotations_param_closure(self, parent, param, tag):
+        annotations = tag.annotations if tag else {}
+        if ANN_CLOSURE not in annotations:
+            return
+
+        closure_annotation = annotations.get(ANN_CLOSURE)
+        if len(closure_annotation) != 0:
+            message.warn('invalid "closure" annotation with argument on a callback type', annotations.position)
+            return
+
+        # For callback types, (closure) appears without an argument, and it
+        # is used to mark the parameter that contains the user data; it is
+        # weirdly represented in the GIR and typelib by setting the
+        # param.closure_name field to itself
+        param.closure_name = param.argname
+
+        target = self._transformer.lookup_typenode(param.type)
+        target = self._transformer.resolve_aliases(target)
+        if not isinstance(target, ast.Type):
+            target = param.type
+
+        if target != ast.TYPE_ANY:
+            message.warn('invalid "closure" annotation: only valid on gpointer parameters', annotations.position)
+
+    def _apply_annotations_param(self, parent, param, tag, block):
         if isinstance(parent, (ast.Function, ast.VFunction)):
-            scope_annotation = annotations.get(ANN_SCOPE)
-            if scope_annotation and len(scope_annotation) == 1:
-                param.scope = scope_annotation[0]
-                param.transfer = ast.PARAM_TRANSFER_NONE
-
-            destroy_annotation = annotations.get(ANN_DESTROY)
-            if destroy_annotation:
-                param.destroy_name = self._get_validate_parameter_name(parent,
-                                                                       destroy_annotation[0],
-                                                                       param)
-                if param.destroy_name is not None:
-                    param.scope = ast.PARAM_SCOPE_NOTIFIED
-                    destroy_param = parent.get_parameter(param.destroy_name)
-                    # This is technically bogus; we're setting the scope on the destroy
-                    # itself.  But this helps avoid tripping a warning from finaltransformer,
-                    # since we don't have a way right now to flag this callback a destroy.
-                    destroy_param.scope = ast.PARAM_SCOPE_NOTIFIED
-
-            closure_annotation = annotations.get(ANN_CLOSURE)
-            if closure_annotation and len(closure_annotation) == 1:
-                param.closure_name = self._get_validate_parameter_name(parent,
-                                                                   closure_annotation[0],
-                                                                   param)
+            self._apply_annotations_param_callback(parent, param, tag)
         elif isinstance(parent, ast.Callback):
-            if ANN_CLOSURE in annotations:
-                # For callbacks, (closure) appears without an
-                # argument, and tags a parameter that is a closure. We
-                # represent it (weirdly) in the gir and typelib by
-                # setting param.closure_name to itself.
-                param.closure_name = param.argname
+            self._apply_annotations_param_closure(parent, param, tag)
 
         self._apply_annotations_param_ret_common(parent, param, tag)
 
@@ -891,7 +948,7 @@ class MainTransformer(object):
                 doc_param = block.params.get(parent.instance_parameter.argname)
             else:
                 doc_param = None
-            self._apply_annotations_param(parent, parent.instance_parameter, doc_param)
+            self._apply_annotations_param(parent, parent.instance_parameter, doc_param, block)
             declparams.add(parent.instance_parameter.argname)
 
         for param in params:
@@ -899,7 +956,7 @@ class MainTransformer(object):
                 doc_param = block.params.get(param.argname)
             else:
                 doc_param = None
-            self._apply_annotations_param(parent, param, doc_param)
+            self._apply_annotations_param(parent, param, doc_param, block)
             declparams.add(param.argname)
 
         if not block:
@@ -1030,7 +1087,7 @@ class MainTransformer(object):
                                                             param, parent)
             else:
                 tag = None
-            self._apply_annotations_param(signal, param, tag)
+            self._apply_annotations_param(signal, param, tag, block)
         self._apply_annotations_return(signal, signal.retval, block)
 
     def _apply_annotations_constant(self, node):
@@ -1065,6 +1122,7 @@ class MainTransformer(object):
             block = self._blocks.get(node.symbol)
 
             self._apply_annotation_rename_to(node, chain, block)
+            self._check_instance_parameter(node, block)
 
             # Handle virtual invokers
             parent = chain[-1] if chain else None
@@ -1236,11 +1294,12 @@ method or constructor of some type."""
                     '%s: Methods must belong to the same namespace as the '
                     'class they belong to' % (func.symbol, ))
             return False
-        if first.direction == ast.PARAM_DIRECTION_OUT:
+        if first.direction in (ast.PARAM_DIRECTION_OUT,
+                               ast.PARAM_DIRECTION_INOUT):
             if func.is_method:
-                message.warn_node(func,
-                    '%s: The first argument of methods cannot be an '
-                    'out-argument' % (func.symbol, ))
+                message.error_node(func,
+                    '%s: The first argument of a method cannot be an '
+                    '%s-argument' % (func.symbol, first.direction))
             return False
 
         # A quick hack here...in the future we should catch C signature/GI signature
@@ -1549,25 +1608,27 @@ method or constructor of some type."""
     def _pair_property_accessors(self, node):
         """Look for accessor methods for class properties"""
         for prop in node.properties:
+            normalized_name = prop.name.replace('-', '_')
             if not prop.introspectable:
                 continue
+            setter = None
+            getter = []
             if prop.setter is None:
-                normalized_name = prop.name.replace('-', '_')
                 if prop.writable and not prop.construct_only:
                     setter = 'set_' + normalized_name
-                else:
-                    setter = None
             else:
                 setter = prop.setter
             if prop.getter is None:
                 if prop.readable:
                     getter = ['get_' + normalized_name]
+                    # Heuristic: boolean properties can have getters that are
+                    # prefixed by is_property_name, like: gtk_window_is_maximized()
+                    if prop.type.is_equiv(ast.TYPE_BOOLEAN) and not normalized_name.startswith("is_"):
+                        getter.append(f"is_{normalized_name}")
                     # Heuristic: read-only properties can have getters that are
                     # just the property name, like: gtk_widget_has_focus()
                     if not prop.writable and prop.type.is_equiv(ast.TYPE_BOOLEAN):
                         getter.append(normalized_name)
-                else:
-                    getter = []
             else:
                 getter = [prop.getter]
             for method in node.methods:
@@ -1595,6 +1656,14 @@ method or constructor of some type."""
                         method.get_property = prop.name
                     prop.getter = method.name
                     continue
+
+    def _pass_member_numeric_name(self, node):
+        """Validate the name of the members of enumeration types."""
+        for member in node.members:
+            if re.match(r"^[0-9]", member.name):
+                message.strict_node(node,
+                                    f"Member {member.symbol} for enumeration {node.ctype} "
+                                     "starts with a number")
 
     def _pass3(self, node, chain):
         """Pass 3 is after we've loaded GType data and performed type
@@ -1760,18 +1829,19 @@ method or constructor of some type."""
         # First, do defaults for well-known callback types
         for param in params:
             argnode = self._transformer.lookup_typenode(param.type)
+            argnode = self._transformer.resolve_aliases(argnode)
             if isinstance(argnode, ast.Callback):
-                if param.type.target_giname in ('Gio.AsyncReadyCallback',
-                                                'GLib.DestroyNotify'):
+                if argnode.gi_name in ('Gio.AsyncReadyCallback', 'GLib.DestroyNotify'):
                     param.scope = ast.PARAM_SCOPE_ASYNC
                     param.transfer = ast.PARAM_TRANSFER_NONE
 
         callback_param = None
         for param in params:
             argnode = self._transformer.lookup_typenode(param.type)
+            argnode = self._transformer.resolve_aliases(argnode)
             is_destroynotify = False
             if isinstance(argnode, ast.Callback):
-                if param.type.target_giname == 'GLib.DestroyNotify':
+                if argnode.gi_name == 'GLib.DestroyNotify':
                     is_destroynotify = True
                 else:
                     callback_param = param

@@ -1,6 +1,6 @@
 project('gobject-introspection', 'c',
-  version: '1.80.1',
-  meson_version: '>= 1.2.0',
+  version: '1.84.0',
+  meson_version: '>= 1.4.0',
   default_options: [
     'c_std=gnu99',
     'warning_level=2',
@@ -78,11 +78,29 @@ endif
 project_c_args = cc.get_supported_arguments(project_c_args)
 add_project_arguments(project_c_args, language: 'c')
 
-if cc.get_id() == 'msvc' and project_c_args.contains('-utf-8')
-  extra_giscanner_cflags = ['-utf-8']
+extra_giscanner_cflags = []
+if cc.get_argument_syntax() == 'msvc'
+  if cc.get_id() == 'msvc' and project_c_args.contains('-utf-8')
+    extra_giscanner_cflags += ['-utf-8']
+  endif
+
+  # For the latest Windows SDK (10.0.26100.0)+, we need to compile the dumper program with the CRT cflags
+  # (i.e. /MD, /MDd, etc, based on the build type that we are using, as the latest SDK enforces building
+  # and linking in CRT check directives, which are determined by the CRT cflag
+  msvc_crt_cflag = []
+  b_vscrt = get_option('b_vscrt')
+  if b_vscrt in ['from_buildtype', 'static_from_buildtype']
+    if get_option('buildtype') == 'debug'
+      msvc_crt_cflag = b_vscrt == 'static_from_buildtype' ? '/MTd' : '/MDd'
+    else
+      msvc_crt_cflag = b_vscrt == 'static_from_buildtype' ? '/MT' : '/MD'
+    endif
+  else
+    msvc_crt_cflag = b_vscrt
+  endif
+  extra_giscanner_cflags += msvc_crt_cflag
   extra_giscanner_args = ['--cflags-begin'] + extra_giscanner_cflags + ['--cflags-end']
 else
-  extra_giscanner_cflags = []
   extra_giscanner_args = []
 endif
 
@@ -118,18 +136,24 @@ add_project_arguments(['-DHAVE_CONFIG_H'], language: 'c')
 gi_hidden_visibility_cflags = []
 if host_system == 'windows'
   config.set('DLL_EXPORT', true)
-  config.set('_GI_EXTERN', '__declspec(dllexport) extern')
+  extern_decl = '__declspec(dllexport) extern'
   if cc.get_id() != 'msvc'
     gi_hidden_visibility_cflags += '-fvisibility=hidden'
   endif
 else
-  config.set('_GI_EXTERN', '__attribute__((visibility("default"))) extern')
+  extern_decl = '__attribute__((visibility("default"))) extern'
   gi_hidden_visibility_cflags += '-fvisibility=hidden'
 endif
+config.set('_GI_EXTERN', extern_decl)
+if cc.get_id() == 'msvc'
+  add_project_arguments('/DGI_TEST_EXTERN=@0@'.format(extern_decl),
+    language: 'c')
+else
+  add_project_arguments('-DGI_TEST_EXTERN=@0@'.format(extern_decl),
+    language: 'c')
+endif
 
-# Reset to 0 if g-i micro version exceeds GLib's
-glib_micro_version = 0  # gi_versions[2]
-glib_version = '>=2.@0@.@1@'.format(gi_versions[1], glib_micro_version)
+glib_version = '>=2.82.0'
 
 glib_dep = dependency('glib-2.0', version: glib_version,
   default_options: [
@@ -164,9 +188,38 @@ endif
 pkg_config = find_program('pkg-config')
 g_ir_scanner_env = environment()
 dep_type = glib_dep.type_name()
-if dep_type == 'internal'
-  g_ir_scanner_env.append('PKG_CONFIG_PATH', meson.global_build_root() + '/meson-uninstalled')
+if dep_type == 'internal' or meson.is_subproject()
+  g_ir_scanner_env.prepend('PKG_CONFIG_PATH', meson.global_build_root() + '/meson-uninstalled')
   g_ir_scanner_env.set('PKG_CONFIG', pkg_config.full_path())
+endif
+
+pkg_config_path = get_option('pkg_config_path')
+if pkg_config_path.length() > 0
+  g_ir_scanner_env.append('PKG_CONFIG_PATH', pkg_config_path)
+endif
+
+# Set up the environment that will be fed to the build
+if host_system in ['darwin', 'ios']
+  var = 'DYLD_LIBRARY_PATH'
+elif host_system in ['windows', 'cygwin']
+  var = 'PATH'
+else
+  var = 'LD_LIBRARY_PATH'
+endif
+
+current_library_path = run_command(
+  [
+    python,
+    '-c',
+    'import os; print(os.environ["@0@"]) if "@0@" in os.environ else ""'.format(var)
+  ],
+  capture: true,
+  check: true,
+)
+
+g_ir_scanner_env.set(var, current_library_path.stdout().strip())
+if host_system in ['windows', 'cygwin']
+  g_ir_scanner_env.prepend(var, gio_dep.get_variable('giomoduledir'))
 endif
 
 configure_file(
@@ -248,7 +301,7 @@ subdir('docs')
 
 # The tests will also run, which is not possible if they
 # were built for a different architecture.
-if not meson.is_cross_build()
+if not meson.is_cross_build() and get_option('tests')
   subdir('tests')
 endif
 
@@ -299,7 +352,7 @@ pkg.generate(
 )
 
 # Dependency object used by Meson's GNOME module. This dependency variable must
-# be named girepo_dep for backward compatibility with projects that where already
+# be named girepo_dep for backward compatibility with projects that were already
 # using that name as fallback: dependency('gobject-introspection-1.0',
 # fallback : ['gobject-introspection', 'girepo_dep'])
 if get_option('build_introspection_data') == true

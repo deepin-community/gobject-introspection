@@ -1,22 +1,31 @@
+include:
+  - project: 'gnome/citemplates'
+    file: 'flatpak/flatpak_ci_initiative.yml'
+  - component:  gitlab.gnome.org/GNOME/citemplates/release-service@master
+    inputs:
+      dist-job-name: "release-build"
+      tarball-artifact-path: "_build/meson-dist/$CI_PROJECT_NAME-$CI_COMMIT_TAG.tar.xz"
+
 stages:
   - build
   - deploy
 
-image: registry.gitlab.gnome.org/gnome/gobject-introspection:v13
+image: registry.gitlab.gnome.org/gnome/gobject-introspection:v15
 
 cache:
   paths:
     - _ccache/
 
 variables:
-  COMMON_MESON_FLAGS: "--prefix /usr --libdir lib64 --buildtype=debug -Dglib:werror=false -Dcairo=enabled -Dpython=python3"
+  COMMON_MESON_FLAGS: "--prefix /usr --libdir lib64 -Dglib:werror=false -Dcairo=enabled -Dpython=python3"
 
 fedora-x86_64-meson:
   stage: build
   variables:
+    GIT_SUBMODULE_STRATEGY: normal
     CCACHE_BASEDIR: "${CI_PROJECT_DIR}"
     CCACHE_DIR: "${CI_PROJECT_DIR}/_ccache"
-    EXTRA_MESON_FLAGS: "-Ddoctool=enabled -Dgtk_doc=true -Dwerror=true"
+    EXTRA_MESON_FLAGS: "--buildtype=debug -Ddoctool=enabled -Dgtk_doc=true -Dwerror=true"
   script:
     - meson setup ${COMMON_MESON_FLAGS} ${EXTRA_MESON_FLAGS} _build .
     - .gitlab-ci/show-git-commits.sh || true
@@ -38,13 +47,14 @@ fedora-x86_64-meson:
       - public
 
 fedora-x86_64-subprojects:
-  image: registry.gitlab.gnome.org/gnome/gobject-introspection:min-v6
+  image: registry.gitlab.gnome.org/gnome/gobject-introspection:min-v8
   stage: build
   variables:
+    GIT_SUBMODULE_STRATEGY: normal
     CCACHE_BASEDIR: "${CI_PROJECT_DIR}"
     CCACHE_DIR: "${CI_PROJECT_DIR}/_ccache"
   script:
-    - meson setup _build .
+    - meson setup --buildtype=debug _build .
     - .gitlab-ci/show-git-commits.sh || true
     - meson compile -C _build
     - meson test -C _build --print-errorlogs --suite=gobject-introspection
@@ -55,14 +65,14 @@ fedora-x86_64-subprojects:
     name: "gi-_${CI_COMMIT_REF_NAME}"
     paths:
       - "${CI_PROJECT_DIR}/_build/meson-logs"
-      - public
 
 fedora-x86_64-no-introspection-data:
   stage: build
   variables:
+    GIT_SUBMODULE_STRATEGY: normal
     CCACHE_BASEDIR: "${CI_PROJECT_DIR}"
     CCACHE_DIR: "${CI_PROJECT_DIR}/_ccache"
-    EXTRA_MESON_FLAGS: "-Dwerror=true"
+    EXTRA_MESON_FLAGS: "--buildtype=debug -Dwerror=true"
   script:
     - meson setup ${COMMON_MESON_FLAGS} ${EXTRA_MESON_FLAGS} _build .
     - .gitlab-ci/show-git-commits.sh || true
@@ -75,14 +85,15 @@ fedora-x86_64-no-introspection-data:
     name: "gi-_${CI_COMMIT_REF_NAME}"
     paths:
       - "${CI_PROJECT_DIR}/_build/meson-logs"
-      - public
 
 fedora-x86_64-python3.8:
   stage: build
   variables:
+    GIT_SUBMODULE_STRATEGY: normal
     CCACHE_BASEDIR: "${CI_PROJECT_DIR}"
     CCACHE_DIR: "${CI_PROJECT_DIR}/_ccache"
     PYENV_VERSION: "3.8.17"
+    EXTRA_MESON_FLAGS: "--buildtype=debug"
   script:
     - meson setup ${COMMON_MESON_FLAGS} ${EXTRA_MESON_FLAGS} _build .
     - .gitlab-ci/show-git-commits.sh || true
@@ -95,13 +106,13 @@ fedora-x86_64-python3.8:
     name: "gi-_${CI_COMMIT_REF_NAME}"
     paths:
       - "${CI_PROJECT_DIR}/_build/meson-logs"
-      - public
 
 msys2-mingw64-meson:
   stage: build
   tags:
     - win32-ps
   variables:
+    GIT_SUBMODULE_STRATEGY: normal
     MSYSTEM: "MINGW64"
     CHERE_INVOKING: "yes"
   script:
@@ -119,6 +130,7 @@ msys2-clang64-meson:
   tags:
     - win32-ps
   variables:
+    GIT_SUBMODULE_STRATEGY: normal
     MSYSTEM: "CLANG64"
     CHERE_INVOKING: "yes"
   script:
@@ -135,6 +147,8 @@ vs2017-x64-meson:
   stage: build
   tags:
     - win32-ps
+  variables:
+    GIT_SUBMODULE_STRATEGY: normal
   script:
     - .gitlab-ci/test-msvc.bat
   artifacts:
@@ -142,6 +156,30 @@ vs2017-x64-meson:
     name: "gi-_${env:CI_COMMIT_REF_NAME}"
     paths:
       - _build/meson-logs
+
+release-build:
+  stage: build
+  needs: []
+  variables:
+    GIT_SUBMODULE_STRATEGY: normal
+    CCACHE_BASEDIR: "${CI_PROJECT_DIR}"
+    CCACHE_DIR: "${CI_PROJECT_DIR}/_ccache"
+    EXTRA_MESON_FLAGS: "--buildtype=release -Ddoctool=enabled -Dgtk_doc=true"
+  script:
+    - git config --global --add safe.directory $CI_PROJECT_DIR
+    - git config --global --add safe.directory $CI_PROJECT_DIR/gobject-introspection-tests
+    - meson subprojects download
+    - meson subprojects update --reset
+    - meson setup ${COMMON_MESON_FLAGS} ${EXTRA_MESON_FLAGS} _build .
+    - .gitlab-ci/show-git-commits.sh || true
+    - meson compile -C _build
+    - meson dist -C _build --include-subprojects --no-tests
+  artifacts:
+    when: always
+    name: "gi-_${CI_COMMIT_REF_NAME}"
+    paths:
+      - "${CI_PROJECT_DIR}/_build/meson-logs"
+      - "${CI_PROJECT_DIR}/_build/meson-dist/*.tar.xz"
 
 pages:
   stage: deploy

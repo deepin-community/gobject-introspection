@@ -447,6 +447,13 @@ dump_boxed_type (GType type, const char *symbol, FILE *out)
 }
 
 static void
+dump_pointer_type (GType type, const char *symbol, FILE *out)
+{
+  escaped_printf (out, "  <pointer name=\"%s\" get-type=\"%s\"/>\n",
+                  g_type_name (type), symbol);
+}
+
+static void
 dump_flags_type (GType type, const char *symbol, FILE *out)
 {
   guint i;
@@ -569,7 +576,7 @@ dump_type (GType type, const char *symbol, FILE *out)
       dump_enum_type (type, symbol, out);
       break;
     case G_TYPE_POINTER:
-      /* GValue, etc.  Just skip them. */
+      dump_pointer_type (type, symbol, out);
       break;
     default:
       dump_fundamental_type (type, symbol, out);
@@ -627,7 +634,13 @@ g_irepository_dump (const char  *arg,
 
   char **args = g_strsplit (arg, ",", 2);
   if (args == NULL)
-    return FALSE;
+    {
+      g_set_error (error,
+		   G_FILE_ERROR,
+		   G_FILE_ERROR_FAILED,
+		   "Usage: --introspect-dump=input,output");
+      return FALSE;
+    }
 
   const char *input_filename = args[0];
   const char *output_filename = args[1];
@@ -700,7 +713,8 @@ g_irepository_dump (const char  *arg,
 
           if (type == G_TYPE_INVALID)
             {
-              g_printerr ("Invalid GType function: '%s'\n", function);
+              g_set_error (error, G_FILE_ERROR, G_FILE_ERROR_FAILED,
+                           "Invalid GType function: %s", function);
               caught_error = TRUE;
               g_free (line);
               break;
@@ -720,7 +734,8 @@ g_irepository_dump (const char  *arg,
 
           if (quark == 0)
             {
-              g_printerr ("Invalid error quark function: '%s'\n", function);
+              g_set_error (error, G_FILE_ERROR, G_FILE_ERROR_FAILED,
+                           "Invalid error quark function: %s", function);
               caught_error = TRUE;
               g_free (line);
               break;

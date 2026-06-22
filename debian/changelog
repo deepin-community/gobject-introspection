@@ -1,8 +1,129 @@
-gobject-introspection (1.80.1-3deepin1) unstable; urgency=medium
+gobject-introspection (1.84.0-1) unstable; urgency=medium
 
-  *giscanner: remove dependency on distutils.msvccompiler.
+  * New upstream release (functionally equivalent to 1.83.4)
+  * d/gbp.conf: Use upstream/1.84.x branch for trixie
+  * Standards-Version: 4.7.2 (no changes required)
 
- -- lichenggang <lichenggang@deepin.org>  Sun, 12 Jan 2025 23:14:04 +0800
+ -- Simon McVittie <smcv@debian.org>  Mon, 17 Mar 2025 12:57:47 +0000
+
+gobject-introspection (1.83.4-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Sat, 08 Mar 2025 14:36:14 -0500
+
+gobject-introspection (1.83.2-2) unstable; urgency=medium
+
+  * Release to unstable
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Wed, 05 Mar 2025 20:26:13 -0500
+
+gobject-introspection (1.83.2-1) experimental; urgency=medium
+
+  [ Jeremy Bícha ]
+  * New upstream release
+  * Bump minimum meson
+
+  [ Simon McVittie ]
+  * d/rules: Pass build architecture CFLAGS, etc. when appropriate
+    deb-elf-get-needed-for-build should be built with the build
+    architecture's compiler flags.
+  * d/rules: Build deb-elf-get-needed-for-build unconditionally.
+    This helps QA tools to detect whether we're doing it right.
+  * d/salsa-ci.yml: Opt-in to being cross-built.
+    This package has a non-trivial cross-compilation setup which we should
+    verify in CI.
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Tue, 04 Mar 2025 12:55:46 -0500
+
+gobject-introspection (1.82.0-4) unstable; urgency=medium
+
+  * dh_girepository: Use the binary package version to generate deps.
+    The version of a binary package can be set dynamically at build-time
+    using dh_gencontrol; dh_girepository instead is using the static
+    source package version, which generates unsatisfiable dependencies
+    if the version is changed by dh_gencontrol, breaking installability.
+    Use ${binary:Version} which will be substituted with the actual
+    binary package version at a later time. (Closes: #1065726)
+
+ -- Alessandro Astone <alessandro.astone@canonical.com>  Thu, 09 Jan 2025 16:54:07 +0000
+
+gobject-introspection (1.82.0-3) unstable; urgency=medium
+
+  * d/control: Build-depend on python3-markdown without the :native
+    qualifier.
+    python3-markdown (>= 3.7-2) is Multi-Arch: foreign. apt considers
+    a Multi-Arch: foreign package to be a valid dependency resolution
+    for a dependency with the :native qualifier, but dpkg-checkbuilddeps
+    does not (see #1023438). (Closes: #1090228)
+  * d/rules: Tell blhc to ignore temporary modules used to gather
+    dependencies.
+    These appear in the build log because we're running dh_girepository in
+    verbose mode. It's OK that these temporary modules are linked without
+    using dpkg's default compiler flags for hardening and similar things,
+    because they are linked, passed to dh_shlibdeps to collect their
+    dependencies and then discarded: they are not included in any package.
+  * d/control: Remove unnecessary Build-Depends on libtool
+  * d/salsa-ci.yml: Add
+
+ -- Simon McVittie <smcv@debian.org>  Mon, 16 Dec 2024 18:48:05 +0000
+
+gobject-introspection (1.82.0-2) unstable; urgency=medium
+
+  * Release to unstable
+
+ -- Simon McVittie <smcv@debian.org>  Sat, 21 Sep 2024 12:58:21 +0100
+
+gobject-introspection (1.82.0-1) experimental; urgency=medium
+
+  [ Simon McVittie ]
+  * New upstream release
+  * d/control: Bump GLib dependency to 2.82.0 as per meson.build
+  * d/control: Add Breaks on older libglib-object-introspection-perl
+    (avoids: #1081701)
+  * d/control, d/rules, d/*-g-ir-tool.in:
+    Use cross-exe-wrapper instead of running qemu directly.
+    This avoids needing to hard-code knowledge of how to run qemu-user.
+    Because cross-exe-wrapper:i386 has the appropriate special case for
+    an amd64 native architecture, this also avoids needing to install
+    qemu-user when cross-compiling i386 packages on amd64
+    (similar to #1070773).
+  * Merge packaging from unstable
+    - d/p/giscanner-remove-dependency-on-distutils.msvccompiler.patch:
+      Drop patch, included in 1.81.4-1
+    - d/gbp.conf: Revert changes
+  * d/control: Fix a typo in gobject-introspection Description
+
+  [ Niels Thykier ]
+  * dh_girepository: Use Dh_Lib.pm's dpkg_architecture_value instead of
+    calling an external dpkg-architecture command
+
+ -- Simon McVittie <smcv@debian.org>  Sat, 14 Sep 2024 17:51:40 +0100
+
+gobject-introspection (1.81.4-1) experimental; urgency=medium
+
+  * New upstream prerelease
+  * d/copyright: Update
+  * d/p/giscanner-Be-more-thorough-about-applying-Wl-no-as-needed.patch:
+    Drop patch, applied upstream
+  * d/p/meson-Only-generate-typelib-and-install-win32-files-on-wi.patch:
+    Refresh patch
+  * Standards-Version: 4.7.0 (no changes required)
+  * Update Lintian overrides
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 06 Sep 2024 11:50:22 +0100
+
+gobject-introspection (1.80.1-4) unstable; urgency=high
+
+  * d/gbp.conf: Branch for testing/unstable.
+    We have 1.81.x in experimental, but it isn't clear whether there is
+    going to be a 1.82.0 for GNOME 47.
+  * d/p/giscanner-remove-dependency-on-distutils.msvccompiler.patch:
+    Backport patch from 1.81.2 to fix regression with setuptools 74.x
+  * Set high urgency because this is breaking the build of dependent
+    packages
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 10 Sep 2024 11:29:30 +0100
 
 gobject-introspection (1.80.1-3) unstable; urgency=medium
 

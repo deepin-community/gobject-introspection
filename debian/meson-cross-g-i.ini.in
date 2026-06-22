@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 [binaries]
+exe_wrapper = '@bindir@/@DEB_HOST_GNU_TYPE@-cross-exe-wrapper'
 g-ir-annotation-tool = '@bindir@/@DEB_HOST_GNU_TYPE@-g-ir-annotation-tool'
 g-ir-compiler = '@bindir@/@DEB_HOST_GNU_TYPE@-g-ir-compiler'
 g-ir-doc-tool = '@bindir@/@DEB_HOST_GNU_TYPE@-g-ir-doc-tool'

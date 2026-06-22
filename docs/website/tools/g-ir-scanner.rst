@@ -50,7 +50,7 @@ OPTIONS
     This parameters decides which the resulting format will be used. The
     default value is gir.
 
---include=NAME
+-i NAME, --include=NAME
     Add the specified introspection dependency to the scanned namespace.
     NAME is of the form NAMESPACE-VERSION, like Gtk-3.0.
 
@@ -63,7 +63,7 @@ OPTIONS
     Add a directory to the path which the scanner uses to find GIR files. Can
     be used multiple times to specify multiple directories
 
--i, --library=LIBRARY
+-l LIBRARY, --library=LIBRARY
     Specifies a library that will be introspected. This means that the
     \*_get_type() functions in it will be called for GObject data types. The
     name of the library should not contain the leading lib prefix nor the
@@ -82,6 +82,10 @@ OPTIONS
 --c-include=C_INCLUDES
     Headers which should be included in C programs. This option can be
     specified multiple times to include more than one header.
+
+--doc-format=DOC_FORMAT
+    The format of the inline documentation. This option can either be gi-docgen,
+    gtk-doc-markdown, gtk-doc-docbook or hotdoc.
 
 -n, --namespace=NAME
     The namespace name. This name should be capitalized, eg the first letter

@@ -166,8 +166,10 @@ stringtext				([^\\\"])|(\\.)
 "__asm__" 	        	        { if (!parse_ignored_macro()) REJECT; }
 "__attribute__" 		        { if (!parse_ignored_macro()) REJECT; }
 "__attribute" 		                { if (!parse_ignored_macro()) REJECT; }
+"_Alignas" 		                { if (!parse_ignored_macro()) REJECT; }
 "__const"                               { return CONST; }
 "__extension__"                         { return EXTENSION; }
+"__forceinline"                         { return INLINE; }
 "__inline__"                            { return INLINE; }
 "__inline"				{ return INLINE; }
 "__nonnull" 			        { if (!parse_ignored_macro()) REJECT; }
@@ -191,6 +193,7 @@ stringtext				([^\\\"])|(\\.)
 "__declspec(deprecated(".*"))"		{ /* Ignore */ }
 "__declspec"[\t ]*"("[a-z\t ]+")"	{ /* Ignore */ }
 "__stdcall" 			        { /* ignore */ }
+"__fastcall" 			        { /* ignore */ }
 "__w64"					{ /* ignore */ }
 
 "G_GINT64_CONSTANT"			{ return INTL_CONST; }
@@ -208,6 +211,7 @@ stringtext				([^\\\"])|(\\.)
 "break"					{ return BREAK; }
 "case"					{ return CASE; }
 "char"					{ return BASIC_TYPE; }
+"_Complex"				{ return COMPLEX; }
 "const"					{ return CONST; }
 "continue"				{ return CONTINUE; }
 "default"				{ return DEFAULT; }
@@ -226,6 +230,8 @@ stringtext				([^\\\"])|(\\.)
 "_Float128x"                            { return BASIC_TYPE; }
 "__float80"                             { return BASIC_TYPE; }
 "__float128"                            { return BASIC_TYPE; }
+"__Float32x4_t"                         { return BASIC_TYPE; }
+"__Float64x2_t"                         { return BASIC_TYPE; }
 "for"					{ return FOR; }
 "goto"					{ return GOTO; }
 "if"					{ return IF; }
@@ -247,6 +253,9 @@ stringtext				([^\\\"])|(\\.)
 "sizeof"				{ return SIZEOF; }
 "static"				{ return STATIC; }
 "struct"				{ return STRUCT; }
+"__SVFloat32_t"                         { return BASIC_TYPE; }
+"__SVFloat64_t"                         { return BASIC_TYPE; }
+"__SVBool_t"                            { return BASIC_TYPE; }
 "switch"				{ return SWITCH; }
 "typedef"				{ return TYPEDEF; }
 "union"					{ return UNION; }
@@ -269,6 +278,8 @@ stringtext				([^\\\"])|(\\.)
 
 "\""{stringtext}*"\""			{ return STRING; }
 "L\""{stringtext}*"\""			{ return STRING; }
+"@\""{stringtext}*"\""			{ return STRING; }
+"@"[a-z][a-zA-Z_0-9]*			{ return STRING; }
 
 .					{ print_error(scanner); }
 

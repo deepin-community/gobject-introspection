@@ -22,13 +22,14 @@ binding for the GObject Introspection framework.
   generators as an optimization, its a lot faster to read metadata from the
   typelib than it is to extract the metadata from the GIR XML files.
 
-* Use the Everything library in your unittests, aim at testing all functions
-  there. Do testing as early as possible in the development of the binding, as
-  the code is likely to be more complex than you anticipate.
+* Use `gobject-introspection-tests <https://gitlab.gnome.org/GNOME/gobject-introspection-tests>`
+  in your unit tests. Aim at testing all functions there. Do testing as early as
+  possible in the development of the binding, as the code is likely to be more
+  complex than you anticipate.
 
 * Use the same coding style as your language. If libraries for your language
   normally uses underscores do that as well. For instance, Java bindings
-  should have a method on it's GtkButton wrapper called ``setLabel`` and not
+  should have a method on its GtkButton wrapper called ``setLabel`` and not
   ``set_label``.
 
 * If there are existing GObject bindings, reuse them for improved

@@ -104,7 +104,8 @@ typedef enum
   STATE_ALIAS,
   STATE_TYPE,
   STATE_ATTRIBUTE,
-  STATE_PASSTHROUGH
+  STATE_PASSTHROUGH,
+  STATE_DOC_FORMAT  /* 35 */
 } ParseState;
 
 typedef struct _ParseContext ParseContext;
@@ -651,6 +652,7 @@ parse_type_internal (GIrModule *module,
     }
   else if (g_str_has_prefix (str, "GLib.Error"))
     {
+      g_assert (str != NULL);  /* silence compiler error */
       str += strlen ("GLib.");
 
       type->tag = GI_TYPE_TAG_ERROR;
@@ -2481,6 +2483,7 @@ start_glib_signal (GMarkupParseContext *context,
   const gchar *action;
   const gchar *no_hooks;
   const gchar *has_class_closure;
+  const gchar *deprecated;
   GIrNodeInterface *iface;
   GIrNodeSignal *signal;
 
@@ -2499,6 +2502,7 @@ start_glib_signal (GMarkupParseContext *context,
   action = find_attribute ("action", attribute_names, attribute_values);
   no_hooks = find_attribute ("no-hooks", attribute_names, attribute_values);
   has_class_closure = find_attribute ("has-class-closure", attribute_names, attribute_values);
+  deprecated = find_attribute ("deprecated", attribute_names, attribute_values);
 
   if (name == NULL)
     {
@@ -2510,6 +2514,10 @@ start_glib_signal (GMarkupParseContext *context,
 
   ((GIrNode *)signal)->name = g_strdup (name);
 
+  if (deprecated && strcmp (deprecated, "1") == 0)
+    signal->deprecated = TRUE;
+  else
+    signal->deprecated = FALSE;
   signal->run_first = FALSE;
   signal->run_last = FALSE;
   signal->run_cleanup = FALSE;
@@ -2989,6 +2997,11 @@ start_element_handler (GMarkupParseContext *context,
           state_switch (ctx, STATE_PASSTHROUGH);
           goto out;
         }
+      else if (strcmp (element_name, "doc:format") == 0)
+	{
+	  state_switch (ctx, STATE_DOC_FORMAT);
+	  goto out;
+	}
       break;
 
     case 'e':
@@ -3669,6 +3682,13 @@ end_element_handler (GMarkupParseContext *context,
       g_assert (ctx->unknown_depth >= 0);
       if (ctx->unknown_depth == 0)
         state_switch (ctx, ctx->prev_state);
+      break;
+
+    case STATE_DOC_FORMAT:
+      if (require_end_element (context, ctx, "doc:format", element_name, error))
+	{
+          state_switch (ctx, STATE_REPOSITORY);
+        }
       break;
     default:
       g_error ("Unhandled state %d in end_element_handler\n", ctx->state);
