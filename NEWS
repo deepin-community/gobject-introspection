@@ -1,3 +1,65 @@
+1.84.0 - 2025-03-15
+-------------------
+
+* No changes
+
+1.83.4 - 2025-03-08
+-------------------
+
+* Revert support for "static" virtual functions [!526]
+
+1.83.2 - 2025-03-01
+-------------------
+
+* Improve GType inspection helper [!494]
+* Parse C11's _Alignas [#520]
+* Respect custom Python binary [!503]
+* Fix build on the latest Windows SDK [!498]
+* Small performance improvement when looking up a signal information [!504]
+* Use standard imports in the JavaScript templates for g-ir-doctool [!501]
+* Ensure that enumeration members can be marked as deprecated [!512]
+* Add more test coverage for structured union types [!348]
+* Add an option to skip tests when building [!507]
+* Fix various MSVC compatibility issues [!511]
+* Add support for "static" virtual functions [!361]
+* Allow specifying the format of the documentation inside doc blocks [!401]
+* Handle C99's _Complex [!515]
+* Consider UCRT64 and CLANG64 as mingw32 compilers [!516]
+* Handle static NSString syntax [!518]
+* Add instance parameter checks to strict validation [!506, !521]
+* Documentation improvements [!481, !483, !485, !500]
+
+1.82.0 - 2024-09-13
+-------------------
+
+* Require GLib 2.82.0
+
+1.81.4 - 2024-09-03
+-------------------
+
+* Add rpath when building the type dumper on macOS
+* Fix regression in the installation of GIRepository-2.0.typelib [#516]
+
+1.81.2 - 2024-09-03
+-------------------
+
+* Add strict mode warning for enumeration members starting with a number [#418]
+* Set deprecation message for signals and properties
+* Fix HTML definition lists in the documentation generator
+* Catch up with Python-Markdown 3.4 extension API changes [#439]
+* Propagate scanner errors [#453]
+* Do not break when parsing ARM SVE types in system headers [#502]
+* Pair pointer GTypes with their opaque structure [#508]
+* Fix property accessor pairing
+* Handle pid_t, etc. as their own top-level types
+* Add warning for closure annotation [#449, #450]
+* Warn on invalid callback annotations [#137]
+* Make sure to set a GError with an invalid introspect-dump string [#495]
+* Move gobject-introspection tests to a submodule [#489]
+* Remove dependency on distutils.msvccompiler [#515]
+* Be more thorough about applying -Wl,--no-as-needed option [#505]
+* Documentation and build fixes
+
 1.80.1 - 2024-04-01
 -------------------
 
@@ -276,7 +338,7 @@
 * Drop autotools build system :mr:`143`
 * meson: require 0.49.2
 * Update glib annotations (:user:`Rico Tzschichholz <ricotz>`)
-* Add documentation to the RelaxNG schema :mr:`139` (:user:`David Bellot <yimyom>`)
+* Add documentation to the RelaxNG schema :mr:`139` (David Bellot)
 * Unused variable fixes :mr:`147` (:user:`Philip Chimento <ptomato>`)
 * cachestore: handle cache getting deleted while loading it :mr:`148`
 * Visual Studio builds: Use msvc_recommended_pragmas.h from GLib :mr:`150` (:user:`Chun-wei Fan <fanc999>`)
@@ -309,7 +371,7 @@
 * shlibs: fall back to basename on macOS for relative paths :issue:`222`
 * meson: always pass --quiet to g-ir-scanner
 * docs: include '--c-include' in g-ir-scanner man page :issue:`275`
-* tests: Fix compatibility with Python 3.5 :issue:`274` (:user:`Tomasz Miąsko <tmiasko>`)
+* tests: Fix compatibility with Python 3.5 :issue:`274` (Tomasz Miąsko)
 
 
 1.60.0 - 2019-03-10
@@ -325,7 +387,7 @@ autotools + g-i, only the build of g-i itself.
 1.59.5 - 2019-03-04
 -------------------
 
-* gir: Include C header in cairo gir file :mr:`138` (:user:`Tomasz Miąsko <tmiasko>`)
+* gir: Include C header in cairo gir file :mr:`138` (Tomasz Miąsko)
 * ccompiler: restore customize_compiler() setup for macOS. :issue:`268`
 * gir: skip glib-enumtypes.h for GObject-2.0 :mr:`140`
 
@@ -333,7 +395,7 @@ autotools + g-i, only the build of g-i itself.
 1.59.4 - 2019-02-04
 -------------------
 
-* tests: Add functions using flat struct arrays. :mr:`130` (:user:`Tomasz Miąsko <tmiasko>`)
+* tests: Add functions using flat struct arrays. :mr:`130` (Tomasz Miąsko)
 * Clean shebangs out of non-executable scripts and drop exec perm from xmlwriter.py. :mr:`131` (:user:`Dominique Leuenberger <DimStar77>`)
 * maintransformer: parse deprecation annotations for section blocks. :issue:`213` :mr:`132`
 * repository: g_irepository_get_object_gtype_interfaces. :mr:`30` (:user:`Colin Walters <walters>`, :user:`Philip Chimento <ptomato>`)
@@ -353,14 +415,14 @@ autotools + g-i, only the build of g-i itself.
   :mr:`124` (:user:`Mark Nauwelaerts <mnauw>`)
 * scanner: Merge specifiers and qualifiers when merging basic types.
   Fixes "unsigned char" being wrongly parsed as "unsigned" etc.
-  :mr:`125` (:user:`Tomasz Miąsko <tmiasko>`)
+  :mr:`125` (Tomasz Miąsko)
 * meson: warn that not all tests will be run if building without cairo/doctool
 * scanner: rework source root directory guessing code to not depend on the
   build directory
 * scanner: Remove incorrect c:type generated for array of synthesized unions
-  :mr:`127` (:user:`Tomasz Miąsko <tmiasko>`)
+  :mr:`127` (Tomasz Miąsko)
 * scanner: Flatten multi-dimensional arrays fields
-  :mr:`128` (:user:`Tomasz Miąsko <tmiasko>`)
+  :mr:`128` (Tomasz Miąsko)
 
 
 1.59.2 - 2019-01-04
@@ -369,10 +431,10 @@ autotools + g-i, only the build of g-i itself.
 * Everything included in 1.58.3
 * meson: Various fixes and all tests have been ported (0.47+ is required now)
   :mr:`114` :mr:`110` etc.
-  (:user:`Tomasz Miąsko <tmiasko>`, :user:`Emmanuele Bassi <ebassi>`,
+  (Tomasz Miąsko, :user:`Emmanuele Bassi <ebassi>`,
   :user:`Christoph Reiter <creiter>`)
 * scanner: Save preprocessor input and output files with ``save-temps``
-  :mr:`107` (:user:`Tomasz Miąsko <tmiasko>`)
+  :mr:`107` (Tomasz Miąsko)
 * automake: Use the wildcard function where needed
   :mr:`100` (:user:`William Hua <williamhua>`)
 * build: extend ``PYTHONPATH`` instead of replacing it :mr:`101`
@@ -380,10 +442,10 @@ autotools + g-i, only the build of g-i itself.
 * Add a ``--version`` option to g-ir-compiler and g-ir-generate
   :issue:`55` :mr:`106`
 * tests: various test improvements
-  :mr:`111` :mr:`117` :mr:`119` (:user:`Tomasz Miąsko <tmiasko>`)
+  :mr:`111` :mr:`117` :mr:`119` (Tomasz Miąsko)
 * ccompiler: don't use Python compiler flags
   :issue:`150` :mr:`118` :mr:`120`
-  (:user:`Tomasz Miąsko <tmiasko>`, :user:`Christoph Reiter <creiter>`)
+  (Tomasz Miąsko, :user:`Christoph Reiter <creiter>`)
 * parser: Do not bail out when parsing GIR files without doc positions
   :mr:`121` (:user:`Emmanuele Bassi <ebassi>`)
 * gimarshallingtests: Remove declarations of nonexistent functions
@@ -396,7 +458,7 @@ autotools + g-i, only the build of g-i itself.
 * docwriter: Support python-markdown 3.x
   :issue:`250`
 * scanner:  Define grefcount and gatomicrefcount as aliases to gint
-  :issue:`254` (:user:`Tomasz Miąsko <tmiasko>`)
+  :issue:`254` (Tomasz Miąsko)
 * scanner: make using bool without stdbool include work again
   :issue:`247`
 * gir: Update glib annotations for glib 2.58.2
@@ -408,11 +470,11 @@ autotools + g-i, only the build of g-i itself.
 * Everything included in 1.58.2
 * build: Drop Python 2 support, require Python 3.4+ :mr:`69`
 * build: Add option to make .gir files installation paths configurable
-  :mr:`63` (:user:`Kai Kang <kai.7.kang>`)
+  :mr:`63` (Kai Kang)
 * build: Skip gobject/gvaluecollector.h when constructing GObject GIR
-  :mr:`20` (:user:`Tomasz Miąsko <tmiasko>`)
+  :mr:`20` (Tomasz Miąsko)
 * build: Port various tests to work with meson
-  :mr:`92` :mr:`94` :mr:`95` (:user:`Tomasz Miąsko <tmiasko>`)
+  :mr:`92` :mr:`94` :mr:`95` (Tomasz Miąsko)
 * regress: Add test for write-only property
   :mr:`67` (:user:`Philip Chimento <ptomato>`)
 * regress: Implement interface and override properties
@@ -422,13 +484,13 @@ autotools + g-i, only the build of g-i itself.
 * giscanner: Print relative filename paths when warning
   :mr:`74` (:user:`Jonas Ådahl <jadahl>`)
 * giscanner: Define grefcount and gatomicrefcount as aliases to gint
-  :mr:`76` (:user:`Tomasz Miąsko <tmiasko>`)
+  :mr:`76` (Tomasz Miąsko)
 * giscanner: Allow empty declarations. Fixes warnings with mingw headers.
   :issue:`216` :mr:`89` (:user:`Christoph Reiter <creiter>`)
 * giscanner: Replace linked lists with arrays in source scanner
-  :mr:`90` (:user:`Tomasz Miąsko <tmiasko>`)
+  :mr:`90` (Tomasz Miąsko)
 * girepository: Various docs cleanups and fixes
-  :mr:`96` :mr:`97` :issue:`66` (:user:`Tomasz Miąsko <tmiasko>`,
+  :mr:`96` :mr:`97` :issue:`66` (Tomasz Miąsko,
   :user:`Christoph Reiter <creiter>`, Jasper St. Pierre)
 * girepository: Don't abort when calling g_base_info_get_name() on a GITypeInfo
   :issue:`96` :mr:`99` (:user:`Christoph Reiter <creiter>`)
@@ -440,11 +502,11 @@ autotools + g-i, only the build of g-i itself.
 -------------------
 
 * meson: Fix random build errors (mostly MSVC)
-  :mr:`88` (:user:`Tomasz Miąsko <tmiasko>`)
+  :mr:`88` (Tomasz Miąsko)
 * scanner: Fix parsing of __typeof__ that is part of a cast expression
-  :mr:`78` (:user:`Tomasz Miąsko <tmiasko>`)
+  :mr:`78` (Tomasz Miąsko)
 * scanner: Ignore __pragma keyword used by MSVC
-  :mr:`87` (:user:`Tomasz Miąsko <tmiasko>`)
+  :mr:`87` (Tomasz Miąsko)
 
 
 1.58.1 - 2018-11-17

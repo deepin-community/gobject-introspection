@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import re
+from urllib.parse import urlparse, urlunparse
+
+from sphinx.application import Sphinx
+
 extensions = [
     'sphinx.ext.extlinks',
 ]
@@ -27,10 +32,26 @@ html_context = {
 }
 
 extlinks = {
-    'bzbug': ('https://bugzilla.gnome.org/show_bug.cgi?id=%s', 'bz#'),
-    'commit': ('https://gitlab.gnome.org/GNOME/gobject-introspection/commit/%s', ''),
-    'issue': ('https://gitlab.gnome.org/GNOME/gobject-introspection/issues/%s', '#'),
+    'bzbug': ('https://bugzilla.gnome.org/show_bug.cgi?id=%s', 'bz#%s'),
+    'commit': ('https://gitlab.gnome.org/GNOME/gobject-introspection/-/commit/%s', None),
+    'issue': ('https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/%s', '#%s'),
     'mr': (
-        'https://gitlab.gnome.org/GNOME/gobject-introspection/merge_requests/%s', '!'),
-    'user': ('https://gitlab.gnome.org/%s', ''),
+        'https://gitlab.gnome.org/GNOME/gobject-introspection/-/merge_requests/%s', '!%s'),
+    'user': ('https://gitlab.gnome.org/%s', None),
 }
+
+
+_FRAGMENT_MATCH = re.compile(r'L(\d+)(-\d*)?$')
+
+
+def rewrite_gitlab_source_anchors(app: Sphinx, uri: str):
+    parsed = urlparse(uri)
+    if (parsed.hostname in ["gitlab.gnome.org", "gitlab.com"]
+            and parsed.fragment
+            and _FRAGMENT_MATCH.match(parsed.fragment)):
+        return urlunparse(parsed._replace(fragment=''))
+    return None
+
+
+def setup(app: Sphinx):
+    app.connect('linkcheck-process-uri', rewrite_gitlab_source_anchors)

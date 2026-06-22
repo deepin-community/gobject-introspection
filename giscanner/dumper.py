@@ -58,12 +58,13 @@ main(int argc, char **argv)
 
   if (argc != 2 || !g_str_has_prefix (argv[1], introspect_dump_prefix))
     {
-      g_printerr ("Usage: %%s --introspect-dump=input,output", argv[0]);
+      g_printerr ("Usage: %%s --introspect-dump=input,output\\n", argv[0]);
       exit (1);
     }
 
-  if (!dump_irepository (argv[1] + strlen(introspect_dump_prefix), &error))
+  if (!dump_irepository (argv[1] + strlen (introspect_dump_prefix), &error))
     {
+      g_assert (error != NULL);  /* help the static analyser */
       g_printerr ("%%s\\n", error->message);
       exit (1);
     }
@@ -252,9 +253,16 @@ class DumpCompiler(object):
             args.extend(pkg_config_libs)
             self._compiler.get_external_link_flags(args, self._options.libraries)
 
+        if sys.platform == 'darwin':
+            # If the libraries' ID are of the form (@rpath/libfoo.dylib),
+            # then nothing previously can have added the needed rpaths
+            rpath_entries_to_add = [lib.replace('-L/', '-Wl,-rpath,/') for lib in pkg_config_libs if lib.startswith('-L/')]
+            args.extend(rpath_entries_to_add)
+
         if not self._compiler.check_is_msvc():
             for ldflag in shlex.split(os.environ.get('LDFLAGS', '')):
-                args.append(ldflag)
+                if ldflag != '-Wl,--as-needed':
+                    args.append(ldflag)
 
         dll_dirs = utils.dll_dirs()
         dll_dirs.add_dll_dirs(self._packages)
@@ -265,7 +273,7 @@ class DumpCompiler(object):
             sys.stdout.flush()
 
         msys = os.environ.get('MSYSTEM', None)
-        if msys:
+        if msys and not self._compiler.check_is_msvc():
             shell = os.environ.get('SHELL', 'sh.exe')
             # Create a temporary script file that
             # runs the command we want
@@ -283,7 +291,7 @@ class DumpCompiler(object):
         except subprocess.CalledProcessError as e:
             raise LinkerError(e)
         finally:
-            if msys:
+            if msys and not self._compiler.check_is_msvc():
                 os.remove(tf_name)
             dll_dirs.cleanup_dll_dirs()
 

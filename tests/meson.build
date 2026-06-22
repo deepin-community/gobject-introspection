@@ -16,32 +16,36 @@ endif
 
 test_env_common_pypath = [ meson.project_build_root() ]
 
+# While these variables are unused in gobject-introspection
+# they are used by pygobject when building with a subproject
+test_regress_sources = files('../gobject-introspection-tests/regress.c')
+test_regress_headers = files('../gobject-introspection-tests/regress.h')
+test_warnlib_sources = files('../gobject-introspection-tests/warnlib.c')
+test_warnlib_headers = files('../gobject-introspection-tests/warnlib.h')
+test_marshalling_sources = files('../gobject-introspection-tests/gimarshallingtests.c')
+test_marshalling_headers = files('../gobject-introspection-tests/gimarshallingtests.h')
 
-test_regress_sources = files('scanner/regress.c')
-test_regress_headers = files('scanner/regress.h')
-test_warnlib_sources = files('scanner/warnlib.c')
-test_warnlib_headers = files('scanner/warnlib.h')
-test_marshalling_sources = files('gimarshallingtests.c')
-test_marshalling_headers = files('gimarshallingtests.h')
+test_regress_incdirs = include_directories(['../gobject-introspection-tests', 'scanner'])
 
-test_regress_incdirs = include_directories(['.', 'scanner'])
-
+# Continue installing the sources for the time being, for back compatibility
 installed_sources = [
-  'scanner/annotation.c',
-  'scanner/annotation.h',
-  'scanner/drawable.c',
-  'scanner/drawable.h',
-  'scanner/foo.c',
-  'scanner/foo.h',
-  'scanner/regress.c',
-  'scanner/regress.h',
-  'scanner/utility.c',
-  'scanner/utility.h',
-  'scanner/warnlib.c',
-  'scanner/warnlib.h',
-  'gimarshallingtests.c',
-  'gimarshallingtests.h',
-  'gitestmacros.h',
+  '../gobject-introspection-tests/annotation.c',
+  '../gobject-introspection-tests/annotation.h',
+  '../gobject-introspection-tests/drawable.c',
+  '../gobject-introspection-tests/drawable.h',
+  '../gobject-introspection-tests/foo.c',
+  '../gobject-introspection-tests/foo.h',
+  '../gobject-introspection-tests/regress-unix.c',
+  '../gobject-introspection-tests/regress-unix.h',
+  '../gobject-introspection-tests/utility.c',
+  '../gobject-introspection-tests/utility.h',
+  '../gobject-introspection-tests/gitestmacros.h',
+  test_regress_sources,
+  test_regress_headers,
+  test_warnlib_sources,
+  test_warnlib_headers,
+  test_marshalling_sources,
+  test_marshalling_headers,
 ]
 
 test_install_dir = get_option('datadir') / 'gobject-introspection-1.0/tests'
@@ -54,6 +58,10 @@ test_girscanner = find_program('g-ir-scanner', native: true, required : false)
 test_gircompiler = find_program('g-ir-compiler', native: false, required : false)
 
 # Generate everything.h and everything.c:
+everything_args = []
+if host_system != 'windows'
+  everything_args += '--include-last-in-header=sys/socket.h'
+endif
 test_everything_files = custom_target('everything',
   output: ['everything.h', 'everything.c'],
   depends: typelibs,
@@ -62,12 +70,12 @@ test_everything_files = custom_target('everything',
     test_girscanner,
     '--quiet',
     '--generate-typelib-tests=Everything,@OUTPUT0@,@OUTPUT1@',
-    '--function-decoration=_GI_TEST_EXTERN',
+    '--function-decoration=GI_TEST_EXTERN',
     '--include-first-in-src=config.h',
     '--include-last-in-header=gitestmacros.h',
     '--include-last-in-header=sys/types.h',
     '--include-last-in-header=time.h',
-  ],
+  ] + everything_args,
   install: true,
   install_dir: test_install_dir,
 )
@@ -84,7 +92,7 @@ endif
 
 everything_lib = shared_library('everything-1.0',
   sources: test_everything_sources,
-  include_directories : configinc,
+  include_directories : [configinc, include_directories('../gobject-introspection-tests')],
   c_args: gi_hidden_visibility_cflags + custom_c_args,
   dependencies: [glib_dep, gobject_dep],
   version: '1.0.0',
@@ -97,7 +105,8 @@ if cc.get_id() != 'msvc'
 endif
 
 gimarshallingtests_lib = shared_library('gimarshallingtests-1.0',
-  sources: test_marshalling_sources,
+  sources: test_marshalling_sources +
+    ['../gobject-introspection-tests/gimarshallingtestsextra.c'],
   include_directories : configinc,
   c_args: gi_hidden_visibility_cflags + custom_c_args,
   dependencies: [glib_dep, gobject_dep],
@@ -136,13 +145,17 @@ if (glib_dep.type_name() == 'pkgconfig' and
       '--library=everything-1.0',
       '-L', meson.current_build_dir(),
       '-I', meson.current_source_dir(),
+      '-I', join_paths(source_root, 'gobject-introspection-tests'),
       extra_giscanner_args,
       '@INPUT@',
     ]
   )]
 
   test_gir_files += [custom_target('gir-gimarshallingtests',
-    input: test_marshalling_sources + test_marshalling_headers,
+    input: test_marshalling_sources + test_marshalling_headers + [
+      '../gobject-introspection-tests/gimarshallingtestsextra.c',
+      '../gobject-introspection-tests/gimarshallingtestsextra.h',
+    ],
     output: 'GIMarshallingTests-1.0.gir',
     depends: [gimarshallingtests_lib] + typelibs,
     command: [
@@ -168,7 +181,7 @@ if (glib_dep.type_name() == 'pkgconfig' and
   )]
 
   foreach gir : test_gir_files
-    test_typelibs += custom_target('generate-typelib-@0@'.format(gir).underscorify(),
+    test_typelibs += custom_target(
       input: gir,
       output: '@BASENAME@.typelib',
       depends: [gobject_gir, ],

@@ -26,13 +26,23 @@ import tempfile
 import sys
 import distutils
 
-from distutils.msvccompiler import MSVCCompiler
 from distutils.unixccompiler import UnixCCompiler
 from distutils.cygwinccompiler import Mingw32CCompiler
 from distutils.sysconfig import get_config_vars
 from distutils.sysconfig import customize_compiler as orig_customize_compiler
 
 from . import utils
+
+
+def no_as_needed(linker):
+    """\
+    Filter out -Wl,--as-needed from the shell-quoted arguments in linker.
+    """
+    return ' '.join(
+        [shlex.quote(arg)
+         for arg in shlex.split(linker)
+         if arg != '-Wl,--as-needed']
+    )
 
 
 def customize_compiler(compiler):
@@ -88,8 +98,8 @@ def customize_compiler(compiler):
             compiler=cc_cmd,
             compiler_so=cc_cmd,
             compiler_cxx=cxx,
-            linker_so=ldshared,
-            linker_exe=cc,
+            linker_so=no_as_needed(ldshared),
+            linker_exe=no_as_needed(cc),
             archiver=archiver)
 
         compiler.shared_lib_extension = shlib_suffix
@@ -151,7 +161,8 @@ class CCompiler(object):
             # as the official Python binaries are built with
             # Visual Studio
             if compiler_name is None:
-                if environ.get('MSYSTEM') == 'MINGW32' or environ.get('MSYSTEM') == 'MINGW64':
+                mingw = environ.get('MSYSTEM', '')
+                if mingw.startswith(('MINGW', 'CLANG', 'UCRT')) and environ.get('VCINSTALLDIR') is None:
                     compiler_name = 'mingw32'
                 else:
                     compiler_name = distutils.ccompiler.get_default_compiler()
@@ -167,7 +178,7 @@ class CCompiler(object):
         # Now, create the distutils ccompiler instance based on the info we have.
         if compiler_name == 'msvc':
             # For MSVC, we need to create a instance of a subclass of distutil's
-            # MSVC9Compiler class, as it does not provide a preprocess()
+            # MSVCCompiler class, as it does not provide a preprocess()
             # implementation
             from . import msvccompiler
             self.compiler = msvccompiler.get_msvc_compiler()
@@ -230,10 +241,10 @@ class CCompiler(object):
                 # https://bugzilla.gnome.org/show_bug.cgi?id=625195
                 args.append('-Wl,-rpath,.')
 
-                # Ensure libraries are always linked as we are going to use ldd to work
-                # out their names later
-                if sys.platform != 'darwin':
-                    args.append('-Wl,--no-as-needed')
+            # Ensure libraries are always linked as we are going to use ldd to work
+            # out their names later
+            if sys.platform != 'darwin':
+                args.append('-Wl,--no-as-needed')
 
         for library_path in libpaths:
             # The dumper program needs to look for dynamic libraries
@@ -278,6 +289,11 @@ class CCompiler(object):
         # An "external" link is where the library to be introspected
         # is installed on the system; this case is used for the scanning
         # of GLib in gobject-introspection itself.
+
+        # Ensure libraries are always linked as we are going to use ldd to work
+        # out their names later
+        if os.name != 'nt' and sys.platform != 'darwin':
+            args.append('-Wl,--no-as-needed')
 
         for library in libraries:
             if os.path.isfile(library):
@@ -460,7 +476,7 @@ class CCompiler(object):
             return self.compiler.linker_exe
 
     def check_is_msvc(self):
-        return isinstance(self.compiler, MSVCCompiler)
+        return self.compiler.compiler_type == "msvc"
 
     # Private APIs
     def _set_cpp_options(self, options):
@@ -486,7 +502,7 @@ class CCompiler(object):
                     # macros for compiling using distutils
                     # get dropped for MSVC builds, so
                     # escape the escape character.
-                    if isinstance(self.compiler, MSVCCompiler):
+                    if self.check_is_msvc():
                         macro_value = macro_value.replace('\"', '\\\"')
                 macros.append((macro_name, macro_value))
             elif option.startswith('-U'):

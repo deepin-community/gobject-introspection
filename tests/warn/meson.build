@@ -1,7 +1,9 @@
 warn_tests = [
   'annotationparser.h',
+  'callback-invalid-destroy.h',
   'callback-invalid-scope.h',
   'callback-missing-scope.h',
+  'enum-leading-number.h',
   'invalid-allow-none.h',
   'invalid-array.h',
   'invalid-closure.h',

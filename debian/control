@@ -15,29 +15,28 @@ Build-Depends: bison,
                debhelper-compat (= 13),
                dh-sequence-python3,
                flex,
-               gir1.2-glib-2.0-dev (>= 2.80.0) <!nogir>,
+               gir1.2-glib-2.0-dev (>= 2.82.0) <!nogir>,
                gobject-introspection (>= 1.78.1-17~) <cross !nogir>,
                libcairo2-dev,
                libelf-dev,
                libelf-dev:native,
                libffi-dev (>= 3.4),
-               libglib2.0-dev (>= 2.80.0),
+               libglib2.0-dev (>= 2.82.0),
                libpython3-dev,
-               libtool,
-               meson (>= 0.60.0),
+               meson (>= 1.4.0),
                pkgconf,
                python3-debian:native,
                python3-dev:any,
                python3-docutils <!nodoc>,
                python3-mako:native,
-               python3-markdown:native,
+               python3-markdown (>= 3.7-2~) | python3-markdown:native,
                python3-setuptools,
                python3:native,
-               qemu-user <cross>,
+               cross-exe-wrapper <cross>,
 Build-Depends-Indep: gtk-doc-tools,
-                     libglib2.0-doc (>= 2.80.0),
+                     libglib2.0-doc (>= 2.82.0),
 Rules-Requires-Root: no
-Standards-Version: 4.6.2
+Standards-Version: 4.7.2
 Vcs-Browser: https://salsa.debian.org/gnome-team/gobject-introspection
 Vcs-Git: https://salsa.debian.org/gnome-team/gobject-introspection.git
 Homepage: https://wiki.gnome.org/GObjectIntrospection
@@ -50,7 +49,7 @@ Depends: ${misc:Depends},
          ${shlibs:Depends},
 Breaks: libcjs0 (<< 4.8.2-1+b1),
         libgjs0g (<< 1.68.4-1+b1),
-        libglib-object-introspection-perl (<< 0.049-1+b2),
+        libglib-object-introspection-perl (<< 0.051-2~),
         python-gi (<< 3.42.0-1+b1),
         python3-gi (<< 3.42.0-1+b1),
         ruby-gobject-introspection (<< 3.4.3-1+b2),
@@ -75,13 +74,13 @@ Depends: gir1.2-freedesktop (= ${binary:Version}),
          gir1.2-freedesktop-dev (= ${binary:Version}),
          gir1.2-girepository-2.0 (= ${binary:Version}),
          gir1.2-girepository-2.0-dev (= ${binary:Version}),
-         gir1.2-glib-2.0 (>= 2.80.0),
-         gir1.2-glib-2.0-dev (>= 2.80.0),
+         gir1.2-glib-2.0 (>= 2.82.0),
+         gir1.2-glib-2.0-dev (>= 2.82.0),
          gobject-introspection (= ${binary:Version}),
          libffi-dev (>= 3.4),
          libgirepository-1.0-1 (= ${binary:Version}),
          libgirepository-1.0-dev (= ${binary:Version}),
-         libglib2.0-dev (>= 2.80.0),
+         libglib2.0-dev (>= 2.82.0),
          ${misc:Depends},
          ${shlibs:Depends},
 Suggests: libgirepository1.0-doc,
@@ -108,7 +107,7 @@ Multi-Arch: same
 Depends: gobject-introspection (= ${binary:Version}),
          libffi-dev (>= 3.4),
          libgirepository-1.0-1 (= ${binary:Version}),
-         libglib2.0-dev (>= 2.80.0),
+         libglib2.0-dev (>= 2.82.0),
          ${misc:Depends},
          ${shlibs:Depends},
 Suggests: libgirepository1.0-doc,
@@ -146,16 +145,6 @@ Description: Library for handling GObject introspection data (documentation)
  This package contains the documentation for the C library for handling the
  introspection data.
 
-# gobject-introspection is installed for the host architecture if
-# cross-compiling, and it builds and runs a host executable, the "dumper".
-# If python3 is of the same architecture (typical during native compilation)
-# then the ${DEB_HOST_GNU_TYPE}-g-ir-scanner wrapper script runs the
-# dumper directly.
-# If python3 is of a different architecture (typically the build
-# architecture) then ${DEB_HOST_GNU_TYPE}-g-ir-scanner might need to
-# run the dumper via qemu-user, depending on whether binfmt-misc was set up
-# (which we cannot express as a dependency).
-# This only works for the same OS (in practice Linux).
 Package: gobject-introspection
 Multi-Arch: same
 Architecture: any
@@ -164,9 +153,9 @@ Depends: binutils-${local:DEB-HOST-GNU-TYPE-DASHES}:any,
          gobject-introspection-bin (= ${binary:Version}),
          gobject-introspection-bin-${local:DEB-HOST-ARCH-OS} (= ${binary:Version}),
          libgirepository-1.0-1 (= ${binary:Version}),
-         libglib2.0-dev (>= 2.80.0),
+         libglib2.0-dev (>= 2.82.0),
          pkgconf,
-         python3 | qemu-user [linux-any] | qemu-user-static [linux-any],
+         native-architecture | cross-exe-wrapper,
          ${misc:Depends},
          ${python3:Depends},
          ${shlibs:Depends},
@@ -195,7 +184,7 @@ Description: Generate interface introspection data for GObject libraries
  library itself (currently it does provide the libgirepository-1.0.so
  symlink as a workaround for a Meson issue, but this should not be
  relied on). Packages that explicitly link to libgirepository-1.0.so,
- mainly dynamic language bindings like GJS and PyGIi, will need to
+ mainly dynamic language bindings like GJS and PyGI, will need to
  build-depend on libgirepository-1.0-dev in addition to this package.
 
 Package: gobject-introspection-bin

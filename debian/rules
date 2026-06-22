@@ -56,7 +56,7 @@ configure_options += --cross-file=$(CURDIR)/debian/meson-cross-for-build.ini
 # appropriate $(DEB_HOST_GNU_TYPE)-g-ir-scanner and -compiler, which
 # in turn will use the appropriate host gcc.
 configure_options += --native-file=$(CURDIR)/debian/meson-cross-for-build.ini
-configure_options += -Dgi_cross_binary_wrapper=qemu-$(DEB_HOST_ARCH)
+configure_options += -Dgi_cross_binary_wrapper=$(DEB_HOST_GNU_TYPE)-cross-exe-wrapper
 configure_options += -Dgi_cross_ldd_wrapper=$(CURDIR)/debian/deb-elf-get-needed-for-build
 configure_options += -Dgi_cross_use_prebuilt_gi=true
 endif
@@ -81,15 +81,16 @@ execute_before_dh_auto_build: debian/deb-elf-get-needed
 debian/deb-elf-get-needed:
 	$(DEB_HOST_GNU_TYPE)-gcc $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o$@ debian/elf-get-needed.c -lelf
 
-ifneq ($(DEB_HOST_ARCH),$(DEB_BUILD_ARCH))
 execute_before_dh_auto_build: debian/deb-elf-get-needed-for-build
 debian/deb-elf-get-needed-for-build:
-	$(DEB_BUILD_GNU_TYPE)-gcc -o$@ debian/elf-get-needed.c -lelf
-endif
+	$(DEB_BUILD_GNU_TYPE)-gcc \
+		$(CPPFLAGS_FOR_BUILD) $(CFLAGS_FOR_BUILD) $(LDFLAGS_FOR_BUILD) \
+		-o$@ debian/elf-get-needed.c -lelf
 
 execute_before_dh_auto_configure: debian/$(DEB_HOST_GNU_TYPE)-gobject-introspection.ini
 debian/$(DEB_HOST_GNU_TYPE)-gobject-introspection.ini: debian/meson-cross-g-i.ini.in debian/rules
 	sed \
+		-e '/^exe_wrapper *=/d' \
 		-e 's|@DEB_HOST_GNU_TYPE@|$(DEB_HOST_GNU_TYPE)|' \
 		-e 's|@bindir@|/usr/bin|' \
 		< $< > $@.tmp
@@ -156,6 +157,7 @@ execute_before_dh_makeshlibs: debian/libgirepository-1.0-1.symbols
 
 ifneq ($(filter gir1.2-%,$(built_binaries)),)
 execute_after_dh_shlibdeps:
+	@echo 'blhc: ignore-line-regexp: .*\s-o\s+debian/\S+/girepository-1\.0/.*\.typelib\.so\s.*'
 	perl -w debian/dh_girepository -v -Nlibgirepository1.0-dev
 endif
 

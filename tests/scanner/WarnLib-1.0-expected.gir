@@ -5,9 +5,11 @@ and/or use gtk-doc annotations.  -->
 <repository version="1.2"
             xmlns="http://www.gtk.org/introspection/core/1.0"
             xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:doc="http://www.gtk.org/introspection/doc/1.0"
             xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
   <include name="Gio" version="2.0"/>
   <c:include name="warnlib.h"/>
+  <doc:format name="unknown"/>
   <namespace name="WarnLib"
              version="1.0"
              shared-library="libwarnlib-1.0.so"
@@ -16,16 +18,21 @@ and/or use gtk-doc annotations.  -->
     <function-macro name="IS_WHATEVER"
                     c:identifier="WARNLIB_IS_WHATEVER"
                     introspectable="0">
-      <source-position filename="warnlib.h" line="20"/>
+      <source-position filename="warnlib.h" line="24"/>
       <parameters>
         <parameter name="object">
         </parameter>
       </parameters>
     </function-macro>
+    <enumeration name="NumericEnum" c:type="WarnLibNumericEnum">
+      <source-position filename="warnlib.h" line="53"/>
+      <member name="1st" value="1" c:identifier="WARNLIB_1ST">
+      </member>
+    </enumeration>
     <function-macro name="WHATEVER"
                     c:identifier="WARNLIB_WHATEVER"
                     introspectable="0">
-      <source-position filename="warnlib.h" line="19"/>
+      <source-position filename="warnlib.h" line="23"/>
       <parameters>
         <parameter name="object">
         </parameter>
@@ -34,7 +41,7 @@ and/or use gtk-doc annotations.  -->
     <function-macro name="WHATEVER_GET_IFACE"
                     c:identifier="WARNLIB_WHATEVER_GET_IFACE"
                     introspectable="0">
-      <source-position filename="warnlib.h" line="21"/>
+      <source-position filename="warnlib.h" line="25"/>
       <parameters>
         <parameter name="obj">
         </parameter>
@@ -46,12 +53,12 @@ and/or use gtk-doc annotations.  -->
                glib:type-name="WarnLibWhatever"
                glib:get-type="warnlib_whatever_get_type"
                glib:type-struct="WhateverIface">
-      <source-position filename="warnlib.h" line="36"/>
+      <source-position filename="warnlib.h" line="40"/>
       <virtual-method name="do_boo" invoker="do_boo">
         <doc xml:space="preserve"
              filename="warnlib.c"
-             line="38">Does boo.</doc>
-        <source-position filename="warnlib.h" line="35"/>
+             line="37">Does boo.</doc>
+        <source-position filename="warnlib.h" line="39"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -59,13 +66,13 @@ and/or use gtk-doc annotations.  -->
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="warnlib.c"
-                 line="40">a WarnLibWhatever</doc>
+                 line="39">a WarnLibWhatever</doc>
             <type name="Whatever" c:type="WarnLibWhatever*"/>
           </instance-parameter>
           <parameter name="x" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="warnlib.c"
-                 line="41">x parameter</doc>
+                 line="40">x parameter</doc>
             <type name="gint" c:type="int"/>
           </parameter>
           <parameter name="y"
@@ -74,13 +81,13 @@ and/or use gtk-doc annotations.  -->
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="warnlib.c"
-                 line="42">y parameter</doc>
+                 line="41">y parameter</doc>
             <type name="gpointer" c:type="gpointer"/>
           </parameter>
         </parameters>
       </virtual-method>
       <virtual-method name="do_moo" invoker="do_moo">
-        <source-position filename="warnlib.h" line="33"/>
+        <source-position filename="warnlib.h" line="37"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -102,8 +109,8 @@ and/or use gtk-doc annotations.  -->
       <method name="do_boo" c:identifier="warnlib_whatever_do_boo">
         <doc xml:space="preserve"
              filename="warnlib.c"
-             line="38">Does boo.</doc>
-        <source-position filename="warnlib.h" line="41"/>
+             line="37">Does boo.</doc>
+        <source-position filename="warnlib.h" line="45"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -111,7 +118,7 @@ and/or use gtk-doc annotations.  -->
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="warnlib.c"
-                 line="40">a WarnLibWhatever</doc>
+                 line="39">a WarnLibWhatever</doc>
             <type name="Whatever" c:type="WarnLibWhatever*"/>
           </instance-parameter>
           <parameter name="arg1" transfer-ownership="none">
@@ -126,7 +133,7 @@ and/or use gtk-doc annotations.  -->
         </parameters>
       </method>
       <method name="do_moo" c:identifier="warnlib_whatever_do_moo">
-        <source-position filename="warnlib.h" line="39"/>
+        <source-position filename="warnlib.h" line="43"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -149,13 +156,13 @@ and/or use gtk-doc annotations.  -->
     <record name="WhateverIface"
             c:type="WarnLibWhateverIface"
             glib:is-gtype-struct-for="Whatever">
-      <source-position filename="warnlib.h" line="36"/>
+      <source-position filename="warnlib.h" line="40"/>
       <field name="parent_iface">
         <type name="GObject.TypeInterface" c:type="GTypeInterface"/>
       </field>
       <field name="do_moo">
         <callback name="do_moo">
-          <source-position filename="warnlib.h" line="33"/>
+          <source-position filename="warnlib.h" line="37"/>
           <return-value transfer-ownership="none">
             <type name="none" c:type="void"/>
           </return-value>
@@ -177,7 +184,7 @@ and/or use gtk-doc annotations.  -->
       </field>
       <field name="do_boo">
         <callback name="do_boo">
-          <source-position filename="warnlib.h" line="35"/>
+          <source-position filename="warnlib.h" line="39"/>
           <return-value transfer-ownership="none">
             <type name="none" c:type="void"/>
           </return-value>
@@ -185,13 +192,13 @@ and/or use gtk-doc annotations.  -->
             <parameter name="self" transfer-ownership="none">
               <doc xml:space="preserve"
                    filename="warnlib.c"
-                   line="40">a WarnLibWhatever</doc>
+                   line="39">a WarnLibWhatever</doc>
               <type name="Whatever" c:type="WarnLibWhatever*"/>
             </parameter>
             <parameter name="x" transfer-ownership="none">
               <doc xml:space="preserve"
                    filename="warnlib.c"
-                   line="41">x parameter</doc>
+                   line="40">x parameter</doc>
               <type name="gint" c:type="int"/>
             </parameter>
             <parameter name="y"
@@ -200,7 +207,7 @@ and/or use gtk-doc annotations.  -->
                        allow-none="1">
               <doc xml:space="preserve"
                    filename="warnlib.c"
-                   line="42">y parameter</doc>
+                   line="41">y parameter</doc>
               <type name="gpointer" c:type="gpointer"/>
             </parameter>
           </parameters>
@@ -210,7 +217,7 @@ and/or use gtk-doc annotations.  -->
     <function name="throw_unpaired"
               c:identifier="warnlib_throw_unpaired"
               throws="1">
-      <source-position filename="warnlib.h" line="15"/>
+      <source-position filename="warnlib.h" line="19"/>
       <return-value transfer-ownership="none">
         <type name="gboolean" c:type="gboolean"/>
       </return-value>

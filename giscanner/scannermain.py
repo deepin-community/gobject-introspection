@@ -220,6 +220,11 @@ match the namespace prefix.""")
     parser.add_option("", "--compiler",
                       action="store", dest="compiler", default=None,
                       help="the C compiler to use internally")
+    parser.add_option("", "--doc-format",
+                      action="store", dest="doc_format",
+                      help=("name of the documentation format used in the project, "
+                            "should be one of gi-docgen, gtk-doc-docbook, "
+                            "gtk-doc-markdown or hotdoc"))
 
     group = get_preprocessor_option_group(parser)
     parser.add_option_group(group)
@@ -296,7 +301,7 @@ def test_codegen(optstring,
                                       include_last_src)
         gen.write()
     else:
-        _error("Invaild namespace '%s'" % (namespace, ))
+        _error("Invalid namespace '%s'" % (namespace, ))
     return 0
 
 
@@ -470,6 +475,10 @@ def create_source_scanner(options, args):
     finally:
         for error in ss.get_errors():
             print(error, file=sys.stderr)
+
+    if ss.get_errors() and options.warn_fatal:
+        _error("error caught during scanner parsing")
+
     return ss, filenames
 
 
@@ -577,6 +586,15 @@ def scanner_main(args):
             or options.header_only):
         _error("Must specify --program or --library")
 
+    DOC_FORMATS = [
+        'gi-docgen',
+        'hotdoc',
+        'gtk-doc-markdown',
+        'gtk-doc-docbook',
+    ]
+    if options.doc_format and options.doc_format not in DOC_FORMATS:
+        _error("Unknown doc-format: %s" % (options.doc_format, ))
+
     namespace = create_namespace(options)
     logger = message.MessageLogger.get(namespace=namespace)
     if options.warn_all:
@@ -635,6 +653,8 @@ def scanner_main(args):
 
     transformer.namespace.c_includes = options.c_includes
     transformer.namespace.exported_packages = exported_packages
+    if options.doc_format:
+        transformer.namespace.doc_format = options.doc_format
 
     sources_top_dirs = get_source_root_dirs(options, filenames)
     writer = Writer(transformer.namespace, sources_top_dirs)

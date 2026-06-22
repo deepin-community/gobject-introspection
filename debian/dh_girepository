@@ -89,14 +89,10 @@ if ($dh{L_PARAMS}) {
 if ($dh{P_PARAMS}) {
     push @privdirs, split /:/, $dh{P_PARAMS};
 }
-isnative($dh{MAINPACKAGE}); # Necessary to have $dh{VERSION}
-my $bin_version = $dh{VERSION};
 my @archpackages = getpackages("arch");
 
-my $triplet = `dpkg-architecture -qDEB_HOST_MULTIARCH`;
-chomp $triplet;
-my $gnu_type = `dpkg-architecture -qDEB_HOST_GNU_TYPE`;
-chomp $gnu_type;
+my $triplet = dpkg_architecture_value("DEB_HOST_MULTIARCH");
+my $gnu_type = dpkg_architecture_value("DEB_HOST_GNU_TYPE");
 my $typelib_multiarch_path = "/usr/lib/$triplet/girepository-1.0";
 my $legacy_typelib_path = "/usr/lib/girepository-1.0";
 
@@ -187,8 +183,8 @@ sub require_gir {
             if (-f tmpdir($otherpkg)."$fullpath") {
                 error("Dependency on $otherpkg with a different format than $format")
                     if ($otherpkg =~ /^gir[0-9.]+-/ and $otherpkg !~ /^gir$format/);
-                verbose_print("$package Depends $otherpkg (= $bin_version) for $req");
-                addsubstvar ($package, "gir:Depends", $otherpkg, "= $bin_version");
+                verbose_print("$package Depends $otherpkg (= \${binary:Version}) for $req");
+                addsubstvar ($package, "gir:Depends", $otherpkg, "= \${binary:Version}");
                 return;
             }
         }
@@ -287,8 +283,8 @@ sub require_typelib {
         foreach my $otherpkg (@archpackages) {
             if (-f tmpdir($otherpkg)."$fullpath") {
                 error("Dependency on $otherpkg with a different format than $format") unless $otherpkg =~ /^gir$format/;
-                verbose_print("$package Depends $otherpkg (= $bin_version) for $req");
-                addsubstvar ($package, "gir:Depends", $otherpkg, "= $bin_version");
+                verbose_print("$package Depends $otherpkg (= \${binary:Version}) for $req");
+                addsubstvar ($package, "gir:Depends", $otherpkg, "= \${binary:Version}");
                 return;
             }
         }
@@ -607,8 +603,8 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
     # This must come after dpkg-shlibdeps, otherwise dpkg-shlibdeps will
     # delete ${gir:anything} from the substvars
     foreach my $canonical_name (@provides) {
-        verbose_print("$package Provides $canonical_name (= $bin_version)");
-        addsubstvar($package, "gir:Provides", $canonical_name, "= $bin_version");
+        verbose_print("$package Provides $canonical_name (= \${binary:Version})");
+        addsubstvar($package, "gir:Provides", $canonical_name, "= \${binary:Version}");
     }
 
     # Generate dependencies on other .typelib files
